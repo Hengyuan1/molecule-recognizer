@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import os
 
 from PIL import Image
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPlainTextEdit,
+    QProgressBar,
     QPushButton,
     QStatusBar,
     QVBoxLayout,
@@ -29,6 +31,10 @@ from ..core.valence import check_valence
 from .editor_widget import EditorWidget
 from .screenshot import ScreenshotOverlay
 
+# Suppress HuggingFace unauthenticated warning
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
 
 class RecognitionWorker(QThread):
     """Run MolScribe recognition in a background thread."""
@@ -41,7 +47,7 @@ class RecognitionWorker(QThread):
 
     def run(self):
         try:
-            self.status.emit("Loading MolScribe model...")
+            self.status.emit("Loading MolScribe model (first run downloads ~400MB)...")
             from ..core.recognizer import MoleculeRecognizer
             recognizer = MoleculeRecognizer(device="cpu")
             self.status.emit("Recognizing structure...")
@@ -75,42 +81,42 @@ class MainWindow(QMainWindow):
     def _setup_menu(self):
         menu = self.menuBar()
 
-        file_menu = menu.addMenu("&File")
-        open_act = QAction("&Open Image...", self)
+        file_menu = menu.addMenu("  &File  ")
+        open_act = QAction("  &Open Image...  ", self)
         open_act.setShortcut(QKeySequence.StandardKey.Open)
         open_act.triggered.connect(self._on_open_image)
         file_menu.addAction(open_act)
 
-        screenshot_act = QAction("&Screenshot", self)
+        screenshot_act = QAction("  &Screenshot  ", self)
         screenshot_act.setShortcut(QKeySequence("Ctrl+Shift+S"))
         screenshot_act.triggered.connect(self._on_screenshot)
         file_menu.addAction(screenshot_act)
 
         file_menu.addSeparator()
 
-        load_smiles_act = QAction("Load from S&MILES...", self)
+        load_smiles_act = QAction("  Load from S&MILES...  ", self)
         load_smiles_act.triggered.connect(self._on_load_smiles)
         file_menu.addAction(load_smiles_act)
 
-        export_act = QAction("&Export SMILES...", self)
+        export_act = QAction("  &Export SMILES...  ", self)
         export_act.setShortcut(QKeySequence("Ctrl+E"))
         export_act.triggered.connect(self._on_export_smiles)
         file_menu.addAction(export_act)
 
         file_menu.addSeparator()
 
-        quit_act = QAction("&Quit", self)
+        quit_act = QAction("  &Quit  ", self)
         quit_act.setShortcut(QKeySequence.StandardKey.Quit)
         quit_act.triggered.connect(self.close)
         file_menu.addAction(quit_act)
 
-        edit_menu = menu.addMenu("&Edit")
-        self._undo_act = QAction("&Undo", self)
+        edit_menu = menu.addMenu("  &Edit  ")
+        self._undo_act = QAction("  &Undo  ", self)
         self._undo_act.setShortcut(QKeySequence.StandardKey.Undo)
         self._undo_act.setEnabled(False)
         edit_menu.addAction(self._undo_act)
 
-        self._redo_act = QAction("&Redo", self)
+        self._redo_act = QAction("  &Redo  ", self)
         self._redo_act.setShortcut(QKeySequence.StandardKey.Redo)
         self._redo_act.setEnabled(False)
         edit_menu.addAction(self._redo_act)
@@ -239,6 +245,11 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _recognize_image(self, img: Image.Image):
+        # If a previous worker is still running, wait for it
+        if self._worker is not None and self._worker.isRunning():
+            self.statusBar().showMessage("Recognition already in progress, please wait...")
+            return
+
         self.statusBar().showMessage("Starting recognition...")
         self._worker = RecognitionWorker(img, parent=self)
         self._worker.status.connect(lambda msg: self.statusBar().showMessage(msg))
@@ -246,7 +257,6 @@ class MainWindow(QMainWindow):
         self._worker.start()
 
     def _on_recognition_done(self, result):
-        self._worker = None
         if isinstance(result, Exception):
             self.statusBar().showMessage("Recognition failed", 5000)
             QMessageBox.critical(
@@ -299,3 +309,14 @@ class MainWindow(QMainWindow):
             item = QListWidgetItem("All valences OK")
             item.setForeground(Qt.GlobalColor.darkGreen)
             self._warnings_list.addItem(item)
+
+    # ------------------------------------------------------------------
+    # Window close — wait for worker thread
+    # ------------------------------------------------------------------
+
+    def closeEvent(self, event):
+        if self._worker is not None and self._worker.isRunning():
+            self._worker.finished.disconnect()
+            self._worker.quit()
+            self._worker.wait(5000)
+        event.accept()

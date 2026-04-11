@@ -13,21 +13,34 @@ QMainWindow {
     background-color: #f5f6fa;
 }
 
+/* ---- Menu bar ---- */
 QMenuBar {
     background-color: #2c3e50;
     color: #ecf0f1;
-    font-size: 13px;
-    padding: 2px;
+    font-size: 15px;
+    font-weight: 500;
+    padding: 4px 0px;
+    min-height: 36px;
+}
+QMenuBar::item {
+    padding: 8px 16px;
+    border-radius: 4px;
 }
 QMenuBar::item:selected {
     background-color: #3498db;
-    border-radius: 4px;
 }
+
+/* ---- Drop-down menus ---- */
 QMenu {
-    background-color: #2c3e50;
+    background-color: #34495e;
     color: #ecf0f1;
-    font-size: 13px;
-    padding: 4px;
+    font-size: 14px;
+    padding: 6px;
+    border: 1px solid #2c3e50;
+}
+QMenu::item {
+    padding: 8px 24px;
+    border-radius: 4px;
 }
 QMenu::item:selected {
     background-color: #3498db;
@@ -35,26 +48,27 @@ QMenu::item:selected {
 QMenu::separator {
     height: 1px;
     background: #4a6278;
-    margin: 4px 8px;
+    margin: 6px 12px;
 }
 
+/* ---- Toolbar container ---- */
 QToolBar {
     background-color: #ecf0f1;
     border: none;
-    border-bottom: 1px solid #bdc3c7;
-    padding: 4px 6px;
-    spacing: 6px;
+    border-bottom: 2px solid #bdc3c7;
+    padding: 6px 8px;
+    spacing: 4px;
 }
 
+/* ---- Tool buttons ---- */
 QToolButton {
     background-color: #ffffff;
-    border: 1px solid #bdc3c7;
+    border: 1.5px solid #bdc3c7;
     border-radius: 6px;
-    padding: 8px 16px;
+    padding: 6px 12px;
     font-size: 13px;
     font-weight: 500;
-    min-width: 60px;
-    min-height: 32px;
+    min-height: 28px;
     color: #2c3e50;
 }
 QToolButton:hover {
@@ -71,14 +85,15 @@ QToolButton:pressed {
     color: #ffffff;
 }
 
+/* ---- Combo boxes ---- */
 QComboBox {
     background-color: #ffffff;
-    border: 1px solid #bdc3c7;
+    border: 1.5px solid #bdc3c7;
     border-radius: 6px;
-    padding: 6px 12px;
+    padding: 5px 10px;
     font-size: 13px;
-    min-width: 80px;
-    min-height: 30px;
+    min-width: 70px;
+    min-height: 28px;
     color: #2c3e50;
 }
 QComboBox:hover {
@@ -86,7 +101,7 @@ QComboBox:hover {
 }
 QComboBox::drop-down {
     border: none;
-    padding-right: 8px;
+    padding-right: 6px;
 }
 QComboBox QAbstractItemView {
     background-color: #ffffff;
@@ -97,6 +112,7 @@ QComboBox QAbstractItemView {
     padding: 4px;
 }
 
+/* ---- Push buttons ---- */
 QPushButton {
     background-color: #3498db;
     color: #ffffff;
@@ -114,6 +130,7 @@ QPushButton:pressed {
     background-color: #2471a3;
 }
 
+/* ---- Dock widget (info panel) ---- */
 QDockWidget {
     font-size: 13px;
     titlebar-close-icon: none;
@@ -126,6 +143,7 @@ QDockWidget::title {
     font-size: 14px;
 }
 
+/* ---- Text fields ---- */
 QPlainTextEdit {
     background-color: #ffffff;
     border: 1px solid #bdc3c7;
@@ -137,6 +155,7 @@ QPlainTextEdit {
     selection-background-color: #3498db;
 }
 
+/* ---- List widget ---- */
 QListWidget {
     background-color: #ffffff;
     border: 1px solid #bdc3c7;
@@ -152,19 +171,23 @@ QListWidget::item:hover {
     background-color: #eaf2f8;
 }
 
+/* ---- Labels ---- */
 QLabel {
     font-size: 13px;
     color: #2c3e50;
     font-weight: 600;
 }
 
+/* ---- Status bar ---- */
 QStatusBar {
     background-color: #2c3e50;
     color: #bdc3c7;
     font-size: 12px;
-    padding: 2px 8px;
+    padding: 4px 8px;
+    min-height: 24px;
 }
 
+/* ---- Graphics view (canvas) ---- */
 QGraphicsView {
     border: 1px solid #bdc3c7;
     border-radius: 6px;
