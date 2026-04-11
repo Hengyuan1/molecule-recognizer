@@ -49,7 +49,7 @@ class RecognitionWorker(QThread):
         try:
             from ..core.recognizer import MoleculeRecognizer, _model_cache
             if "cpu" not in _model_cache:
-                self.status.emit("Loading MolScribe model (first time only)...")
+                self.status.emit("Loading model into memory (~6s, once per session)...")
             else:
                 self.status.emit("Recognizing structure...")
             recognizer = MoleculeRecognizer(device="cpu")
