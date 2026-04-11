@@ -1,0 +1,307 @@
+"""Main application window."""
+
+from __future__ import annotations
+
+import io
+import traceback
+
+from PIL import Image
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QAction, QKeySequence, QPixmap
+from PySide6.QtWidgets import (
+    QDockWidget,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QMainWindow,
+    QMessageBox,
+    QPlainTextEdit,
+    QPushButton,
+    QSplitter,
+    QStatusBar,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+    QApplication,
+)
+
+from ..core.molecule import Molecule
+from ..core.smiles import molecule_to_smiles, smiles_to_molecule
+from ..core.valence import ValenceWarning, check_valence
+from .screenshot import ScreenshotOverlay
+
+
+class RecognitionWorker(QThread):
+    """Run MolScribe recognition in a background thread."""
+    finished = Signal(object)  # Molecule or Exception
+    status = Signal(str)
+
+    def __init__(self, image: Image.Image, parent=None):
+        super().__init__(parent)
+        self._image = image
+
+    def run(self):
+        try:
+            self.status.emit("Loading MolScribe model...")
+            from ..core.recognizer import MoleculeRecognizer
+            recognizer = MoleculeRecognizer(device="cpu")
+            self.status.emit("Recognizing structure...")
+            mol = recognizer.recognize(self._image)
+            self.finished.emit(mol)
+        except Exception as e:
+            self.finished.emit(e)
+
+
+class MainWindow(QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Molecule Recognizer")
+        self.resize(1200, 800)
+
+        self._molecule: Molecule | None = None
+        self._screenshot_overlay = ScreenshotOverlay()
+        self._screenshot_overlay.captured.connect(self._on_screenshot_captured)
+        self._screenshot_overlay.cancelled.connect(
+            lambda: self.statusBar().showMessage("Screenshot cancelled", 3000)
+        )
+        self._worker: RecognitionWorker | None = None
+
+        self._setup_menu()
+        self._setup_central()
+        self._setup_info_panel()
+        self._setup_statusbar()
+
+    # ------------------------------------------------------------------
+    # UI setup
+    # ------------------------------------------------------------------
+
+    def _setup_menu(self):
+        menu = self.menuBar()
+
+        file_menu = menu.addMenu("&File")
+        open_act = QAction("&Open Image...", self)
+        open_act.setShortcut(QKeySequence.StandardKey.Open)
+        open_act.triggered.connect(self._on_open_image)
+        file_menu.addAction(open_act)
+
+        screenshot_act = QAction("&Screenshot", self)
+        screenshot_act.setShortcut(QKeySequence("Ctrl+Shift+S"))
+        screenshot_act.triggered.connect(self._on_screenshot)
+        file_menu.addAction(screenshot_act)
+
+        file_menu.addSeparator()
+
+        load_smiles_act = QAction("Load from S&MILES...", self)
+        load_smiles_act.triggered.connect(self._on_load_smiles)
+        file_menu.addAction(load_smiles_act)
+
+        export_act = QAction("&Export SMILES...", self)
+        export_act.setShortcut(QKeySequence("Ctrl+E"))
+        export_act.triggered.connect(self._on_export_smiles)
+        file_menu.addAction(export_act)
+
+        file_menu.addSeparator()
+
+        quit_act = QAction("&Quit", self)
+        quit_act.setShortcut(QKeySequence.StandardKey.Quit)
+        quit_act.triggered.connect(self.close)
+        file_menu.addAction(quit_act)
+
+        edit_menu = menu.addMenu("&Edit")
+        self._undo_act = QAction("&Undo", self)
+        self._undo_act.setShortcut(QKeySequence.StandardKey.Undo)
+        self._undo_act.setEnabled(False)
+        edit_menu.addAction(self._undo_act)
+
+        self._redo_act = QAction("&Redo", self)
+        self._redo_act.setShortcut(QKeySequence.StandardKey.Redo)
+        self._redo_act.setEnabled(False)
+        edit_menu.addAction(self._redo_act)
+
+    def _setup_central(self):
+        # Central widget will be replaced by EditorWidget in Phase 5.
+        # For now, show a placeholder with instructions.
+        self._central_widget = QWidget()
+        layout = QVBoxLayout(self._central_widget)
+
+        self._canvas_placeholder = QLabel(
+            "Open an image or take a screenshot to recognize a molecular structure.\n\n"
+            "File → Open Image  (Ctrl+O)\n"
+            "File → Screenshot  (Ctrl+Shift+S)\n"
+            "File → Load from SMILES"
+        )
+        self._canvas_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._canvas_placeholder.setStyleSheet(
+            "QLabel { color: #888; font-size: 14px; border: 2px dashed #ccc; padding: 40px; }"
+        )
+        layout.addWidget(self._canvas_placeholder)
+        self.setCentralWidget(self._central_widget)
+
+    def _setup_info_panel(self):
+        dock = QDockWidget("Info", self)
+        dock.setAllowedAreas(Qt.DockWidgetArea.RightDockWidgetArea | Qt.DockWidgetArea.LeftDockWidgetArea)
+
+        panel = QWidget()
+        layout = QVBoxLayout(panel)
+
+        # SMILES display
+        layout.addWidget(QLabel("SMILES:"))
+        self._smiles_edit = QPlainTextEdit()
+        self._smiles_edit.setReadOnly(True)
+        self._smiles_edit.setMaximumHeight(60)
+        self._smiles_edit.setPlaceholderText("No molecule loaded")
+        layout.addWidget(self._smiles_edit)
+
+        copy_btn = QPushButton("Copy SMILES")
+        copy_btn.clicked.connect(self._copy_smiles)
+        layout.addWidget(copy_btn)
+
+        # Valence warnings
+        layout.addWidget(QLabel("Valence Warnings:"))
+        self._warnings_list = QListWidget()
+        layout.addWidget(self._warnings_list)
+
+        layout.addStretch()
+        dock.setWidget(panel)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
+
+    def _setup_statusbar(self):
+        self.setStatusBar(QStatusBar())
+        self.statusBar().showMessage("Ready")
+
+    # ------------------------------------------------------------------
+    # Actions
+    # ------------------------------------------------------------------
+
+    def _on_open_image(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Open Molecule Image", "",
+            "Images (*.png *.jpg *.jpeg *.bmp *.tiff);;All Files (*)"
+        )
+        if path:
+            img = Image.open(path)
+            self._recognize_image(img)
+
+    def _on_screenshot(self):
+        self.statusBar().showMessage("Select a screen region...")
+        self._screenshot_overlay.start()
+
+    def _on_screenshot_captured(self, pixmap: QPixmap):
+        # Convert QPixmap → PIL Image
+        buffer = io.BytesIO()
+        pixmap.save(buffer, "PNG")
+        buffer.seek(0)
+        img = Image.open(buffer)
+        self._recognize_image(img)
+
+    def _on_load_smiles(self):
+        from PySide6.QtWidgets import QInputDialog
+        smiles, ok = QInputDialog.getText(self, "Load SMILES", "Enter SMILES string:")
+        if ok and smiles.strip():
+            try:
+                mol = smiles_to_molecule(smiles.strip())
+                self._set_molecule(mol)
+                self.statusBar().showMessage("Loaded from SMILES", 3000)
+            except ValueError as e:
+                QMessageBox.warning(self, "Invalid SMILES", str(e))
+
+    def _on_export_smiles(self):
+        if self._molecule is None:
+            self.statusBar().showMessage("No molecule to export", 3000)
+            return
+        smiles = self._smiles_edit.toPlainText()
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export SMILES", "molecule.smi",
+            "SMILES Files (*.smi);;Text Files (*.txt);;All Files (*)"
+        )
+        if path:
+            with open(path, "w") as f:
+                f.write(smiles + "\n")
+            self.statusBar().showMessage(f"Exported to {path}", 3000)
+
+    def _copy_smiles(self):
+        text = self._smiles_edit.toPlainText()
+        if text:
+            QApplication.clipboard().setText(text)
+            self.statusBar().showMessage("SMILES copied to clipboard", 3000)
+
+    # ------------------------------------------------------------------
+    # Recognition
+    # ------------------------------------------------------------------
+
+    def _recognize_image(self, img: Image.Image):
+        self.statusBar().showMessage("Starting recognition...")
+        self._worker = RecognitionWorker(img, parent=self)
+        self._worker.status.connect(lambda msg: self.statusBar().showMessage(msg))
+        self._worker.finished.connect(self._on_recognition_done)
+        self._worker.start()
+
+    def _on_recognition_done(self, result):
+        self._worker = None
+        if isinstance(result, Exception):
+            self.statusBar().showMessage("Recognition failed", 5000)
+            QMessageBox.critical(
+                self, "Recognition Error",
+                f"Failed to recognize structure:\n{result}"
+            )
+            return
+        self._set_molecule(result)
+        self.statusBar().showMessage("Structure recognized", 3000)
+
+    # ------------------------------------------------------------------
+    # Molecule state
+    # ------------------------------------------------------------------
+
+    def _set_molecule(self, mol: Molecule):
+        """Set the current molecule and update all displays."""
+        self._molecule = mol
+        self._update_smiles()
+        self._update_valence()
+        self._update_canvas()
+
+    def _update_smiles(self):
+        if self._molecule is None:
+            self._smiles_edit.setPlainText("")
+            return
+        try:
+            smiles = molecule_to_smiles(self._molecule)
+            self._smiles_edit.setPlainText(smiles)
+        except Exception:
+            self._smiles_edit.setPlainText("[Error generating SMILES]")
+
+    def _update_valence(self):
+        self._warnings_list.clear()
+        if self._molecule is None:
+            return
+        warnings = check_valence(self._molecule)
+        for w in warnings:
+            item = QListWidgetItem(str(w))
+            item.setForeground(Qt.GlobalColor.red)
+            self._warnings_list.addItem(item)
+        if not warnings:
+            item = QListWidgetItem("All valences OK")
+            item.setForeground(Qt.GlobalColor.darkGreen)
+            self._warnings_list.addItem(item)
+
+    def _update_canvas(self):
+        """Update the canvas display. Will be fully implemented with EditorWidget."""
+        if self._molecule is None:
+            return
+        # For now, just update the placeholder text
+        smiles = self._smiles_edit.toPlainText()
+        self._canvas_placeholder.setText(
+            f"Molecule loaded: {self._molecule.num_atoms} atoms, {self._molecule.num_bonds} bonds\n\n"
+            f"SMILES: {smiles}\n\n"
+            "Structure editor will be shown here."
+        )
+
+    # ------------------------------------------------------------------
+    # Public API for EditorWidget integration
+    # ------------------------------------------------------------------
+
+    def molecule_changed(self):
+        """Call this when the editor modifies the molecule."""
+        self._update_smiles()
+        self._update_valence()
