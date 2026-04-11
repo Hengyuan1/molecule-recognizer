@@ -47,8 +47,11 @@ class RecognitionWorker(QThread):
 
     def run(self):
         try:
-            self.status.emit("Loading MolScribe model (first run downloads ~400MB)...")
-            from ..core.recognizer import MoleculeRecognizer
+            from ..core.recognizer import MoleculeRecognizer, _model_cache
+            if "cpu" not in _model_cache:
+                self.status.emit("Loading MolScribe model (first time only)...")
+            else:
+                self.status.emit("Recognizing structure...")
             recognizer = MoleculeRecognizer(device="cpu")
             self.status.emit("Recognizing structure...")
             mol = recognizer.recognize(self._image)

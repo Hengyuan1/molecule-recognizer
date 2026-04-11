@@ -1,4 +1,10 @@
-"""QGraphicsScene-based molecular canvas for rendering and editing."""
+"""QGraphicsScene-based molecular canvas with skeletal structure rendering.
+
+Carbon atoms are drawn as invisible line junctions (no circle, no label).
+Heteroatoms (N, O, S, B, etc.) are drawn with a colored label on a white
+background that masks the bond lines.  This produces the standard chemical
+structure diagram style used in papers.
+"""
 
 from __future__ import annotations
 
@@ -11,6 +17,7 @@ from PySide6.QtWidgets import (
     QGraphicsEllipseItem,
     QGraphicsItem,
     QGraphicsLineItem,
+    QGraphicsRectItem,
     QGraphicsScene,
     QGraphicsSimpleTextItem,
     QGraphicsView,
@@ -18,95 +25,131 @@ from PySide6.QtWidgets import (
 
 from ..core.molecule import BondType, Molecule
 
-# Element → color mapping
+# Heteroatom colors (CPK-ish)
 ELEMENT_COLORS: dict[str, str] = {
-    "C": "#333333",
-    "N": "#3050F8",
-    "O": "#FF0D0D",
-    "S": "#FFFF30",
-    "P": "#FF8000",
-    "F": "#90E050",
-    "Cl": "#1FF01F",
-    "Br": "#A62929",
-    "I": "#940094",
-    "H": "#FFFFFF",
-    "Se": "#FFA100",
-    "B": "#FFB5B5",
-    "Si": "#F0C8A0",
+    "N": "#2222DD",
+    "O": "#DD0000",
+    "S": "#CCAA00",
+    "P": "#DD8800",
+    "F": "#22AA22",
+    "Cl": "#22CC22",
+    "Br": "#882222",
+    "I": "#772299",
+    "B": "#DD8899",
+    "Se": "#DD8800",
+    "Si": "#CC9966",
 }
 
-DEFAULT_COLOR = "#FF69B4"  # for unknown elements
-
-ATOM_RADIUS = 14.0
-BOND_WIDTH = 2.5
-DOUBLE_BOND_OFFSET = 4.0
+BOND_COLOR = "#222222"
+BOND_WIDTH = 2.0
+DOUBLE_BOND_OFFSET = 3.0
 SCALE = 40.0  # pixels per unit coordinate
+HIT_RADIUS = 12.0  # click detection radius
 
 
 class AtomItem(QGraphicsEllipseItem):
-    """Visual representation of an atom on the canvas."""
+    """Visual representation of an atom.
+
+    Carbon atoms: small invisible hit area (no visible circle or label).
+    Heteroatoms: colored element label on white background.
+    """
 
     def __init__(self, atom_idx: int, element: str, x: float, y: float):
-        r = ATOM_RADIUS
+        # Hit area for clicking — always present but invisible for C
+        r = HIT_RADIUS
         super().__init__(-r, -r, 2 * r, 2 * r)
         self.atom_idx = atom_idx
         self.element = element
-
-        color = QColor(ELEMENT_COLORS.get(element, DEFAULT_COLOR))
-        self.setBrush(QBrush(color))
-        self.setPen(QPen(QColor("#222222"), 1.5))
         self.setPos(x * SCALE, y * SCALE)
-
-        # Element label
-        self._label = QGraphicsSimpleTextItem(element, self)
-        font = QFont("Arial", 10, QFont.Weight.Bold)
-        self._label.setFont(font)
-        self._label.setBrush(QBrush(Qt.GlobalColor.white if color.lightness() < 128 else Qt.GlobalColor.black))
-        # Center the label
-        br = self._label.boundingRect()
-        self._label.setPos(-br.width() / 2, -br.height() / 2)
-
+        self.setZValue(10)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
-        self.setZValue(10)  # atoms on top of bonds
+
+        # No visible circle
+        self.setBrush(QBrush(Qt.GlobalColor.transparent))
+        self.setPen(QPen(Qt.PenStyle.NoPen))
+
+        self._bg_rect: QGraphicsRectItem | None = None
+        self._label: QGraphicsSimpleTextItem | None = None
+        self._build_label()
+
+    @property
+    def is_heteroatom(self) -> bool:
+        return self.element != "C"
+
+    def _build_label(self):
+        # Remove old label items
+        if self._bg_rect:
+            if self._bg_rect.scene():
+                self._bg_rect.scene().removeItem(self._bg_rect)
+            self._bg_rect = None
+        if self._label:
+            if self._label.scene():
+                self._label.scene().removeItem(self._label)
+            self._label = None
+
+        if not self.is_heteroatom:
+            return
+
+        color = QColor(ELEMENT_COLORS.get(self.element, "#DD44AA"))
+        font = QFont("Arial", 12, QFont.Weight.Bold)
+
+        self._label = QGraphicsSimpleTextItem(self.element, self)
+        self._label.setFont(font)
+        self._label.setBrush(QBrush(color))
+        br = self._label.boundingRect()
+        self._label.setPos(-br.width() / 2, -br.height() / 2)
+        self._label.setZValue(12)
+
+        # White background to mask bond lines behind the label
+        pad = 2
+        self._bg_rect = QGraphicsRectItem(
+            -br.width() / 2 - pad, -br.height() / 2 - pad,
+            br.width() + 2 * pad, br.height() + 2 * pad,
+            self
+        )
+        self._bg_rect.setBrush(QBrush(QColor("#FAFAFA")))
+        self._bg_rect.setPen(QPen(Qt.PenStyle.NoPen))
+        self._bg_rect.setZValue(11)
 
     def set_highlighted(self, highlighted: bool):
         if highlighted:
-            self.setPen(QPen(QColor("#00AAFF"), 3))
+            r = HIT_RADIUS
+            self.setPen(QPen(QColor("#00AAFF"), 2))
+            self.setBrush(QBrush(QColor(0, 170, 255, 40)))
         else:
-            self.setPen(QPen(QColor("#222222"), 1.5))
+            self.setPen(QPen(Qt.PenStyle.NoPen))
+            self.setBrush(QBrush(Qt.GlobalColor.transparent))
 
     def update_element(self, element: str):
         self.element = element
-        color = QColor(ELEMENT_COLORS.get(element, DEFAULT_COLOR))
-        self.setBrush(QBrush(color))
-        self._label.setText(element)
-        self._label.setBrush(QBrush(Qt.GlobalColor.white if color.lightness() < 128 else Qt.GlobalColor.black))
-        br = self._label.boundingRect()
-        self._label.setPos(-br.width() / 2, -br.height() / 2)
+        self._build_label()
 
 
 class BondItem(QGraphicsLineItem):
-    """Visual representation of a bond on the canvas."""
+    """Visual representation of a bond — standard skeletal line drawing."""
 
     def __init__(self, a1_idx: int, a2_idx: int, bond_type: BondType,
-                 p1: QPointF, p2: QPointF):
+                 p1: QPointF, p2: QPointF,
+                 a1_hetero: bool = False, a2_hetero: bool = False):
         super().__init__()
         self.a1_idx = a1_idx
         self.a2_idx = a2_idx
         self.bond_type = bond_type
         self._p1 = p1
         self._p2 = p2
+        self._a1_hetero = a1_hetero
+        self._a2_hetero = a2_hetero
         self._extra_lines: list[QGraphicsLineItem] = []
         self.setZValue(1)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
         self._render()
 
     def _render(self):
-        pen = QPen(QColor("#555555"), BOND_WIDTH)
+        pen = QPen(QColor(BOND_COLOR), BOND_WIDTH)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         self.setPen(pen)
 
-        # Shorten lines so they don't overlap atom circles
         dx = self._p2.x() - self._p1.x()
         dy = self._p2.y() - self._p1.y()
         length = math.sqrt(dx * dx + dy * dy)
@@ -114,13 +157,17 @@ class BondItem(QGraphicsLineItem):
             self.setLine(QLineF(self._p1, self._p2))
             return
 
-        # Shorten by atom radius from each end
         ux, uy = dx / length, dy / length
-        start = QPointF(self._p1.x() + ux * ATOM_RADIUS, self._p1.y() + uy * ATOM_RADIUS)
-        end = QPointF(self._p2.x() - ux * ATOM_RADIUS, self._p2.y() - uy * ATOM_RADIUS)
+
+        # Shorten bonds that connect to heteroatoms (so lines don't poke through labels)
+        shrink1 = 8.0 if self._a1_hetero else 0.0
+        shrink2 = 8.0 if self._a2_hetero else 0.0
+        start = QPointF(self._p1.x() + ux * shrink1, self._p1.y() + uy * shrink1)
+        end = QPointF(self._p2.x() - ux * shrink2, self._p2.y() - uy * shrink2)
 
         if self.bond_type == BondType.SINGLE:
             self.setLine(QLineF(start, end))
+
         elif self.bond_type == BondType.DOUBLE:
             nx, ny = -uy * DOUBLE_BOND_OFFSET, ux * DOUBLE_BOND_OFFSET
             self.setLine(QLineF(
@@ -134,40 +181,41 @@ class BondItem(QGraphicsLineItem):
             )
             line2.setPen(pen)
             self._extra_lines.append(line2)
+
         elif self.bond_type == BondType.TRIPLE:
-            nx, ny = -uy * DOUBLE_BOND_OFFSET * 1.3, ux * DOUBLE_BOND_OFFSET * 1.3
+            off = DOUBLE_BOND_OFFSET * 1.4
+            nx, ny = -uy * off, ux * off
             self.setLine(QLineF(start, end))
-            line2 = QGraphicsLineItem(
+            for sign in (1, -1):
+                ln = QGraphicsLineItem(
+                    start.x() + sign * nx, start.y() + sign * ny,
+                    end.x() + sign * nx, end.y() + sign * ny,
+                    self
+                )
+                ln.setPen(pen)
+                self._extra_lines.append(ln)
+
+        elif self.bond_type == BondType.AROMATIC:
+            # Solid line + dashed line (standard representation)
+            nx, ny = -uy * DOUBLE_BOND_OFFSET, ux * DOUBLE_BOND_OFFSET
+            self.setLine(QLineF(
                 start.x() + nx, start.y() + ny,
-                end.x() + nx, end.y() + ny,
-                self
-            )
-            line2.setPen(pen)
-            line3 = QGraphicsLineItem(
+                end.x() + nx, end.y() + ny
+            ))
+            dashed = QPen(QColor(BOND_COLOR), BOND_WIDTH, Qt.PenStyle.DashLine)
+            dashed.setCapStyle(Qt.PenCapStyle.RoundCap)
+            line2 = QGraphicsLineItem(
                 start.x() - nx, start.y() - ny,
                 end.x() - nx, end.y() - ny,
                 self
             )
-            line3.setPen(pen)
-            self._extra_lines.extend([line2, line3])
-        elif self.bond_type == BondType.AROMATIC:
-            # Solid + dashed
-            self.setLine(QLineF(
-                start.x() + (-uy * DOUBLE_BOND_OFFSET), start.y() + (ux * DOUBLE_BOND_OFFSET),
-                end.x() + (-uy * DOUBLE_BOND_OFFSET), end.y() + (ux * DOUBLE_BOND_OFFSET)
-            ))
-            dashed_pen = QPen(QColor("#555555"), BOND_WIDTH, Qt.PenStyle.DashLine)
-            line2 = QGraphicsLineItem(
-                start.x() - (-uy * DOUBLE_BOND_OFFSET), start.y() - (ux * DOUBLE_BOND_OFFSET),
-                end.x() - (-uy * DOUBLE_BOND_OFFSET), end.y() - (ux * DOUBLE_BOND_OFFSET),
-                self
-            )
-            line2.setPen(dashed_pen)
+            line2.setPen(dashed)
             self._extra_lines.append(line2)
 
     def set_highlighted(self, highlighted: bool):
-        color = QColor("#00AAFF") if highlighted else QColor("#555555")
-        self.setPen(QPen(color, BOND_WIDTH + (1 if highlighted else 0)))
+        color = QColor("#00AAFF") if highlighted else QColor(BOND_COLOR)
+        w = BOND_WIDTH + (1 if highlighted else 0)
+        self.setPen(QPen(color, w))
 
     def update_positions(self, p1: QPointF, p2: QPointF):
         self._p1 = p1
@@ -183,9 +231,9 @@ class BondItem(QGraphicsLineItem):
 class MoleculeScene(QGraphicsScene):
     """Scene holding atom and bond graphics items."""
 
-    atom_clicked = Signal(int)       # atom index
-    bond_clicked = Signal(int, int)  # atom indices
-    canvas_clicked = Signal(float, float)  # scene coords
+    atom_clicked = Signal(int)
+    bond_clicked = Signal(int, int)
+    canvas_clicked = Signal(float, float)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -208,12 +256,14 @@ class MoleculeScene(QGraphicsScene):
             self.addItem(item)
             self._atom_items[i] = item
 
-        # Add bonds
+        # Add bonds — pass heteroatom flags so bonds shorten near labels
         for bond in mol.get_all_bonds():
             a1, a2 = bond.begin_atom_idx, bond.end_atom_idx
             p1 = self._atom_items[a1].pos()
             p2 = self._atom_items[a2].pos()
-            item = BondItem(a1, a2, bond.bond_type, p1, p2)
+            a1_het = self._atom_items[a1].is_heteroatom
+            a2_het = self._atom_items[a2].is_heteroatom
+            item = BondItem(a1, a2, bond.bond_type, p1, p2, a1_het, a2_het)
             self.addItem(item)
             key = (min(a1, a2), max(a1, a2))
             self._bond_items[key] = item
@@ -226,31 +276,20 @@ class MoleculeScene(QGraphicsScene):
         return self._bond_items.get(key)
 
     def atom_at_pos(self, scene_pos: QPointF) -> Optional[AtomItem]:
-        """Find an atom item near the given scene position."""
         for item in self._atom_items.values():
-            dist = (item.pos() - scene_pos)
-            if dist.x() ** 2 + dist.y() ** 2 < (ATOM_RADIUS * 1.5) ** 2:
+            dist = item.pos() - scene_pos
+            if dist.x() ** 2 + dist.y() ** 2 < (HIT_RADIUS * 1.5) ** 2:
                 return item
         return None
 
     def bond_at_pos(self, scene_pos: QPointF) -> Optional[BondItem]:
-        """Find a bond item near the given scene position."""
         for item in self._bond_items.values():
-            # Check distance from point to line segment
-            line = item.line()
-            p = scene_pos
-            # Transform to item coordinates
-            mapped = item.mapFromScene(p)
-            # Use bounding rect as quick check
-            br = item.boundingRect().adjusted(-10, -10, 10, 10)
-            if br.contains(mapped):
-                # More precise: distance to line
-                a1_pos = self._atom_items.get(item.a1_idx)
-                a2_pos = self._atom_items.get(item.a2_idx)
-                if a1_pos and a2_pos:
-                    d = _point_to_line_dist(scene_pos, a1_pos.pos(), a2_pos.pos())
-                    if d < 10:
-                        return item
+            a1_pos = self._atom_items.get(item.a1_idx)
+            a2_pos = self._atom_items.get(item.a2_idx)
+            if a1_pos and a2_pos:
+                d = _point_to_line_dist(scene_pos, a1_pos.pos(), a2_pos.pos())
+                if d < 10:
+                    return item
         return None
 
 
@@ -274,7 +313,6 @@ class MoleculeCanvas(QGraphicsView):
 
     def load_molecule(self, mol: Molecule):
         self._scene.load_molecule(mol)
-        # Fit the view to the content with some margin
         self.fitInView(self._scene.itemsBoundingRect().adjusted(-50, -50, 50, 50),
                        Qt.AspectRatioMode.KeepAspectRatio)
 
@@ -284,7 +322,6 @@ class MoleculeCanvas(QGraphicsView):
 
 
 def _point_to_line_dist(p: QPointF, a: QPointF, b: QPointF) -> float:
-    """Distance from point p to line segment a-b."""
     dx = b.x() - a.x()
     dy = b.y() - a.y()
     len_sq = dx * dx + dy * dy
