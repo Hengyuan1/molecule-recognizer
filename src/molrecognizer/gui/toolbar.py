@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QAction, QActionGroup
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QAction, QActionGroup, QFont
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QComboBox,
     QHBoxLayout,
     QLabel,
+    QSizePolicy,
+    QSpacerItem,
     QToolBar,
     QToolButton,
     QWidget,
@@ -24,6 +27,14 @@ BOND_TYPES = [
     ("Aromatic", BondType.AROMATIC),
 ]
 
+# Unicode symbols for tool buttons
+TOOL_LABELS = {
+    "select":  ("\u25ed", "Select"),      # ◭ pointer-like
+    "bond":    ("\u2500", "Bond"),         # ─ line
+    "atom":    ("\u2b24", "Atom"),         # ⬤ filled circle
+    "eraser":  ("\u2715", "Eraser"),       # ✕ cross
+}
+
 
 class EditorToolbar(QToolBar):
     """Toolbar for molecule editing tools."""
@@ -37,61 +48,71 @@ class EditorToolbar(QToolBar):
     def __init__(self, parent=None):
         super().__init__("Editor Tools", parent)
         self.setMovable(False)
+        self.setIconSize(QSize(28, 28))
 
-        # Tool buttons
-        self._tool_group = QActionGroup(self)
-        self._tool_group.setExclusive(True)
+        # Tool buttons — use QToolButton directly for full styling control
+        self._button_group = QButtonGroup(self)
+        self._button_group.setExclusive(True)
 
-        self._select_act = self._add_tool("Select", "select", checked=True)
-        self._bond_act = self._add_tool("Bond", "bond")
-        self._atom_act = self._add_tool("Atom", "atom")
-        self._erase_act = self._add_tool("Eraser", "eraser")
+        self._select_btn = self._add_tool_button("select", checked=True)
+        self._bond_btn = self._add_tool_button("bond")
+        self._atom_btn = self._add_tool_button("atom")
+        self._erase_btn = self._add_tool_button("eraser")
 
-        self.addSeparator()
+        self._add_separator()
 
         # Bond type selector
+        bond_label = QLabel(" Bond type:")
+        self.addWidget(bond_label)
         self._bond_combo = QComboBox()
         for label, bt in BOND_TYPES:
             self._bond_combo.addItem(label, bt)
         self._bond_combo.currentIndexChanged.connect(self._on_bond_type_changed)
-        bond_widget = QWidget()
-        bond_layout = QHBoxLayout(bond_widget)
-        bond_layout.setContentsMargins(4, 0, 4, 0)
-        bond_layout.addWidget(QLabel("Bond:"))
-        bond_layout.addWidget(self._bond_combo)
-        self.addWidget(bond_widget)
+        self.addWidget(self._bond_combo)
+
+        self._add_separator()
 
         # Element selector
+        elem_label = QLabel(" Element:")
+        self.addWidget(elem_label)
         self._element_combo = QComboBox()
         for e in ELEMENTS:
             self._element_combo.addItem(e)
         self._element_combo.currentTextChanged.connect(self._on_element_changed)
-        elem_widget = QWidget()
-        elem_layout = QHBoxLayout(elem_widget)
-        elem_layout.setContentsMargins(4, 0, 4, 0)
-        elem_layout.addWidget(QLabel("Atom:"))
-        elem_layout.addWidget(self._element_combo)
-        self.addWidget(elem_widget)
+        self.addWidget(self._element_combo)
 
-        self.addSeparator()
+        self._add_separator()
 
-        # Undo / Redo
-        undo_act = QAction("Undo", self)
-        undo_act.triggered.connect(self.undo_requested.emit)
-        self.addAction(undo_act)
+        # Undo / Redo buttons
+        self._undo_btn = QToolButton()
+        self._undo_btn.setText("\u21b6 Undo")
+        self._undo_btn.setToolTip("Undo (Ctrl+Z)")
+        self._undo_btn.clicked.connect(self.undo_requested.emit)
+        self.addWidget(self._undo_btn)
 
-        redo_act = QAction("Redo", self)
-        redo_act.triggered.connect(self.redo_requested.emit)
-        self.addAction(redo_act)
+        self._redo_btn = QToolButton()
+        self._redo_btn.setText("\u21b7 Redo")
+        self._redo_btn.setToolTip("Redo (Ctrl+Shift+Z)")
+        self._redo_btn.clicked.connect(self.redo_requested.emit)
+        self.addWidget(self._redo_btn)
 
-    def _add_tool(self, label: str, tool_name: str, checked: bool = False) -> QAction:
-        action = QAction(label, self)
-        action.setCheckable(True)
-        action.setChecked(checked)
-        action.triggered.connect(lambda: self.tool_changed.emit(tool_name))
-        self._tool_group.addAction(action)
-        self.addAction(action)
-        return action
+    def _add_tool_button(self, tool_name: str, checked: bool = False) -> QToolButton:
+        symbol, label = TOOL_LABELS[tool_name]
+        btn = QToolButton()
+        btn.setText(f" {symbol}  {label} ")
+        btn.setToolTip(label)
+        btn.setCheckable(True)
+        btn.setChecked(checked)
+        btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        btn.clicked.connect(lambda: self.tool_changed.emit(tool_name))
+        self._button_group.addButton(btn)
+        self.addWidget(btn)
+        return btn
+
+    def _add_separator(self):
+        sep = QWidget()
+        sep.setFixedWidth(12)
+        self.addWidget(sep)
 
     def _on_bond_type_changed(self, index: int):
         bt = self._bond_combo.itemData(index)

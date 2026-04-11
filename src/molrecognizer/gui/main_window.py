@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 
 from PIL import Image
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QAction, QKeySequence, QPixmap
 from PySide6.QtWidgets import (
     QDockWidget,
@@ -60,9 +60,7 @@ class MainWindow(QMainWindow):
         self._molecule: Molecule | None = None
         self._screenshot_overlay = ScreenshotOverlay()
         self._screenshot_overlay.captured.connect(self._on_screenshot_captured)
-        self._screenshot_overlay.cancelled.connect(
-            lambda: self.statusBar().showMessage("Screenshot cancelled", 3000)
-        )
+        self._screenshot_overlay.cancelled.connect(self._on_screenshot_cancelled)
         self._worker: RecognitionWorker | None = None
 
         self._setup_menu()
@@ -129,15 +127,21 @@ class MainWindow(QMainWindow):
     def _setup_info_panel(self):
         dock = QDockWidget("Info", self)
         dock.setAllowedAreas(Qt.DockWidgetArea.RightDockWidgetArea | Qt.DockWidgetArea.LeftDockWidgetArea)
+        dock.setMinimumWidth(260)
 
         panel = QWidget()
+        panel.setStyleSheet("QWidget { background-color: #f5f6fa; }")
         layout = QVBoxLayout(panel)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
 
         # SMILES display
-        layout.addWidget(QLabel("SMILES:"))
+        smiles_label = QLabel("SMILES")
+        layout.addWidget(smiles_label)
+
         self._smiles_edit = QPlainTextEdit()
         self._smiles_edit.setReadOnly(True)
-        self._smiles_edit.setMaximumHeight(60)
+        self._smiles_edit.setMaximumHeight(72)
         self._smiles_edit.setPlaceholderText("No molecule loaded")
         layout.addWidget(self._smiles_edit)
 
@@ -145,9 +149,14 @@ class MainWindow(QMainWindow):
         copy_btn.clicked.connect(self._copy_smiles)
         layout.addWidget(copy_btn)
 
+        layout.addSpacing(8)
+
         # Valence warnings
-        layout.addWidget(QLabel("Valence Warnings:"))
+        warn_label = QLabel("Valence Warnings")
+        layout.addWidget(warn_label)
+
         self._warnings_list = QListWidget()
+        self._warnings_list.setMinimumHeight(120)
         layout.addWidget(self._warnings_list)
 
         layout.addStretch()
@@ -173,15 +182,26 @@ class MainWindow(QMainWindow):
 
     def _on_screenshot(self):
         self.statusBar().showMessage("Select a screen region...")
-        self._screenshot_overlay.start()
+        # Hide the window so it doesn't appear in the screenshot
+        self.hide()
+        # Small delay to let the window fully disappear before grabbing
+        QTimer.singleShot(300, self._screenshot_overlay.start)
 
     def _on_screenshot_captured(self, pixmap: QPixmap):
+        # Show the window again
+        self.show()
+        self.activateWindow()
         # Convert QPixmap → PIL Image
         buffer = io.BytesIO()
         pixmap.save(buffer, "PNG")
         buffer.seek(0)
         img = Image.open(buffer)
         self._recognize_image(img)
+
+    def _on_screenshot_cancelled(self):
+        self.show()
+        self.activateWindow()
+        self.statusBar().showMessage("Screenshot cancelled", 3000)
 
     def _on_load_smiles(self):
         from PySide6.QtWidgets import QInputDialog
