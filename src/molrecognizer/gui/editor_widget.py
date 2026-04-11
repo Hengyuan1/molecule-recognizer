@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QGraphicsSceneMouseEvent, QVBoxLayout, QWidget
+from PySide6.QtCore import QEvent, Signal
+from PySide6.QtWidgets import QDialog, QGraphicsSceneMouseEvent, QVBoxLayout, QWidget
 
 from ..core.molecule import BondType, Molecule
 from ..editor.canvas import MoleculeCanvas, MoleculeScene
 from ..editor.history import HistoryManager
-from ..editor.tools import AtomTool, BondTool, EraseTool, SelectTool, Tool
+from ..editor.tools import (
+    AtomTool, BondTool, ChargeTool, EraseTool, SelectTool, Tool,
+)
+from .periodic_table import PeriodicTableDialog
 from .toolbar import EditorToolbar
 
 
@@ -16,7 +19,7 @@ class EditorWidget(QWidget):
     """Combines the molecular canvas with toolbar and editing tools.
 
     Signals:
-        molecule_changed: emitted whenever the molecule is modified via editing.
+        molecule_changed: emitted whenever the molecule is modified.
     """
 
     molecule_changed = Signal()
@@ -27,7 +30,7 @@ class EditorWidget(QWidget):
         self._history = HistoryManager(self._molecule)
         self._history.set_on_change(self._on_history_change)
 
-        # UI components
+        # UI
         self._toolbar = EditorToolbar()
         self._canvas = MoleculeCanvas()
 
@@ -41,22 +44,21 @@ class EditorWidget(QWidget):
         self._current_tool: Tool | None = None
         self._current_bond_type = BondType.SINGLE
         self._current_element = "C"
+        self._charge_delta = +1
         self._rebuild_tools()
         self._set_tool("select")
 
-        # Connect toolbar signals
+        # Toolbar → tools
         self._toolbar.tool_changed.connect(self._set_tool)
         self._toolbar.element_changed.connect(self._on_element_changed)
         self._toolbar.bond_type_changed.connect(self._on_bond_type_changed)
         self._toolbar.undo_requested.connect(self._undo)
         self._toolbar.redo_requested.connect(self._redo)
+        self._toolbar.charge_tool_requested.connect(self._on_charge_tool)
+        self._toolbar.periodic_table_requested.connect(self._on_periodic_table)
 
-        # Connect scene mouse events
+        # Scene event interception
         self._canvas.mol_scene.installEventFilter(self)
-        # Override scene mouse events
-        self._canvas.mol_scene.mousePressEvent = self._scene_mouse_press
-        self._canvas.mol_scene.mouseMoveEvent = self._scene_mouse_move
-        self._canvas.mol_scene.mouseReleaseEvent = self._scene_mouse_release
 
     @property
     def molecule(self) -> Molecule:
@@ -67,7 +69,6 @@ class EditorWidget(QWidget):
         return self._canvas
 
     def load_molecule(self, mol: Molecule):
-        """Load a new molecule into the editor."""
         self._molecule = mol
         self._history.molecule = mol
         self._rebuild_tools()
@@ -85,12 +86,16 @@ class EditorWidget(QWidget):
             "bond": BondTool(scene, self._history, self._current_bond_type),
             "atom": AtomTool(scene, self._history, self._current_element),
             "eraser": EraseTool(scene, self._history),
+            "charge": ChargeTool(scene, self._history, self._charge_delta),
         }
 
     def _set_tool(self, name: str):
         if self._current_tool:
             self._current_tool.deactivate()
         self._current_tool = self._tools.get(name)
+
+    def set_element(self, element: str):
+        self._on_element_changed(element)
 
     def _on_element_changed(self, element: str):
         self._current_element = element
@@ -102,21 +107,46 @@ class EditorWidget(QWidget):
         if isinstance(self._tools.get("bond"), BondTool):
             self._tools["bond"].bond_type = bond_type
 
+    def _on_charge_tool(self, delta: int):
+        self._charge_delta = delta
+        if isinstance(self._tools.get("charge"), ChargeTool):
+            self._tools["charge"].delta = delta
+        self._set_tool("charge")
+
+    def _on_periodic_table(self):
+        dlg = PeriodicTableDialog(self)
+        if dlg.exec() == QDialog.DialogCode.Accepted and dlg.selected_element:
+            self.set_element(dlg.selected_element)
+
     # ------------------------------------------------------------------
-    # Scene mouse events → delegate to current tool
+    # Event filter — intercept scene mouse events for tool delegation
     # ------------------------------------------------------------------
 
-    def _scene_mouse_press(self, event: QGraphicsSceneMouseEvent):
-        if self._current_tool:
-            self._current_tool.mouse_press(event)
+    def eventFilter(self, obj, event):
+        if obj is not self._canvas.mol_scene:
+            return super().eventFilter(obj, event)
 
-    def _scene_mouse_move(self, event: QGraphicsSceneMouseEvent):
-        if self._current_tool:
-            self._current_tool.mouse_move(event)
+        etype = event.type()
 
-    def _scene_mouse_release(self, event: QGraphicsSceneMouseEvent):
-        if self._current_tool:
-            self._current_tool.mouse_release(event)
+        if etype == QEvent.Type.GraphicsSceneMousePress:
+            if self._current_tool:
+                self._current_tool.mouse_press(event)
+            event.accept()
+            return True
+
+        if etype == QEvent.Type.GraphicsSceneMouseMove:
+            if self._current_tool:
+                self._current_tool.mouse_move(event)
+            event.accept()
+            return True
+
+        if etype == QEvent.Type.GraphicsSceneMouseRelease:
+            if self._current_tool:
+                self._current_tool.mouse_release(event)
+            event.accept()
+            return True
+
+        return super().eventFilter(obj, event)
 
     # ------------------------------------------------------------------
     # Undo / Redo
@@ -135,7 +165,6 @@ class EditorWidget(QWidget):
     # ------------------------------------------------------------------
 
     def _on_history_change(self):
-        """Called by HistoryManager after any command execution."""
         self._refresh_canvas()
         self.molecule_changed.emit()
 

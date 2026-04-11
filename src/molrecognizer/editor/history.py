@@ -154,6 +154,25 @@ class ChangeElementCommand(Command):
         return f"Change atom {self.idx} to {self.new_element}"
 
 
+class ChangeChargeCommand(Command):
+    def __init__(self, idx: int, delta: int):
+        self.idx = idx
+        self.delta = delta
+        self._old_charge: int = 0
+
+    def execute(self, mol: Molecule) -> None:
+        info = mol.get_atom_info(self.idx)
+        self._old_charge = info.formal_charge
+        mol.set_formal_charge(self.idx, self._old_charge + self.delta)
+
+    def undo(self, mol: Molecule) -> None:
+        mol.set_formal_charge(self.idx, self._old_charge)
+
+    def description(self) -> str:
+        sign = "+" if self.delta > 0 else ""
+        return f"Change charge on atom {self.idx} by {sign}{self.delta}"
+
+
 class HistoryManager:
     """Manages an undo/redo stack of commands against a Molecule."""
 

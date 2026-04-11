@@ -25,6 +25,7 @@ class AtomInfo:
     y: float
     formal_charge: int
     implicit_hs: int
+    explicit_hs: int
     total_valence: int
     neighbors: list[int]
 
@@ -100,6 +101,7 @@ class Molecule:
             y=pos.y,
             formal_charge=atom.GetFormalCharge(),
             implicit_hs=atom.GetNumImplicitHs(),
+            explicit_hs=atom.GetNumExplicitHs(),
             total_valence=atom.GetTotalValence(),
             neighbors=neighbors,
         )
@@ -171,10 +173,11 @@ class Molecule:
         m._mol = Chem.RWMol(mol)
         if m._mol.GetNumConformers() == 0:
             AllChem.Compute2DCoords(m._mol)
-        # Ensure atoms have NoImplicit set so valence is explicit
+        # Prevent RDKit from auto-adding implicit Hs (the editor controls
+        # valence directly through bonds).  Preserve NumExplicitHs from the
+        # source mol so that atoms like pyrrole's [nH] keep their H info.
         for atom in m._mol.GetAtoms():
             atom.SetNoImplicit(True)
-            atom.SetNumExplicitHs(0)
         return m
 
     def __repr__(self) -> str:

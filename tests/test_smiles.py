@@ -34,8 +34,7 @@ def test_roundtrip_benzene():
 def test_roundtrip_acetic_acid():
     mol = smiles_to_molecule("CC(=O)O")
     smi = molecule_to_smiles(mol)
-    # After stripping implicit Hs, canonical form may reorder
-    assert smi == "CC(O)=O"
+    assert smi == "CC(=O)O"
 
 
 def test_has_2d_coords():

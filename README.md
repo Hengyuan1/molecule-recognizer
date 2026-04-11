@@ -5,9 +5,17 @@ Recognize molecular structures from images (screenshots, papers, web pages), con
 ## Features
 
 - **Image recognition** — Uses [MolScribe](https://github.com/thomas0809/MolScribe) to extract molecular structures from images
-- **Screenshot capture** — Built-in screen region selector for capturing molecules directly
-- **Interactive editor** — Add/delete atoms and bonds, change bond types (single, double, triple, aromatic), change element types
-- **Valence checking** — Automatic validation of common element valences (C, N, O, S, P, halogens) with warnings
+- **Screenshot capture** — Built-in screen region selector with cross-platform support (Qt/grim/scrot/PowerShell fallback chain)
+- **Interactive editor** — Draw and edit molecular structures:
+  - Drag from an atom to create new bonds and atoms
+  - Click a bond to cycle its type (single/double/triple)
+  - Click an atom to change its element
+  - Formal charge tools (increase/decrease)
+  - Periodic table dialog for element selection
+  - Pan (middle/right-mouse drag) and zoom (scroll wheel)
+  - Full undo/redo support
+- **Skeletal structure display** — Chemistry-standard rendering with implicit Hs shown on heteroatoms (e.g. NH₂, OH, SH), subscript H counts, superscript charges
+- **Valence checking** — Automatic validation with over-valence warnings; implicit hydrogen counts derived from standard valences and formal charge
 - **SMILES export** — Live SMILES conversion as you edit, copy to clipboard or save to file
 - **Python API** — Use programmatically from other Python packages
 
@@ -25,7 +33,7 @@ uv sync
 pip install -e .
 ```
 
-### Dependencies
+### Python Dependencies
 
 - Python >= 3.10
 - RDKit (molecular toolkit)
@@ -33,6 +41,26 @@ pip install -e .
 - MolScribe (structure recognition)
 - PyTorch (MolScribe backend)
 - Pillow, NumPy
+
+### System Dependencies (screenshot)
+
+The screenshot feature tries several capture backends in order and uses
+the first that succeeds:
+
+| Priority | Backend | Works on |
+|---|---|---|
+| 1 | Qt `grabWindow` (built-in) | Native Linux X11, macOS |
+| 2 | `grim` (`sudo apt install grim`) | Native Linux Wayland (Sway, etc.) |
+| 3 | `scrot` (`sudo apt install scrot`) | Native Linux X11 |
+| 4 | `gnome-screenshot` | GNOME desktops |
+| 5 | PowerShell (automatic) | WSL2 — last-resort fallback |
+
+**Native Linux:** no extra packages needed on X11. On Wayland, install
+`grim`: `sudo apt install grim`.
+
+**WSL2 / WSLg:** the actual screen is the Windows desktop, which no Linux
+tool can capture. The app automatically falls back to PowerShell for
+screenshots. No setup required — it just works.
 
 ## Usage
 
@@ -56,10 +84,16 @@ molrecognizer
 | Redo | Ctrl+Shift+Z |
 
 **Editing tools:**
-- **Select** — Click to select atoms/bonds, drag to move atoms
-- **Bond** — Click two atoms to add or change a bond; select bond type from the dropdown
-- **Atom** — Click empty space to add an atom, click existing atom to change its element
+- **Select** — Click to highlight atoms/bonds, drag to move atoms
+- **Bond** — Drag from an atom to another atom to create a bond, drag to empty space to create a new atom + bond, click an existing bond to cycle its type (single → double → triple)
+- **Atom** — Click empty space to add an atom, click existing atom to change its element; select element from the right-side palette or the periodic table (PT button)
 - **Eraser** — Click an atom or bond to delete it
+- **Charge ⊕/⊛** — Click an atom to increase or decrease its formal charge
+- **PT** — Opens a periodic table dialog to pick any element
+
+**Canvas navigation:**
+- **Scroll wheel** — Zoom in/out
+- **Middle-mouse drag** or **right-mouse drag** — Pan the canvas
 
 ### Python API
 
@@ -123,15 +157,16 @@ molecule-recognizer/
 │   │   ├── valence.py       # Valence checking
 │   │   └── recognizer.py    # MolScribe integration
 │   ├── editor/
-│   │   ├── canvas.py        # QGraphicsView molecular canvas
-│   │   ├── tools.py         # Editing tools (Select, Bond, Atom, Eraser)
+│   │   ├── canvas.py        # QGraphicsView molecular canvas (skeletal rendering)
+│   │   ├── tools.py         # Editing tools (Select, Bond, Atom, Eraser, Charge)
 │   │   └── history.py       # Undo/redo command stack
 │   └── gui/
-│       ├── app.py           # Application entry point
-│       ├── main_window.py   # Main window
-│       ├── screenshot.py    # Screen capture overlay
+│       ├── app.py           # Application entry point & stylesheet
+│       ├── main_window.py   # Main window (3-panel layout + element palette)
+│       ├── screenshot.py    # Screen capture (grim/Qt/PowerShell fallback)
 │       ├── editor_widget.py # Editor integration
-│       └── toolbar.py       # Tool palette
+│       ├── toolbar.py       # Tool bar
+│       └── periodic_table.py # Periodic table dialog
 └── tests/
 ```
 

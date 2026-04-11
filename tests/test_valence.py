@@ -45,8 +45,8 @@ def test_nitrogen_three_bonds_valid():
     assert len(n_warnings) == 0
 
 
-def test_nitrogen_four_bonds_invalid():
-    """Neutral N with 4 bonds should warn (needs + charge to be valid)."""
+def test_nitrogen_four_bonds_valid():
+    """Neutral N with 4 bonds is within max valence 5 (valence-5 mode + 1 implicit H)."""
     mol = Molecule()
     n = mol.add_atom("N", 0, 0)
     for i in range(4):
@@ -54,7 +54,20 @@ def test_nitrogen_four_bonds_invalid():
         mol.add_bond(n, h)
     warnings = check_valence(mol)
     n_warnings = [w for w in warnings if w.atom_index == 0]
+    assert len(n_warnings) == 0
+
+
+def test_nitrogen_six_bonds_invalid():
+    """N with 6 single bonds exceeds max valence 5."""
+    mol = Molecule()
+    n = mol.add_atom("N", 0, 0)
+    for i in range(6):
+        h = mol.add_atom("H", float(i), 1.0)
+        mol.add_bond(n, h)
+    warnings = check_valence(mol)
+    n_warnings = [w for w in warnings if w.atom_index == 0]
     assert len(n_warnings) == 1
+    assert n_warnings[0].actual_valence == 6
 
 
 def test_nitrogen_plus_four_bonds_valid():
@@ -110,13 +123,21 @@ def test_sulfur_multiple_valences():
         mol2.add_bond(s, o)
     assert len([w for w in check_valence(mol2) if w.atom_index == 0]) == 0
 
-    # S with 3 bonds — invalid
+    # S with 3 bonds — valid (valence-4 mode + 1 implicit H)
     mol3 = Molecule()
     s = mol3.add_atom("S", 0, 0)
     for i in range(3):
         h = mol3.add_atom("H", float(i), 1.0)
         mol3.add_bond(s, h)
-    assert len([w for w in check_valence(mol3) if w.atom_index == 0]) == 1
+    assert len([w for w in check_valence(mol3) if w.atom_index == 0]) == 0
+
+    # S with 7 bonds — invalid (exceeds max valence 6)
+    mol4 = Molecule()
+    s = mol4.add_atom("S", 0, 0)
+    for i in range(7):
+        h = mol4.add_atom("H", float(i), 1.0)
+        mol4.add_bond(s, h)
+    assert len([w for w in check_valence(mol4) if w.atom_index == 0]) == 1
 
 
 def test_unknown_element_no_warning():
@@ -128,6 +149,15 @@ def test_unknown_element_no_warning():
     warnings = check_valence(mol)
     fe_warnings = [w for w in warnings if w.element == "Fe"]
     assert len(fe_warnings) == 0
+
+
+def test_aromatic_no_warnings():
+    """Aromatic molecules (from SMILES) should not trigger false warnings."""
+    from molrecognizer.core.smiles import smiles_to_molecule
+    for smiles in ["c1ccccc1", "c1ccncc1", "c1ccc2c(c1)c1ccccc1[nH]2"]:
+        mol = smiles_to_molecule(smiles)
+        warnings = check_valence(mol)
+        assert len(warnings) == 0, f"{smiles}: got {len(warnings)} warnings"
 
 
 def test_ethanol_from_scratch():

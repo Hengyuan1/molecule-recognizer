@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..core.molecule import BondType, Molecule
+from ..core.valence import compute_display_hs
 
 # Heteroatom colors (CPK-ish)
 ELEMENT_COLORS: dict[str, str] = {
@@ -50,63 +51,117 @@ HIT_RADIUS = 12.0  # click detection radius
 class AtomItem(QGraphicsEllipseItem):
     """Visual representation of an atom.
 
-    Carbon atoms: small invisible hit area (no visible circle or label).
-    Heteroatoms: colored element label on white background.
+    Carbon atoms: invisible (skeletal style), unless they carry a charge.
+    Heteroatoms: colored label showing element + implicit Hs + charge,
+    e.g. ``NH2``, ``OH``, ``N+``, ``NH3+``.
     """
 
-    def __init__(self, atom_idx: int, element: str, x: float, y: float):
-        # Hit area for clicking — always present but invisible for C
+    def __init__(self, atom_idx: int, element: str, x: float, y: float,
+                 n_hs: int = 0, formal_charge: int = 0):
         r = HIT_RADIUS
         super().__init__(-r, -r, 2 * r, 2 * r)
         self.atom_idx = atom_idx
         self.element = element
+        self.n_hs = n_hs
+        self.formal_charge = formal_charge
         self.setPos(x * SCALE, y * SCALE)
         self.setZValue(10)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
 
-        # No visible circle
         self.setBrush(QBrush(Qt.GlobalColor.transparent))
         self.setPen(QPen(Qt.PenStyle.NoPen))
 
         self._bg_rect: QGraphicsRectItem | None = None
-        self._label: QGraphicsSimpleTextItem | None = None
+        self._label_items: list[QGraphicsSimpleTextItem] = []
+        self.label_width: float = 0.0   # used by BondItem for shortening
         self._build_label()
 
     @property
     def is_heteroatom(self) -> bool:
         return self.element != "C"
 
+    @property
+    def show_label(self) -> bool:
+        """Whether this atom should display a visible label."""
+        return self.is_heteroatom or self.formal_charge != 0
+
     def _build_label(self):
-        # Remove old label items
+        # Remove old items
         if self._bg_rect:
             if self._bg_rect.scene():
                 self._bg_rect.scene().removeItem(self._bg_rect)
             self._bg_rect = None
-        if self._label:
-            if self._label.scene():
-                self._label.scene().removeItem(self._label)
-            self._label = None
+        for item in self._label_items:
+            if item.scene():
+                item.scene().removeItem(item)
+        self._label_items.clear()
 
-        if not self.is_heteroatom:
+        self.label_width = 0.0
+        if not self.show_label:
             return
 
         color = QColor(ELEMENT_COLORS.get(self.element, "#DD44AA"))
-        font = QFont("Arial", 12, QFont.Weight.Bold)
+        main_font = QFont("Arial", 12, QFont.Weight.Bold)
+        small_font = QFont("Arial", 8, QFont.Weight.Bold)
 
-        self._label = QGraphicsSimpleTextItem(self.element, self)
-        self._label.setFont(font)
-        self._label.setBrush(QBrush(color))
-        br = self._label.boundingRect()
-        self._label.setPos(-br.width() / 2, -br.height() / 2)
-        self._label.setZValue(12)
+        # Measure main font metrics for vertical positioning
+        # (use a throwaway item to get bounding rect height)
+        ref = QGraphicsSimpleTextItem("X")
+        ref.setFont(main_font)
+        main_h = ref.boundingRect().height()
 
-        # White background to mask bond lines behind the label
+        # Build label parts left-to-right: Element, H, subscript, superscript
+        # Positions are relative; we'll center the whole group afterwards.
+        parts: list[tuple[str, QFont, float]] = []  # (text, font, y_offset)
+
+        # Element symbol (normal)
+        parts.append((self.element, main_font, 0.0))
+
+        # "H" in normal size (if any Hs)
+        if self.n_hs >= 1:
+            parts.append(("H", main_font, 0.0))
+
+        # H-count subscript (only if >1)
+        if self.n_hs > 1:
+            parts.append((str(self.n_hs), small_font, main_h * 0.30))
+
+        # Charge superscript
+        if self.formal_charge != 0:
+            if self.formal_charge > 0:
+                ctxt = f"{self.formal_charge}+" if self.formal_charge > 1 else "+"
+            else:
+                mag = abs(self.formal_charge)
+                ctxt = f"{mag}\u2212" if mag > 1 else "\u2212"
+            parts.append((ctxt, small_font, -main_h * 0.35))
+
+        # Create the text items and measure total width
+        x_cursor = 0.0
+        items_with_x: list[tuple[QGraphicsSimpleTextItem, float, float]] = []
+        for text, font, y_off in parts:
+            ti = QGraphicsSimpleTextItem(text, self)
+            ti.setFont(font)
+            ti.setBrush(QBrush(color))
+            ti.setZValue(12)
+            w = ti.boundingRect().width()
+            items_with_x.append((ti, x_cursor, y_off))
+            self._label_items.append(ti)
+            x_cursor += w
+
+        total_w = x_cursor
+        self.label_width = total_w
+
+        # Position everything centred on the atom
+        for ti, x, y_off in items_with_x:
+            h = ti.boundingRect().height()
+            ti.setPos(x - total_w / 2, -main_h / 2 + y_off)
+
+        # White background to mask bond lines
         pad = 2
         self._bg_rect = QGraphicsRectItem(
-            -br.width() / 2 - pad, -br.height() / 2 - pad,
-            br.width() + 2 * pad, br.height() + 2 * pad,
-            self
+            -total_w / 2 - pad, -main_h / 2 - pad,
+            total_w + 2 * pad, main_h + 2 * pad,
+            self,
         )
         self._bg_rect.setBrush(QBrush(QColor("#FAFAFA")))
         self._bg_rect.setPen(QPen(Qt.PenStyle.NoPen))
@@ -114,7 +169,6 @@ class AtomItem(QGraphicsEllipseItem):
 
     def set_highlighted(self, highlighted: bool):
         if highlighted:
-            r = HIT_RADIUS
             self.setPen(QPen(QColor("#00AAFF"), 2))
             self.setBrush(QBrush(QColor(0, 170, 255, 40)))
         else:
@@ -131,15 +185,18 @@ class BondItem(QGraphicsLineItem):
 
     def __init__(self, a1_idx: int, a2_idx: int, bond_type: BondType,
                  p1: QPointF, p2: QPointF,
-                 a1_hetero: bool = False, a2_hetero: bool = False):
+                 a1_label: bool = False, a2_label: bool = False,
+                 a1_lw: float = 0.0, a2_lw: float = 0.0):
         super().__init__()
         self.a1_idx = a1_idx
         self.a2_idx = a2_idx
         self.bond_type = bond_type
         self._p1 = p1
         self._p2 = p2
-        self._a1_hetero = a1_hetero
-        self._a2_hetero = a2_hetero
+        self._a1_hetero = a1_label
+        self._a2_hetero = a2_label
+        self._a1_lw = a1_lw
+        self._a2_lw = a2_lw
         self._extra_lines: list[QGraphicsLineItem] = []
         self.setZValue(1)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
@@ -159,9 +216,9 @@ class BondItem(QGraphicsLineItem):
 
         ux, uy = dx / length, dy / length
 
-        # Shorten bonds that connect to heteroatoms (so lines don't poke through labels)
-        shrink1 = 8.0 if self._a1_hetero else 0.0
-        shrink2 = 8.0 if self._a2_hetero else 0.0
+        # Shorten bonds near labelled atoms so lines don't poke through
+        shrink1 = (self._a1_lw / 2 + 3) if self._a1_hetero else 0.0
+        shrink2 = (self._a2_lw / 2 + 3) if self._a2_hetero else 0.0
         start = QPointF(self._p1.x() + ux * shrink1, self._p1.y() + uy * shrink1)
         end = QPointF(self._p2.x() - ux * shrink2, self._p2.y() - uy * shrink2)
 
@@ -247,23 +304,37 @@ class MoleculeScene(QGraphicsScene):
         self._bond_items.clear()
 
         coords = mol.get_2d_coords()
+        all_bonds = mol.get_all_bonds()
 
-        # Add atoms
+        # Pre-compute bond-order sums for implicit-H calculation
+        bos: dict[int, float] = {}
+        _bt_val = {
+            BondType.SINGLE: 1, BondType.DOUBLE: 2,
+            BondType.TRIPLE: 3, BondType.AROMATIC: 1.5,
+        }
+        for b in all_bonds:
+            v = _bt_val.get(b.bond_type, 1)
+            bos[b.begin_atom_idx] = bos.get(b.begin_atom_idx, 0) + v
+            bos[b.end_atom_idx] = bos.get(b.end_atom_idx, 0) + v
+
+        # Add atoms with H-count and charge
         for i in range(mol.num_atoms):
             info = mol.get_atom_info(i)
             x, y = coords[i]
-            item = AtomItem(i, info.element, x, y)
+            n_hs = compute_display_hs(info.element, bos.get(i, 0),
+                                      info.formal_charge)
+            item = AtomItem(i, info.element, x, y, n_hs, info.formal_charge)
             self.addItem(item)
             self._atom_items[i] = item
 
-        # Add bonds — pass heteroatom flags so bonds shorten near labels
-        for bond in mol.get_all_bonds():
+        # Add bonds — shorten near labelled atoms proportional to label width
+        for bond in all_bonds:
             a1, a2 = bond.begin_atom_idx, bond.end_atom_idx
-            p1 = self._atom_items[a1].pos()
-            p2 = self._atom_items[a2].pos()
-            a1_het = self._atom_items[a1].is_heteroatom
-            a2_het = self._atom_items[a2].is_heteroatom
-            item = BondItem(a1, a2, bond.bond_type, p1, p2, a1_het, a2_het)
+            ai1, ai2 = self._atom_items[a1], self._atom_items[a2]
+            item = BondItem(a1, a2, bond.bond_type,
+                            ai1.pos(), ai2.pos(),
+                            ai1.show_label, ai2.show_label,
+                            ai1.label_width, ai2.label_width)
             self.addItem(item)
             key = (min(a1, a2), max(a1, a2))
             self._bond_items[key] = item
@@ -294,7 +365,12 @@ class MoleculeScene(QGraphicsScene):
 
 
 class MoleculeCanvas(QGraphicsView):
-    """Interactive view for the molecular scene."""
+    """Interactive view for the molecular scene.
+
+    - **Scroll wheel**: zoom in / out.
+    - **Middle-mouse drag** (or **right-mouse drag**): pan the canvas.
+    - **Left-mouse**: forwarded to the current editing tool.
+    """
 
     molecule_changed = Signal()
 
@@ -306,6 +382,12 @@ class MoleculeCanvas(QGraphicsView):
         self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.FullViewportUpdate)
         self.setBackgroundBrush(QBrush(QColor("#FAFAFA")))
         self.setMinimumSize(400, 300)
+        # Allow the view to scroll beyond the content
+        self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+        self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+
+        self._panning = False
+        self._pan_start = QPointF()
 
     @property
     def mol_scene(self) -> MoleculeScene:
@@ -313,12 +395,50 @@ class MoleculeCanvas(QGraphicsView):
 
     def load_molecule(self, mol: Molecule):
         self._scene.load_molecule(mol)
+        # Expand scene rect so there is room to pan/scroll around
+        br = self._scene.itemsBoundingRect().adjusted(-200, -200, 200, 200)
+        self._scene.setSceneRect(br)
         self.fitInView(self._scene.itemsBoundingRect().adjusted(-50, -50, 50, 50),
                        Qt.AspectRatioMode.KeepAspectRatio)
+
+    # -- zoom --------------------------------------------------------------
 
     def wheelEvent(self, event):
         factor = 1.15 if event.angleDelta().y() > 0 else 1 / 1.15
         self.scale(factor, factor)
+
+    # -- pan (middle-mouse or right-mouse drag) ----------------------------
+
+    def mousePressEvent(self, event):
+        if event.button() in (Qt.MouseButton.MiddleButton,
+                               Qt.MouseButton.RightButton):
+            self._panning = True
+            self._pan_start = event.position()
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._panning:
+            delta = event.position() - self._pan_start
+            self._pan_start = event.position()
+            self.horizontalScrollBar().setValue(
+                int(self.horizontalScrollBar().value() - delta.x()))
+            self.verticalScrollBar().setValue(
+                int(self.verticalScrollBar().value() - delta.y()))
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() in (Qt.MouseButton.MiddleButton,
+                               Qt.MouseButton.RightButton):
+            self._panning = False
+            self.unsetCursor()
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
 
 
 def _point_to_line_dist(p: QPointF, a: QPointF, b: QPointF) -> float:
