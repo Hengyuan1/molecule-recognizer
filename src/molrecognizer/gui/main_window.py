@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import io
-import traceback
 
 from PIL import Image
 from PySide6.QtCore import Qt, QThread, Signal
@@ -11,7 +10,6 @@ from PySide6.QtGui import QAction, QKeySequence, QPixmap
 from PySide6.QtWidgets import (
     QDockWidget,
     QFileDialog,
-    QHBoxLayout,
     QLabel,
     QListWidget,
     QListWidgetItem,
@@ -19,9 +17,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
-    QSplitter,
     QStatusBar,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
     QApplication,
@@ -29,7 +25,8 @@ from PySide6.QtWidgets import (
 
 from ..core.molecule import Molecule
 from ..core.smiles import molecule_to_smiles, smiles_to_molecule
-from ..core.valence import ValenceWarning, check_valence
+from ..core.valence import check_valence
+from .editor_widget import EditorWidget
 from .screenshot import ScreenshotOverlay
 
 
@@ -121,23 +118,13 @@ class MainWindow(QMainWindow):
         edit_menu.addAction(self._redo_act)
 
     def _setup_central(self):
-        # Central widget will be replaced by EditorWidget in Phase 5.
-        # For now, show a placeholder with instructions.
-        self._central_widget = QWidget()
-        layout = QVBoxLayout(self._central_widget)
+        self._editor = EditorWidget()
+        self._editor.molecule_changed.connect(self._on_editor_changed)
+        self.setCentralWidget(self._editor)
 
-        self._canvas_placeholder = QLabel(
-            "Open an image or take a screenshot to recognize a molecular structure.\n\n"
-            "File → Open Image  (Ctrl+O)\n"
-            "File → Screenshot  (Ctrl+Shift+S)\n"
-            "File → Load from SMILES"
-        )
-        self._canvas_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._canvas_placeholder.setStyleSheet(
-            "QLabel { color: #888; font-size: 14px; border: 2px dashed #ccc; padding: 40px; }"
-        )
-        layout.addWidget(self._canvas_placeholder)
-        self.setCentralWidget(self._central_widget)
+        # Wire menu undo/redo to editor
+        self._undo_act.triggered.connect(self._editor._undo)
+        self._redo_act.triggered.connect(self._editor._redo)
 
     def _setup_info_panel(self):
         dock = QDockWidget("Info", self)
@@ -257,9 +244,17 @@ class MainWindow(QMainWindow):
     def _set_molecule(self, mol: Molecule):
         """Set the current molecule and update all displays."""
         self._molecule = mol
+        self._editor.load_molecule(mol)
         self._update_smiles()
         self._update_valence()
-        self._update_canvas()
+        self._undo_act.setEnabled(True)
+        self._redo_act.setEnabled(True)
+
+    def _on_editor_changed(self):
+        """Called when the editor modifies the molecule."""
+        self._molecule = self._editor.molecule
+        self._update_smiles()
+        self._update_valence()
 
     def _update_smiles(self):
         if self._molecule is None:
@@ -284,24 +279,3 @@ class MainWindow(QMainWindow):
             item = QListWidgetItem("All valences OK")
             item.setForeground(Qt.GlobalColor.darkGreen)
             self._warnings_list.addItem(item)
-
-    def _update_canvas(self):
-        """Update the canvas display. Will be fully implemented with EditorWidget."""
-        if self._molecule is None:
-            return
-        # For now, just update the placeholder text
-        smiles = self._smiles_edit.toPlainText()
-        self._canvas_placeholder.setText(
-            f"Molecule loaded: {self._molecule.num_atoms} atoms, {self._molecule.num_bonds} bonds\n\n"
-            f"SMILES: {smiles}\n\n"
-            "Structure editor will be shown here."
-        )
-
-    # ------------------------------------------------------------------
-    # Public API for EditorWidget integration
-    # ------------------------------------------------------------------
-
-    def molecule_changed(self):
-        """Call this when the editor modifies the molecule."""
-        self._update_smiles()
-        self._update_valence()
