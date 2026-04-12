@@ -9,19 +9,32 @@ from .molecule import Molecule
 
 
 def molecule_to_smiles(mol: Molecule) -> str:
-    """Convert a Molecule to a canonical SMILES string."""
-    rdmol = Chem.RWMol(mol.to_rdkit())
-    # The editor stores atoms with NoImplicit=True to control valence
-    # directly through bonds.  Before generating SMILES we need to let RDKit
-    # re-derive implicit hydrogens so the output is chemically correct.
-    # Preserve existing NumExplicitHs (e.g. pyrrole [nH]).
-    for atom in rdmol.GetAtoms():
-        atom.SetNoImplicit(False)
+    """Convert a Molecule to a canonical SMILES string.
+
+    Builds a fresh RDKit mol from the connectivity, bond types, and
+    formal charges so that RDKit can derive implicit hydrogens cleanly
+    — the editor's ``NoImplicit`` flags and stale explicit-H counts are
+    not carried over.  Explicit Hs on aromatic atoms (e.g. pyrrole
+    ``[nH]``) are preserved because they affect aromaticity perception.
+    """
+    src = mol.to_rdkit()
+    fresh = Chem.RWMol()
+    for i in range(src.GetNumAtoms()):
+        a = src.GetAtomWithIdx(i)
+        na = Chem.Atom(a.GetAtomicNum())
+        na.SetFormalCharge(a.GetFormalCharge())
+        # Keep explicit Hs that are required for aromaticity (pyrrole N, etc.)
+        if a.GetNumExplicitHs() > 0:
+            na.SetNumExplicitHs(a.GetNumExplicitHs())
+        fresh.AddAtom(na)
+    for bond in src.GetBonds():
+        fresh.AddBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx(),
+                      bond.GetBondType())
     try:
-        Chem.SanitizeMol(rdmol)
+        Chem.SanitizeMol(fresh)
     except Exception:
         pass  # best-effort for partially-edited molecules
-    smiles = Chem.MolToSmiles(rdmol)
+    smiles = Chem.MolToSmiles(fresh)
     if smiles is None:
         raise ValueError("Failed to generate SMILES from molecule")
     return smiles

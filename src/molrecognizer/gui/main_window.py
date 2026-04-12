@@ -25,7 +25,6 @@ from PySide6.QtWidgets import (
     QApplication,
     QDialog,
     QFileDialog,
-    QFrame,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -33,8 +32,6 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
-    QScrollArea,
-    QSizePolicy,
     QSplitter,
     QStatusBar,
     QVBoxLayout,
@@ -104,7 +101,8 @@ class ElementPalette(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedWidth(56)
+        self.setMinimumWidth(52)
+        self.setMaximumWidth(80)
         self.setObjectName("element_palette")
 
         layout = QVBoxLayout(self)
@@ -161,7 +159,8 @@ class LeftPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("left_panel")
-        self.setFixedWidth(220)
+        self.setMinimumWidth(180)
+        self.setMaximumWidth(350)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
@@ -231,7 +230,7 @@ class BottomBar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("bottom_bar")
-        self.setFixedHeight(80)
+        self.setMinimumHeight(80)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(14, 8, 14, 8)
@@ -243,24 +242,23 @@ class BottomBar(QWidget):
 
         smiles_label = QLabel("SMILES")
         smiles_label.setObjectName("smiles_label")
-        smiles_label.setFixedWidth(54)
         row1.addWidget(smiles_label)
 
         self._smiles_field = QLineEdit()
         self._smiles_field.setReadOnly(True)
         self._smiles_field.setPlaceholderText("Draw or recognise a structure…")
         self._smiles_field.setObjectName("smiles_field")
-        row1.addWidget(self._smiles_field)
+        row1.addWidget(self._smiles_field, 1)  # stretch to fill
 
         btn_copy = QPushButton("Copy")
         btn_copy.setObjectName("small_btn")
-        btn_copy.setFixedWidth(60)
+        btn_copy.setMinimumWidth(70)
         btn_copy.clicked.connect(self.copy_smiles.emit)
         row1.addWidget(btn_copy)
 
         btn_export = QPushButton("Export")
         btn_export.setObjectName("small_btn_green")
-        btn_export.setFixedWidth(60)
+        btn_export.setMinimumWidth(70)
         btn_export.clicked.connect(self.export_smiles.emit)
         row1.addWidget(btn_export)
 
@@ -368,46 +366,31 @@ class MainWindow(QMainWindow):
         outer.setSpacing(0)
 
         # ---- Top area: left panel | canvas | element palette ----
-        body = QHBoxLayout()
-        body.setContentsMargins(0, 0, 0, 0)
-        body.setSpacing(0)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setHandleWidth(3)
+        splitter.setChildrenCollapsible(False)
 
-        # Left panel
         self._left_panel = LeftPanel()
         self._left_panel.open_image.connect(self._on_open_image)
         self._left_panel.screenshot.connect(self._on_screenshot)
         self._left_panel.load_smiles.connect(self._on_load_smiles)
-        body.addWidget(self._left_panel)
+        splitter.addWidget(self._left_panel)
 
-        # Separator
-        sep1 = QFrame()
-        sep1.setFrameShape(QFrame.Shape.VLine)
-        sep1.setStyleSheet("color: #dde1e6;")
-        body.addWidget(sep1)
-
-        # Editor (toolbar + canvas)
         self._editor = EditorWidget()
         self._editor.molecule_changed.connect(self._on_editor_changed)
-        body.addWidget(self._editor, 1)  # stretch=1 → takes remaining space
+        splitter.addWidget(self._editor)
 
-        # Separator
-        sep2 = QFrame()
-        sep2.setFrameShape(QFrame.Shape.VLine)
-        sep2.setStyleSheet("color: #dde1e6;")
-        body.addWidget(sep2)
-
-        # Element palette
         self._palette = ElementPalette()
         self._palette.element_selected.connect(self._on_palette_element)
-        body.addWidget(self._palette)
+        splitter.addWidget(self._palette)
 
-        outer.addLayout(body, 1)
+        # Centre panel stretches; side panels don't
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+        splitter.setStretchFactor(2, 0)
+        splitter.setSizes([220, 800, 56])
 
-        # Horizontal rule
-        hr = QFrame()
-        hr.setFrameShape(QFrame.Shape.HLine)
-        hr.setStyleSheet("color: #dde1e6;")
-        outer.addWidget(hr)
+        outer.addWidget(splitter, 1)
 
         # ---- Bottom bar ----
         self._bottom_bar = BottomBar()

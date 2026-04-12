@@ -20,7 +20,6 @@ BOND_TYPES = [
     ("Single", BondType.SINGLE),
     ("Double", BondType.DOUBLE),
     ("Triple", BondType.TRIPLE),
-    ("Aromatic", BondType.AROMATIC),
 ]
 
 
@@ -38,11 +37,11 @@ class EditorToolbar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("toolbar_container")
-        self.setFixedHeight(44)
+        self.setFixedHeight(52)
 
         row = QHBoxLayout(self)
-        row.setContentsMargins(10, 4, 10, 4)
-        row.setSpacing(4)
+        row.setContentsMargins(10, 6, 10, 6)
+        row.setSpacing(6)
 
         # -- Tool button group (exclusive) --
         self._button_group = QButtonGroup(self)
@@ -58,7 +57,7 @@ class EditorToolbar(QWidget):
 
         # Bond type combo
         self._bond_combo = QComboBox()
-        self._bond_combo.setFixedWidth(100)
+        self._bond_combo.setFixedWidth(110)
         for label, bt in BOND_TYPES:
             self._bond_combo.addItem(label, bt)
         self._bond_combo.currentIndexChanged.connect(self._on_bond_type_changed)
@@ -67,17 +66,17 @@ class EditorToolbar(QWidget):
         row.addWidget(self._sep())
 
         # Charge buttons (in the exclusive group so they act as tools)
-        self._make_tool_button("\u229a", "charge+", row)   # ⊕
-        self._make_tool_button("\u229b", "charge-", row)   # ⊛ (using ⊖ is hard to see)
+        self._make_tool_button("\u2295", "charge+", row)   # ⊕
+        self._make_tool_button("\u2296", "charge-", row)   # ⊖
 
         row.addWidget(self._sep())
 
         # Periodic table button (not in exclusive group — it opens a dialog)
-        pt_btn = QToolButton()
-        pt_btn.setText("PT")
-        pt_btn.setToolTip("Periodic Table")
-        pt_btn.clicked.connect(self.periodic_table_requested.emit)
-        row.addWidget(pt_btn)
+        self._pt_btn = QToolButton()
+        self._pt_btn.setText("PT")
+        self._pt_btn.setToolTip("Periodic Table")
+        self._pt_btn.clicked.connect(self.periodic_table_requested.emit)
+        row.addWidget(self._pt_btn)
 
         row.addStretch()
 
@@ -134,6 +133,12 @@ class EditorToolbar(QWidget):
     def _on_bond_type_changed(self, index: int):
         bt = self._bond_combo.itemData(index)
         self.bond_type_changed.emit(bt)
+        self._bond_combo.hidePopup()  # close dropdown immediately
+
+    def set_pt_label(self, symbol: str):
+        """Update the periodic-table button text to show the chosen element."""
+        self._pt_btn.setText(symbol)
+        self._pt_btn.setToolTip(f"Periodic Table ({symbol})")
 
     @property
     def current_bond_type(self) -> BondType:

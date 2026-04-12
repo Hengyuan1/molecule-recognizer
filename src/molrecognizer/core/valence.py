@@ -54,7 +54,9 @@ def compute_display_hs(element: str, bond_order_sum: float,
     """
     if element not in STANDARD_VALENCES:
         return 0
-    if element == "C" and formal_charge == 0:
+    # Neutral carbon hides Hs (skeletal style) unless it has no bonds
+    # (isolated atom → show all Hs, e.g. CH₄)
+    if element == "C" and formal_charge == 0 and bond_order_sum > 0:
         return 0
     # Effective valences: positive charge → more bonds, negative → fewer.
     adjusted = sorted(v + formal_charge for v in STANDARD_VALENCES[element])

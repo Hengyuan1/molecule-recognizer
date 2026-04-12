@@ -23,8 +23,9 @@ from PySide6.QtWidgets import (
     QGraphicsView,
 )
 
+from rdkit import Chem
+
 from ..core.molecule import BondType, Molecule
-from ..core.valence import compute_display_hs
 
 # Heteroatom colors (CPK-ish)
 ELEMENT_COLORS: dict[str, str] = {
@@ -84,7 +85,7 @@ class AtomItem(QGraphicsEllipseItem):
     @property
     def show_label(self) -> bool:
         """Whether this atom should display a visible label."""
-        return self.is_heteroatom or self.formal_charge != 0
+        return self.is_heteroatom or self.formal_charge != 0 or self.n_hs > 0
 
     def _build_label(self):
         # Remove old items
@@ -306,23 +307,16 @@ class MoleculeScene(QGraphicsScene):
         coords = mol.get_2d_coords()
         all_bonds = mol.get_all_bonds()
 
-        # Pre-compute bond-order sums for implicit-H calculation
-        bos: dict[int, float] = {}
-        _bt_val = {
-            BondType.SINGLE: 1, BondType.DOUBLE: 2,
-            BondType.TRIPLE: 3, BondType.AROMATIC: 1.5,
-        }
-        for b in all_bonds:
-            v = _bt_val.get(b.bond_type, 1)
-            bos[b.begin_atom_idx] = bos.get(b.begin_atom_idx, 0) + v
-            bos[b.end_atom_idx] = bos.get(b.end_atom_idx, 0) + v
+        # Build a clean RDKit mol to get accurate H counts.
+        # This handles aromatic systems, charges, and multi-valent
+        # elements correctly (same logic as molecule_to_smiles).
+        display_hs = self._compute_display_hs(mol)
 
         # Add atoms with H-count and charge
         for i in range(mol.num_atoms):
             info = mol.get_atom_info(i)
             x, y = coords[i]
-            n_hs = compute_display_hs(info.element, bos.get(i, 0),
-                                      info.formal_charge)
+            n_hs = display_hs.get(i, 0)
             item = AtomItem(i, info.element, x, y, n_hs, info.formal_charge)
             self.addItem(item)
             self._atom_items[i] = item
@@ -338,6 +332,47 @@ class MoleculeScene(QGraphicsScene):
             self.addItem(item)
             key = (min(a1, a2), max(a1, a2))
             self._bond_items[key] = item
+
+    @staticmethod
+    def _compute_display_hs(mol: Molecule) -> dict[int, int]:
+        """Use RDKit sanitization to get accurate H counts for display.
+
+        Builds a fresh mol (no stale NoImplicit / explicit-H state),
+        sanitizes it, and reads back the total Hs.  Neutral carbons
+        with bonds get 0 (skeletal style); isolated atoms get full Hs.
+        """
+        src = mol.to_rdkit()
+        fresh = Chem.RWMol()
+        for i in range(src.GetNumAtoms()):
+            a = src.GetAtomWithIdx(i)
+            na = Chem.Atom(a.GetAtomicNum())
+            na.SetFormalCharge(a.GetFormalCharge())
+            if a.GetNumExplicitHs() > 0:
+                na.SetNumExplicitHs(a.GetNumExplicitHs())
+            fresh.AddAtom(na)
+        for bond in src.GetBonds():
+            fresh.AddBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx(),
+                          bond.GetBondType())
+        try:
+            Chem.SanitizeMol(fresh)
+        except Exception:
+            pass
+
+        result: dict[int, int] = {}
+        for i in range(fresh.GetNumAtoms()):
+            a = fresh.GetAtomWithIdx(i)
+            try:
+                n_hs = a.GetTotalNumHs()
+            except RuntimeError:
+                n_hs = 0  # sanitization failed — can't compute Hs
+            elem = a.GetSymbol()
+            charge = a.GetFormalCharge()
+            degree = a.GetDegree()
+            # Skeletal convention: neutral C with bonds hides Hs
+            if elem == "C" and charge == 0 and degree > 0:
+                n_hs = 0
+            result[i] = n_hs
+        return result
 
     def get_atom_item(self, idx: int) -> Optional[AtomItem]:
         return self._atom_items.get(idx)
@@ -382,6 +417,7 @@ class MoleculeCanvas(QGraphicsView):
         self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.FullViewportUpdate)
         self.setBackgroundBrush(QBrush(QColor("#FAFAFA")))
         self.setMinimumSize(400, 300)
+        self.setMouseTracking(True)  # receive hover moves without button press
         # Allow the view to scroll beyond the content
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)

@@ -7,15 +7,18 @@ Recognize molecular structures from images (screenshots, papers, web pages), con
 - **Image recognition** — Uses [MolScribe](https://github.com/thomas0809/MolScribe) to extract molecular structures from images
 - **Screenshot capture** — Built-in screen region selector with cross-platform support (Qt/grim/scrot/PowerShell fallback chain)
 - **Interactive editor** — Draw and edit molecular structures:
-  - Drag from an atom to create new bonds and atoms
-  - Click a bond to cycle its type (single/double/triple)
-  - Click an atom to change its element
-  - Formal charge tools (increase/decrease)
-  - Periodic table dialog for element selection
+  - Click an atom to substitute its element; drag from an atom to create new bonds — works in all tool modes (Select, Bond, Atom)
+  - In Bond mode, clicking an atom with available valence adds a new bonded atom in the optimal direction (least overlap with existing bonds)
+  - Click a bond to set it to the selected bond type (or cycle single/double/triple)
+  - Hover highlighting on atoms and bonds for visual feedback
+  - Formal charge tools ⊕/⊖ (increase/decrease)
+  - Periodic table dialog for any element; PT button shows the selected element
+  - Resizable panels (drag splitter handles between left panel, canvas, element palette)
   - Pan (middle/right-mouse drag) and zoom (scroll wheel)
-  - Full undo/redo support
-- **Skeletal structure display** — Chemistry-standard rendering with implicit Hs shown on heteroatoms (e.g. NH₂, OH, SH), subscript H counts, superscript charges
-- **Valence checking** — Automatic validation with over-valence warnings; implicit hydrogen counts derived from standard valences and formal charge
+  - Full undo/redo with bond type restoration
+- **Kekulé structure display** — Aromatic systems shown as conjugated single/double bonds (not aromatic notation) for easy valence verification. Implicit Hs displayed on heteroatoms with subscript counts and superscript charges (e.g. NH₂, OH, SH, N⁺, NH₃⁺). Isolated atoms show all Hs (e.g. CH₄, NH₃).
+- **Smart element substitution** — Changing an atom to a lower-valence element automatically downgrades bond orders (e.g. C→S in a ring converts double bonds to single). Undo fully restores original bond types.
+- **Valence checking** — Automatic validation with over-valence warnings; hydrogen counts derived via RDKit sanitization for accuracy with aromatic systems and charges
 - **SMILES export** — Live SMILES conversion as you edit, copy to clipboard or save to file
 - **Python API** — Use programmatically from other Python packages
 
@@ -83,13 +86,13 @@ molrecognizer
 | Undo | Ctrl+Z |
 | Redo | Ctrl+Shift+Z |
 
-**Editing tools:**
-- **Select** — Click to highlight atoms/bonds, drag to move atoms
-- **Bond** — Drag from an atom to another atom to create a bond, drag to empty space to create a new atom + bond, click an existing bond to cycle its type (single → double → triple)
-- **Atom** — Click empty space to add an atom, click existing atom to change its element; select element from the right-side palette or the periodic table (PT button)
+**Editing tools** (all tools share: click atom = substitute element, drag atom = create bond):
+- **Select** — Default smart tool; click bond to set its type
+- **Bond** — Click atom with available valence to add a bonded atom (optimal direction); click bond to set type; drag atom to create bond
+- **Atom** — Click empty space to add an atom; click existing atom to change its element
 - **Eraser** — Click an atom or bond to delete it
-- **Charge ⊕/⊛** — Click an atom to increase or decrease its formal charge
-- **PT** — Opens a periodic table dialog to pick any element
+- **Charge ⊕/⊖** — Click an atom to increase or decrease its formal charge
+- **PT** — Opens a periodic table dialog to pick any element (button shows current selection)
 
 **Canvas navigation:**
 - **Scroll wheel** — Zoom in/out

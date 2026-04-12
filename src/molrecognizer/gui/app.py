@@ -18,7 +18,7 @@ QMainWindow {
 QMenuBar {
     background-color: #ffffff;
     color: #333333;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 500;
     border-bottom: 1px solid #dde1e6;
     padding: 2px 0;
@@ -66,10 +66,10 @@ QToolButton {
     background-color: #f1f3f5;
     border: 1px solid #dde1e6;
     border-radius: 6px;
-    padding: 5px 14px;
-    font-size: 12px;
+    padding: 6px 16px;
+    font-size: 15px;
     font-weight: 500;
-    min-height: 26px;
+    min-height: 32px;
     color: #444444;
 }
 QToolButton:hover {
@@ -92,9 +92,9 @@ QComboBox {
     background-color: #ffffff;
     border: 1px solid #dde1e6;
     border-radius: 6px;
-    padding: 4px 10px;
-    font-size: 12px;
-    min-height: 26px;
+    padding: 5px 10px;
+    font-size: 14px;
+    min-height: 30px;
     color: #333333;
 }
 QComboBox:hover {
@@ -109,7 +109,7 @@ QComboBox QAbstractItemView {
     border: 1px solid #dde1e6;
     selection-background-color: #e8f0fe;
     selection-color: #1a73e8;
-    font-size: 12px;
+    font-size: 14px;
     padding: 4px;
     border-radius: 6px;
 }
@@ -158,6 +158,14 @@ QPushButton#action_btn_secondary:hover {
     background-color: #e8f0fe;
 }
 
+/* ---- Splitter handles ---- */
+QSplitter::handle {
+    background-color: #dde1e6;
+}
+QSplitter::handle:hover {
+    background-color: #a8c7fa;
+}
+
 /* ---- Element palette ---- */
 QWidget#element_palette {
     background-color: #f0f2f5;
@@ -170,7 +178,7 @@ QWidget#bottom_bar {
 }
 
 QLabel#smiles_label {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 700;
     color: #555555;
 }
@@ -181,7 +189,7 @@ QLineEdit#smiles_field {
     border-radius: 6px;
     padding: 6px 10px;
     font-family: "JetBrains Mono", "Consolas", "Courier New", monospace;
-    font-size: 12px;
+    font-size: 14px;
     color: #222222;
 }
 
@@ -190,10 +198,10 @@ QPushButton#small_btn {
     color: #ffffff;
     border: none;
     border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 12px;
+    padding: 6px 12px;
+    font-size: 14px;
     font-weight: 600;
-    min-height: 28px;
+    min-height: 30px;
 }
 QPushButton#small_btn:hover {
     background-color: #1557b0;
@@ -204,17 +212,17 @@ QPushButton#small_btn_green {
     color: #ffffff;
     border: none;
     border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 12px;
+    padding: 6px 12px;
+    font-size: 14px;
     font-weight: 600;
-    min-height: 28px;
+    min-height: 30px;
 }
 QPushButton#small_btn_green:hover {
     background-color: #0a7a42;
 }
 
 QLabel#valence_label {
-    font-size: 11px;
+    font-size: 13px;
     color: #666666;
     padding-left: 56px;
 }

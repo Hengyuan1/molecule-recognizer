@@ -74,8 +74,60 @@ class Molecule:
         self._mol.RemoveAtom(idx)
 
     def set_atom_element(self, idx: int, element: str) -> None:
+        """Change an atom's element, downgrading bond orders if necessary.
+
+        When the new element's max valence is lower than the current bond
+        order sum, double/triple/aromatic bonds are reduced to single bonds
+        until the valence fits.
+        """
+        from .valence import STANDARD_VALENCES
+
         atom = self._mol.GetAtomWithIdx(idx)
         atom.SetAtomicNum(Chem.GetPeriodicTable().GetAtomicNumber(element))
+
+        # Use the smallest standard valence that fits the number of
+        # neighbors.  E.g. S with 2 bonds → use valence 2 (not 6).
+        if element not in STANDARD_VALENCES:
+            return
+        charge = atom.GetFormalCharge()
+        n_neighbors = len(list(atom.GetBonds()))
+        effective_max = max(STANDARD_VALENCES[element]) + charge
+        for v in sorted(STANDARD_VALENCES[element]):
+            if v + charge >= n_neighbors:
+                effective_max = v + charge
+                break
+
+        _order = {
+            rdchem.BondType.SINGLE: 1, rdchem.BondType.DOUBLE: 2,
+            rdchem.BondType.TRIPLE: 3, rdchem.BondType.AROMATIC: 1.5,
+        }
+        _downgrade = {
+            rdchem.BondType.TRIPLE: rdchem.BondType.DOUBLE,
+            rdchem.BondType.DOUBLE: rdchem.BondType.SINGLE,
+            rdchem.BondType.AROMATIC: rdchem.BondType.SINGLE,
+        }
+
+        # Collect bonds and sort: highest order first for downgrading
+        import math as _math
+        bonds = []
+        bos = 0.0
+        for bond in atom.GetBonds():
+            bt = bond.GetBondType()
+            bonds.append(bond)
+            bos += _order.get(bt, 1)
+
+        # Downgrade bonds until the valence fits
+        bonds.sort(key=lambda b: _order.get(b.GetBondType(), 1), reverse=True)
+        for bond in bonds:
+            if _math.ceil(bos) <= effective_max:
+                break
+            bt = bond.GetBondType()
+            new_bt = _downgrade.get(bt)
+            if new_bt is not None:
+                old_v = _order[bt]
+                bond.SetBondType(new_bt)
+                new_v = _order.get(new_bt, 1)
+                bos -= (old_v - new_v)
 
     def set_atom_position(self, idx: int, x: float, y: float) -> None:
         conf = self._mol.GetConformer(0)
@@ -173,9 +225,14 @@ class Molecule:
         m._mol = Chem.RWMol(mol)
         if m._mol.GetNumConformers() == 0:
             AllChem.Compute2DCoords(m._mol)
+        # Kekulize: convert aromatic bonds to explicit single/double so the
+        # editor always shows Kekulé form (easier to verify valence).
+        try:
+            Chem.Kekulize(m._mol, clearAromaticFlags=True)
+        except Exception:
+            pass  # partially aromatic mol — keep whatever bond types exist
         # Prevent RDKit from auto-adding implicit Hs (the editor controls
-        # valence directly through bonds).  Preserve NumExplicitHs from the
-        # source mol so that atoms like pyrrole's [nH] keep their H info.
+        # valence directly through bonds).
         for atom in m._mol.GetAtoms():
             atom.SetNoImplicit(True)
         return m

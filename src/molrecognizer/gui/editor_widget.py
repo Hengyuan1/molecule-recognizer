@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, Signal
+from typing import Union
+
+from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtWidgets import QDialog, QGraphicsSceneMouseEvent, QVBoxLayout, QWidget
 
 from ..core.molecule import BondType, Molecule
-from ..editor.canvas import MoleculeCanvas, MoleculeScene
+from ..editor.canvas import AtomItem, BondItem, MoleculeCanvas, MoleculeScene
 from ..editor.history import HistoryManager
 from ..editor.tools import (
     AtomTool, BondTool, ChargeTool, EraseTool, SelectTool, Tool,
@@ -48,6 +50,9 @@ class EditorWidget(QWidget):
         self._rebuild_tools()
         self._set_tool("select")
 
+        # Hover state
+        self._hover_item: Union[AtomItem, BondItem, None] = None
+
         # Toolbar → tools
         self._toolbar.tool_changed.connect(self._set_tool)
         self._toolbar.element_changed.connect(self._on_element_changed)
@@ -71,6 +76,7 @@ class EditorWidget(QWidget):
     def load_molecule(self, mol: Molecule):
         self._molecule = mol
         self._history.molecule = mol
+        self._hover_item = None
         self._rebuild_tools()
         self._canvas.load_molecule(mol)
         self.molecule_changed.emit()
@@ -80,14 +86,21 @@ class EditorWidget(QWidget):
     # ------------------------------------------------------------------
 
     def _rebuild_tools(self):
+        # Remember which tool was active so we can re-point _current_tool
+        active_name = self._current_tool.name if self._current_tool else "select"
+
         scene = self._canvas.mol_scene
         self._tools = {
             "select": SelectTool(scene, self._history),
-            "bond": BondTool(scene, self._history, self._current_bond_type),
-            "atom": AtomTool(scene, self._history, self._current_element),
+            "bond": BondTool(scene, self._history),
+            "atom": AtomTool(scene, self._history),
             "eraser": EraseTool(scene, self._history),
             "charge": ChargeTool(scene, self._history, self._charge_delta),
         }
+        # Propagate current element / bond type to all tools
+        self._sync_tools()
+        # Re-point _current_tool to the new instance (the old one is orphaned)
+        self._current_tool = self._tools.get(active_name, self._tools["select"])
 
     def _set_tool(self, name: str):
         if self._current_tool:
@@ -99,13 +112,17 @@ class EditorWidget(QWidget):
 
     def _on_element_changed(self, element: str):
         self._current_element = element
-        if isinstance(self._tools.get("atom"), AtomTool):
-            self._tools["atom"].element = element
+        self._sync_tools()
 
     def _on_bond_type_changed(self, bond_type: BondType):
         self._current_bond_type = bond_type
-        if isinstance(self._tools.get("bond"), BondTool):
-            self._tools["bond"].bond_type = bond_type
+        self._sync_tools()
+
+    def _sync_tools(self):
+        """Push current element / bond type to every tool."""
+        for tool in self._tools.values():
+            tool.element = self._current_element
+            tool.bond_type = self._current_bond_type
 
     def _on_charge_tool(self, delta: int):
         self._charge_delta = delta
@@ -117,6 +134,49 @@ class EditorWidget(QWidget):
         dlg = PeriodicTableDialog(self)
         if dlg.exec() == QDialog.DialogCode.Accepted and dlg.selected_element:
             self.set_element(dlg.selected_element)
+            self._toolbar.set_pt_label(dlg.selected_element)
+
+    # ------------------------------------------------------------------
+    # Hover highlighting
+    # ------------------------------------------------------------------
+
+    def _update_hover(self, scene_pos):
+        """Highlight the atom or bond under the cursor.
+
+        Uses a tight radius for atoms so that bonds in ring structures
+        can still be reached.  If the cursor is close to both an atom
+        and a bond, the atom wins only when it's very close.
+        """
+        from ..editor.canvas import HIT_RADIUS
+        scene = self._canvas.mol_scene
+
+        # Clear previous highlight
+        if self._hover_item is not None:
+            try:
+                self._hover_item.set_highlighted(False)
+            except RuntimeError:
+                pass  # item was deleted by canvas refresh
+            self._hover_item = None
+
+        # Find nearest atom (tight radius — roughly the visible label area)
+        tight_r2 = HIT_RADIUS * HIT_RADIUS  # 12px, not the 18px used by tools
+        nearest_atom = None
+        for item in scene._atom_items.values():
+            d = item.pos() - scene_pos
+            if d.x() * d.x() + d.y() * d.y() < tight_r2:
+                nearest_atom = item
+                break
+
+        if nearest_atom:
+            nearest_atom.set_highlighted(True)
+            self._hover_item = nearest_atom
+            return
+
+        # No atom very close — check for bonds
+        bond = scene.bond_at_pos(scene_pos)
+        if bond:
+            bond.set_highlighted(True)
+            self._hover_item = bond
 
     # ------------------------------------------------------------------
     # Event filter — intercept scene mouse events for tool delegation
@@ -137,6 +197,9 @@ class EditorWidget(QWidget):
         if etype == QEvent.Type.GraphicsSceneMouseMove:
             if self._current_tool:
                 self._current_tool.mouse_move(event)
+            # Hover highlight only when no button is pressed
+            if event.buttons() == Qt.MouseButton.NoButton:
+                self._update_hover(event.scenePos())
             event.accept()
             return True
 
@@ -165,6 +228,7 @@ class EditorWidget(QWidget):
     # ------------------------------------------------------------------
 
     def _on_history_change(self):
+        self._hover_item = None  # canvas items are about to be destroyed
         self._refresh_canvas()
         self.molecule_changed.emit()
 
