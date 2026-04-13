@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QActionGroup
 from PySide6.QtWidgets import (
     QButtonGroup,
-    QComboBox,
     QFrame,
     QHBoxLayout,
+    QMenu,
     QToolButton,
     QWidget,
 )
@@ -24,7 +25,7 @@ BOND_TYPES = [
 
 
 class EditorToolbar(QWidget):
-    """Single-row toolbar: tools | bond type | charge | PT | undo/redo."""
+    """Single-row toolbar: tools | bond dropdown | charge | PT | undo/redo."""
 
     tool_changed = Signal(str)
     element_changed = Signal(str)       # kept for EditorWidget compat
@@ -49,19 +50,34 @@ class EditorToolbar(QWidget):
         self._tool_buttons: dict[str, QToolButton] = {}
 
         self._make_tool_button("Select", "select", row, checked=True)
-        self._make_tool_button("Bond", "bond", row)
+
+        # Bond button with dropdown arrow for bond-type selection
+        bond_btn = QToolButton()
+        bond_btn.setText("Bond")
+        bond_btn.setCheckable(True)
+        bond_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        bond_btn.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        bond_btn.clicked.connect(lambda: self._on_tool_click("bond"))
+
+        bond_menu = QMenu(self)
+        self._bond_action_group = QActionGroup(self)
+        self._bond_action_group.setExclusive(True)
+        for label, bt in BOND_TYPES:
+            action = bond_menu.addAction(label)
+            action.setCheckable(True)
+            action.setData(bt)
+            self._bond_action_group.addAction(action)
+            if bt == BondType.SINGLE:
+                action.setChecked(True)
+        bond_menu.triggered.connect(self._on_bond_menu_triggered)
+        bond_btn.setMenu(bond_menu)
+
+        self._button_group.addButton(bond_btn)
+        self._tool_buttons["bond"] = bond_btn
+        row.addWidget(bond_btn)
+
         self._make_tool_button("Atom", "atom", row)
         self._make_tool_button("Eraser", "eraser", row)
-
-        row.addWidget(self._sep())
-
-        # Bond type combo
-        self._bond_combo = QComboBox()
-        self._bond_combo.setFixedWidth(110)
-        for label, bt in BOND_TYPES:
-            self._bond_combo.addItem(label, bt)
-        self._bond_combo.currentIndexChanged.connect(self._on_bond_type_changed)
-        row.addWidget(self._bond_combo)
 
         row.addWidget(self._sep())
 
@@ -130,10 +146,12 @@ class EditorToolbar(QWidget):
             btn.setChecked(True)
             self._on_tool_click(name)
 
-    def _on_bond_type_changed(self, index: int):
-        bt = self._bond_combo.itemData(index)
+    def _on_bond_menu_triggered(self, action):
+        bt = action.data()
         self.bond_type_changed.emit(bt)
-        self._bond_combo.hidePopup()  # close dropdown immediately
+        # Also activate the bond tool
+        self._tool_buttons["bond"].setChecked(True)
+        self.tool_changed.emit("bond")
 
     def set_pt_label(self, symbol: str):
         """Update the periodic-table button text to show the chosen element."""
@@ -142,4 +160,7 @@ class EditorToolbar(QWidget):
 
     @property
     def current_bond_type(self) -> BondType:
-        return self._bond_combo.currentData()
+        checked = self._bond_action_group.checkedAction()
+        if checked:
+            return checked.data()
+        return BondType.SINGLE

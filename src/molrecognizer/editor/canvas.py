@@ -307,17 +307,19 @@ class MoleculeScene(QGraphicsScene):
         coords = mol.get_2d_coords()
         all_bonds = mol.get_all_bonds()
 
-        # Build a clean RDKit mol to get accurate H counts.
-        # This handles aromatic systems, charges, and multi-valent
-        # elements correctly (same logic as molecule_to_smiles).
-        display_hs = self._compute_display_hs(mol)
+        # Auto-infer formal charges (e.g. N with 4 bonds → N+)
+        display_charges = self._compute_display_charges(mol)
+        # Build a clean RDKit mol to get accurate H counts,
+        # using inferred charges so sanitization succeeds.
+        display_hs = self._compute_display_hs(mol, display_charges)
 
-        # Add atoms with H-count and charge
+        # Add atoms with H-count and (possibly inferred) charge
         for i in range(mol.num_atoms):
             info = mol.get_atom_info(i)
             x, y = coords[i]
             n_hs = display_hs.get(i, 0)
-            item = AtomItem(i, info.element, x, y, n_hs, info.formal_charge)
+            charge = display_charges.get(i, 0)
+            item = AtomItem(i, info.element, x, y, n_hs, charge)
             self.addItem(item)
             self._atom_items[i] = item
 
@@ -334,19 +336,60 @@ class MoleculeScene(QGraphicsScene):
             self._bond_items[key] = item
 
     @staticmethod
-    def _compute_display_hs(mol: Molecule) -> dict[int, int]:
+    def _compute_display_charges(mol: Molecule) -> dict[int, int]:
+        """Infer formal charges for display.
+
+        Atoms that already carry an explicit charge keep it.  For common
+        octet-rule elements (N, O, B, halogens) whose bond-order sum
+        exceeds the neutral count, the charge is inferred automatically
+        (e.g. N with 4 bonds → +1).
+        """
+        from ..core.valence import infer_formal_charge
+
+        _bv = {BondType.SINGLE: 1, BondType.DOUBLE: 2,
+               BondType.TRIPLE: 3, BondType.AROMATIC: 1.5}
+        all_bonds = mol.get_all_bonds()
+        result: dict[int, int] = {}
+        for i in range(mol.num_atoms):
+            info = mol.get_atom_info(i)
+            bos = 0.0
+            for b in all_bonds:
+                if b.begin_atom_idx == i or b.end_atom_idx == i:
+                    bos += _bv.get(b.bond_type, 1)
+            result[i] = infer_formal_charge(info.element, bos,
+                                            info.formal_charge)
+        return result
+
+    @staticmethod
+    def _compute_display_hs(
+        mol: Molecule,
+        display_charges: dict[int, int] | None = None,
+    ) -> dict[int, int]:
         """Use RDKit sanitization to get accurate H counts for display.
 
         Builds a fresh mol (no stale NoImplicit / explicit-H state),
         sanitizes it, and reads back the total Hs.  Neutral carbons
         with bonds get 0 (skeletal style); isolated atoms get full Hs.
+
+        When sanitization fails (e.g. hypervalent atom), individual atoms
+        that can't report their H count fall back to a valence-table
+        computation so that *other* atoms in the molecule still display
+        correctly.
+
+        *display_charges*, if given, overrides the atom's stored formal
+        charge in the fresh mol so that RDKit sanitization succeeds for
+        atoms with auto-inferred charges (e.g. N with 4 bonds + charge +1).
         """
+        from ..core.valence import compute_display_hs as _valence_hs
+
         src = mol.to_rdkit()
         fresh = Chem.RWMol()
         for i in range(src.GetNumAtoms()):
             a = src.GetAtomWithIdx(i)
             na = Chem.Atom(a.GetAtomicNum())
-            na.SetFormalCharge(a.GetFormalCharge())
+            charge = (display_charges.get(i, a.GetFormalCharge())
+                      if display_charges else a.GetFormalCharge())
+            na.SetFormalCharge(charge)
             if a.GetNumExplicitHs() > 0:
                 na.SetNumExplicitHs(a.GetNumExplicitHs())
             fresh.AddAtom(na)
@@ -356,18 +399,37 @@ class MoleculeScene(QGraphicsScene):
         try:
             Chem.SanitizeMol(fresh)
         except Exception:
-            pass
+            # Full sanitization failed (hypervalent atom?) — do partial
+            # sanitization then compute implicit valence per-atom.
+            try:
+                Chem.SanitizeMol(
+                    fresh,
+                    Chem.SanitizeFlags.SANITIZE_ALL
+                    ^ Chem.SanitizeFlags.SANITIZE_PROPERTIES,
+                )
+            except Exception:
+                pass
+            for j in range(fresh.GetNumAtoms()):
+                try:
+                    fresh.GetAtomWithIdx(j).UpdatePropertyCache(strict=False)
+                except Exception:
+                    pass
 
         result: dict[int, int] = {}
         for i in range(fresh.GetNumAtoms()):
             a = fresh.GetAtomWithIdx(i)
-            try:
-                n_hs = a.GetTotalNumHs()
-            except RuntimeError:
-                n_hs = 0  # sanitization failed — can't compute Hs
             elem = a.GetSymbol()
             charge = a.GetFormalCharge()
             degree = a.GetDegree()
+
+            try:
+                n_hs = a.GetTotalNumHs()
+            except Exception:
+                # RDKit couldn't compute Hs (sanitization failed for this
+                # atom or the whole mol) — fall back to valence table.
+                bos = sum(b.GetBondTypeAsDouble() for b in a.GetBonds())
+                n_hs = _valence_hs(elem, bos, charge)
+
             # Skeletal convention: neutral C with bonds hides Hs
             if elem == "C" and charge == 0 and degree > 0:
                 n_hs = 0
@@ -389,14 +451,17 @@ class MoleculeScene(QGraphicsScene):
         return None
 
     def bond_at_pos(self, scene_pos: QPointF) -> Optional[BondItem]:
+        best: Optional[BondItem] = None
+        best_d = 15.0  # max detection distance in pixels
         for item in self._bond_items.values():
             a1_pos = self._atom_items.get(item.a1_idx)
             a2_pos = self._atom_items.get(item.a2_idx)
             if a1_pos and a2_pos:
                 d = _point_to_line_dist(scene_pos, a1_pos.pos(), a2_pos.pos())
-                if d < 10:
-                    return item
-        return None
+                if d < best_d:
+                    best_d = d
+                    best = item
+        return best
 
 
 class MoleculeCanvas(QGraphicsView):

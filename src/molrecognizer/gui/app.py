@@ -1,5 +1,6 @@
 """Application entry point."""
 
+import os
 import sys
 
 from PySide6.QtCore import Qt
@@ -7,6 +8,27 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
 
 from .main_window import MainWindow
+
+
+def _setup_logging():
+    """Redirect all warnings and errors to a log file.
+
+    Redirects both Python's ``sys.stderr`` *and* the C-level file
+    descriptor 2 (which RDKit's C++ code writes to directly).
+    The log is truncated on each run.
+    Location: ``~/.molrecognizer/molrecognizer.log``
+    """
+    log_dir = os.path.expanduser("~/.molrecognizer")
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+        log_path = os.path.join(log_dir, "molrecognizer.log")
+        log_file = open(log_path, "w")  # noqa: SIM115  — kept open for lifetime
+        # Redirect C-level fd 2 so native libraries (RDKit) write to log
+        os.dup2(log_file.fileno(), 2)
+        # Point Python stderr at the same file
+        sys.stderr = log_file
+    except OSError:
+        pass  # fall back to terminal stderr
 
 STYLESHEET = """
 /* ---- Main window ---- */
@@ -85,6 +107,12 @@ QToolButton:checked {
 QToolButton:pressed {
     background-color: #1557b0;
     color: #ffffff;
+}
+QToolButton::menu-indicator {
+    subcontrol-position: right center;
+    subcontrol-origin: padding;
+    width: 12px;
+    padding-right: 2px;
 }
 
 /* ---- Combo boxes ---- */
@@ -266,6 +294,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
 
 
 def main():
+    _setup_logging()
     app = QApplication(sys.argv)
     app.setApplicationName("Molecule Recognizer")
     app.setOrganizationName("molrecognizer")

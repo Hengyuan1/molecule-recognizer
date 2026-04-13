@@ -45,6 +45,50 @@ class ValenceWarning:
         )
 
 
+# Formal-charge auto-inference for common octet-rule atoms.
+# (valence_electrons, neutral_bond_count, neutral_lone_pair_electrons)
+# Expanded-octet atoms (S, P, Se, Si) are omitted — their extra bonds
+# are commonly neutral (e.g. sulfoxide), so we don't auto-infer.
+_CHARGE_INFERENCE: dict[str, tuple[int, int, int]] = {
+    "N":  (5, 3, 2),
+    "O":  (6, 2, 4),
+    "B":  (3, 3, 0),
+    "F":  (7, 1, 6),
+    "Cl": (7, 1, 6),
+    "Br": (7, 1, 6),
+    "I":  (7, 1, 6),
+}
+
+
+def infer_formal_charge(element: str, bond_order_sum: float,
+                        existing_charge: int = 0) -> int:
+    """Infer the formal charge for display / SMILES purposes.
+
+    If the atom already carries a non-zero *existing_charge*, it is
+    returned as-is.  Otherwise, for common octet-rule atoms whose bond
+    order sum exceeds the neutral bond count the charge is derived from
+    the standard formula::
+
+        FC = valence_e − lone_pair_e − bond_order_sum
+
+    where lone pairs decrease as extra bonds are formed.
+
+    Returns 0 for elements not in the inference table or when the bond
+    order sum does not exceed the neutral count.
+    """
+    if existing_charge != 0:
+        return existing_charge
+    import math
+    bos_int = math.ceil(bond_order_sum)
+    data = _CHARGE_INFERENCE.get(element)
+    if data is None or bos_int <= data[1]:
+        return 0
+    val_e, neutral_bonds, neutral_lone_e = data
+    delta = bos_int - neutral_bonds
+    lone_e = max(0, neutral_lone_e - 2 * delta)
+    return val_e - lone_e - bos_int
+
+
 def compute_display_hs(element: str, bond_order_sum: float,
                        formal_charge: int) -> int:
     """How many implicit Hs to show on an atom label.

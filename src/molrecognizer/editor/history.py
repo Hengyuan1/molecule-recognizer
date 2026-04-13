@@ -21,6 +21,26 @@ class Command(ABC):
     def description(self) -> str: ...
 
 
+class CompoundCommand(Command):
+    """Groups multiple commands into a single undoable step."""
+
+    def __init__(self, commands: list[Command]):
+        self._commands = commands
+
+    def execute(self, mol: Molecule) -> None:
+        for cmd in self._commands:
+            cmd.execute(mol)
+
+    def undo(self, mol: Molecule) -> None:
+        for cmd in reversed(self._commands):
+            cmd.undo(mol)
+
+    def description(self) -> str:
+        if self._commands:
+            return self._commands[0].description()
+        return "Compound"
+
+
 class AddAtomCommand(Command):
     def __init__(self, element: str, x: float, y: float, formal_charge: int = 0):
         self.element = element
