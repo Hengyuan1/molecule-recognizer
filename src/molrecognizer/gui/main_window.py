@@ -301,7 +301,7 @@ class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Molecule Recognizer")
-        self.resize(1200, 800)
+        self.resize(1400, 880)
 
         self._molecule: Molecule | None = None
         self._worker: RecognitionWorker | None = None
@@ -361,7 +361,7 @@ class MainWindow(QMainWindow):
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
         splitter.setStretchFactor(2, 0)
-        splitter.setSizes([220, 800, 56])
+        splitter.setSizes([290, 1060, 50])
 
         outer.addWidget(splitter, 1)
 
