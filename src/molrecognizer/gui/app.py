@@ -291,8 +291,13 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
 
 
 def main():
-    _setup_logging()
+    # Ensure cursor theme is set for WSLg/Wayland — without this,
+    # Qt6 may fail to render any cursor at all.
+    os.environ.setdefault("XCURSOR_THEME", "Adwaita")
+    os.environ.setdefault("XCURSOR_SIZE", "24")
+
     app = QApplication(sys.argv)
+    _setup_logging()
     app.setApplicationName("Molecule Recognizer")
     app.setOrganizationName("molrecognizer")
     app.setStyleSheet(STYLESHEET)
