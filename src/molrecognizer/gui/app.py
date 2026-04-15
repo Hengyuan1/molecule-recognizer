@@ -85,10 +85,10 @@ QToolButton {
     background-color: #f1f3f5;
     border: 1px solid #dde1e6;
     border-radius: 6px;
-    padding: 6px 16px;
-    font-size: 15px;
-    font-weight: 500;
-    min-height: 32px;
+    padding: 3px 14px;
+    font-size: 17px;
+    font-weight: 600;
+    min-height: 24px;
     color: #444444;
 }
 QToolButton:hover {
@@ -157,10 +157,10 @@ QPushButton#action_btn {
     color: #ffffff;
     border: none;
     border-radius: 8px;
-    padding: 9px 16px;
-    font-size: 13px;
+    padding: 5px 14px;
+    font-size: 14px;
     font-weight: 600;
-    min-height: 34px;
+    min-height: 26px;
 }
 QPushButton#action_btn:hover {
     background-color: #1557b0;
@@ -174,10 +174,10 @@ QPushButton#action_btn_secondary {
     color: #1a73e8;
     border: 1.5px solid #1a73e8;
     border-radius: 8px;
-    padding: 9px 16px;
-    font-size: 13px;
+    padding: 5px 14px;
+    font-size: 14px;
     font-weight: 600;
-    min-height: 34px;
+    min-height: 26px;
 }
 QPushButton#action_btn_secondary:hover {
     background-color: #e8f0fe;
@@ -223,10 +223,10 @@ QPushButton#small_btn {
     color: #ffffff;
     border: none;
     border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 14px;
+    padding: 4px 10px;
+    font-size: 15px;
     font-weight: 600;
-    min-height: 30px;
+    min-height: 24px;
 }
 QPushButton#small_btn:hover {
     background-color: #1557b0;
@@ -237,8 +237,8 @@ QPushButton#small_btn_green {
     color: #ffffff;
     border: none;
     border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 14px;
+    padding: 4px 10px;
+    font-size: 15px;
     font-weight: 600;
     min-height: 30px;
 }

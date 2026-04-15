@@ -62,7 +62,7 @@ class EditorToolbar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("toolbar_container")
-        self.setFixedHeight(52)
+        self.setFixedHeight(42)
 
         row = QHBoxLayout(self)
         row.setContentsMargins(10, 6, 10, 6)
