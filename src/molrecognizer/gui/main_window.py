@@ -317,6 +317,9 @@ class MainWindow(QMainWindow):
 
     def _setup_menu(self):
         menu = self.menuBar()
+        # Disable native menu bar — ensures hover-switch between menus
+        # works reliably on all platforms (WSLg, X11, Wayland).
+        menu.setNativeMenuBar(False)
 
         file_menu = menu.addMenu("&File")
         open_act = QAction("&Open Image…", self)

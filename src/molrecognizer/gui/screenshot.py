@@ -249,8 +249,8 @@ class ScreenshotDialog(QDialog):
 
     def __init__(self, screenshot: QPixmap, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Select region  (draw box, then ✓ to accept)")
-        self.setCursor(Qt.CursorShape.CrossCursor)
+        self.setWindowTitle("Select region  (draw box, then \u2713 to accept)")
+        self.setCursor(Qt.CursorShape.ArrowCursor)
         self.setMouseTracking(True)
 
         self._screenshot = screenshot
@@ -418,7 +418,6 @@ class ScreenshotDialog(QDialog):
         # Start drawing a new box
         self._sel = QRect(pos, pos)
         self._drawing = True
-        self.setCursor(Qt.CursorShape.CrossCursor)
         self.update()
 
     def mouseMoveEvent(self, event):
@@ -454,7 +453,7 @@ class ScreenshotDialog(QDialog):
             self.update()
             return
 
-        # Update cursor based on hover
+        # Update cursor based on hover position
         if self._sel:
             edge = self._hit_edge(pos)
             cursors = {
@@ -466,9 +465,13 @@ class ScreenshotDialog(QDialog):
                 "b": Qt.CursorShape.SizeVerCursor,
                 "l": Qt.CursorShape.SizeHorCursor,
                 "r": Qt.CursorShape.SizeHorCursor,
-                "move": Qt.CursorShape.SizeAllCursor,
+                "move": Qt.CursorShape.OpenHandCursor,
             }
-            self.setCursor(cursors.get(edge, Qt.CursorShape.CrossCursor))
+            # Cross inside box, resize on edges, arrow outside
+            self.setCursor(cursors.get(edge, Qt.CursorShape.ArrowCursor))
+        else:
+            # No selection yet — cross cursor everywhere for initial draw
+            self.setCursor(Qt.CursorShape.CrossCursor)
 
     def mouseReleaseEvent(self, event):
         if event.button() != Qt.MouseButton.LeftButton:

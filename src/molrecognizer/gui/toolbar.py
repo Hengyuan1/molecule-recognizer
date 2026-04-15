@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import os
+
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QActionGroup
+from PySide6.QtGui import QActionGroup, QIcon
 from PySide6.QtWidgets import (
     QButtonGroup,
     QFrame,
@@ -84,8 +86,17 @@ class EditorToolbar(QWidget):
         bond_menu = QMenu(self)
         self._bond_action_group = QActionGroup(self)
         self._bond_action_group.setExclusive(True)
+        _icons_dir = os.path.join(os.path.dirname(__file__), "icons")
+        _bond_icons = {
+            BondType.WEDGE: os.path.join(_icons_dir, "wedge-bond.png"),
+            BondType.DASH: os.path.join(_icons_dir, "dash-bond.png"),
+        }
         for label, bt in BOND_TYPES:
-            action = bond_menu.addAction(label)
+            icon_path = _bond_icons.get(bt)
+            if icon_path and os.path.isfile(icon_path):
+                action = bond_menu.addAction(QIcon(icon_path), label)
+            else:
+                action = bond_menu.addAction(label)
             action.setCheckable(True)
             action.setData(bt)
             self._bond_action_group.addAction(action)
