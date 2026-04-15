@@ -551,8 +551,6 @@ class MoleculeCanvas(QGraphicsView):
         self.setBackgroundBrush(QBrush(QColor("#FAFAFA")))
         self.setMinimumSize(400, 300)
         self.setMouseTracking(True)  # receive hover moves without button press
-        self.setCursor(Qt.CursorShape.ArrowCursor)
-        self.viewport().setCursor(Qt.CursorShape.ArrowCursor)
         # Allow the view to scroll beyond the content
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)

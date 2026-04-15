@@ -11,11 +11,11 @@ from .main_window import MainWindow
 
 
 def _setup_logging():
-    """Redirect all warnings and errors to a log file.
+    """Redirect Python warnings and errors to a log file.
 
-    Redirects both Python's ``sys.stderr`` *and* the C-level file
-    descriptor 2 (which RDKit's C++ code writes to directly).
-    The log is truncated on each run.
+    Only redirects Python's ``sys.stderr``.  The C-level fd 2 is left
+    untouched because redirecting it before the display server
+    connection is established can break cursor rendering on WSLg.
     Location: ``~/.molrecognizer/molrecognizer.log``
     """
     log_dir = os.path.expanduser("~/.molrecognizer")
@@ -23,9 +23,6 @@ def _setup_logging():
         os.makedirs(log_dir, exist_ok=True)
         log_path = os.path.join(log_dir, "molrecognizer.log")
         log_file = open(log_path, "w")  # noqa: SIM115  — kept open for lifetime
-        # Redirect C-level fd 2 so native libraries (RDKit) write to log
-        os.dup2(log_file.fileno(), 2)
-        # Point Python stderr at the same file
         sys.stderr = log_file
     except OSError:
         pass  # fall back to terminal stderr
