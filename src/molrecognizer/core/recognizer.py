@@ -109,6 +109,11 @@ class MoleculeRecognizer:
                 if rdmol is not None:
                     rdmol = Chem.RemoveHs(rdmol)
                     AllChem.Compute2DCoords(rdmol)
+                    # Generate wedge/dash bonds from stereo tags + 2D coords
+                    try:
+                        Chem.WedgeMolBonds(rdmol, rdmol.GetConformer())
+                    except Exception:
+                        pass
                     return Molecule.from_rdkit(rdmol)
             except Exception:
                 pass

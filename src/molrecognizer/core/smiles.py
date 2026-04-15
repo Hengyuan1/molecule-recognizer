@@ -85,4 +85,9 @@ def smiles_to_molecule(smiles: str) -> Molecule:
     # Remove all Hs so the editor shows skeletal structure
     rdmol = Chem.RemoveHs(rdmol)
     AllChem.Compute2DCoords(rdmol)
+    # Generate wedge/dash bonds from stereo tags + 2D coordinates
+    try:
+        Chem.WedgeMolBonds(rdmol, rdmol.GetConformer())
+    except Exception:
+        pass
     return Molecule.from_rdkit(rdmol)
