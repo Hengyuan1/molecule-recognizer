@@ -10,22 +10,34 @@ from PySide6.QtWidgets import QApplication
 from .main_window import MainWindow
 
 
-def _setup_logging():
-    """Redirect Python warnings and errors to a log file.
+_log_file = None  # kept alive for process lifetime
 
-    Only redirects Python's ``sys.stderr``.  The C-level fd 2 is left
-    untouched because redirecting it before the display server
-    connection is established can break cursor rendering on WSLg.
-    Location: ``~/.molrecognizer/molrecognizer.log``
-    """
+
+def _setup_logging():
+    """Redirect Python's sys.stderr to a log file."""
+    global _log_file
     log_dir = os.path.expanduser("~/.molrecognizer")
     try:
         os.makedirs(log_dir, exist_ok=True)
         log_path = os.path.join(log_dir, "molrecognizer.log")
-        log_file = open(log_path, "w")  # noqa: SIM115  — kept open for lifetime
-        sys.stderr = log_file
+        _log_file = open(log_path, "w")  # noqa: SIM115
+        sys.stderr = _log_file
     except OSError:
-        pass  # fall back to terminal stderr
+        pass
+
+
+def _redirect_native_stderr():
+    """Redirect C-level fd 2 to the log file.
+
+    Must be called AFTER QApplication is created and the window is
+    shown, so the display server connection is fully established.
+    Redirecting fd 2 earlier breaks cursor rendering on WSLg.
+    """
+    if _log_file is not None:
+        try:
+            os.dup2(_log_file.fileno(), 2)
+        except OSError:
+            pass
 
 STYLESHEET = """
 /* ---- Main window ---- */
@@ -285,6 +297,9 @@ def main():
 
     window = MainWindow()
     window.show()
+    # Redirect C-level stderr AFTER the window is shown so the display
+    # server connection is fully established (avoids cursor issues).
+    _redirect_native_stderr()
     sys.exit(app.exec())
 
 
