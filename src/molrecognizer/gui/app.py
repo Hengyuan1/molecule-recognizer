@@ -295,8 +295,6 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
 
 def main():
     _setup_logging()
-    # Ensure menu hover-switch works on WSLg/Wayland
-    QApplication.setAttribute(Qt.ApplicationAttribute.AA_DontUseNativeMenuBar)
     app = QApplication(sys.argv)
     app.setApplicationName("Molecule Recognizer")
     app.setOrganizationName("molrecognizer")

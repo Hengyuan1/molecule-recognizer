@@ -317,9 +317,6 @@ class MainWindow(QMainWindow):
 
     def _setup_menu(self):
         menu = self.menuBar()
-        # Disable native menu bar — ensures hover-switch between menus
-        # works reliably on all platforms (WSLg, X11, Wayland).
-        menu.setNativeMenuBar(False)
 
         file_menu = menu.addMenu("&File")
         open_act = QAction("&Open Image…", self)
@@ -439,16 +436,28 @@ class MainWindow(QMainWindow):
 
     def _do_screenshot(self):
         screenshot = grab_screen()
-        self.show()
-        self.raise_()
-        self.activateWindow()
 
         if screenshot is None or screenshot.isNull():
+            self.show()
+            self.raise_()
+            self.activateWindow()
             self.statusBar().showMessage("Screenshot failed", 5000)
             return
 
-        dlg = ScreenshotDialog(screenshot, parent=self)
-        if dlg.exec() == QDialog.DialogCode.Accepted and dlg.result_pixmap:
+        # Show the dialog BEFORE restoring the main window so the dialog
+        # is the focused window.  Restore the main window only AFTER the
+        # dialog closes to avoid WSLg hide/show ordering issues.
+        dlg = ScreenshotDialog(screenshot)  # no parent — independent window
+        result = dlg.exec()
+
+        # Always restore main window after dialog closes
+        self.show()
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+        QApplication.processEvents()
+
+        if result == QDialog.DialogCode.Accepted and dlg.result_pixmap:
             self._source_pixmap = dlg.result_pixmap
             self._left_panel.set_preview(self._source_pixmap)
             try:
