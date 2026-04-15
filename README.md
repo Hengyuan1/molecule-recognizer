@@ -12,7 +12,8 @@ Recognize molecular structures from images (screenshots, papers, web pages), con
     - 120° angles for sp2/trigonal centres, 180° for linear (sp), 90° for sp3 (4-bond) centres
     - Zig-zag chain pattern when extending a chain of single bonds
     - Clash avoidance: angular sweep finds the best direction at normal bond length before resorting to longer bonds
-  - Bond tool has a dropdown menu (▾) for selecting Single/Double/Triple bond type
+  - Bond tool has a dropdown menu (▾) for selecting Single/Double/Triple/Wedge/Dash bond type
+  - Wedge (▶ filled triangle) and Dash (dashed wedge) stereo bonds for stereochemistry display; stereo preserved from SMILES and image recognition
   - Click a bond to cycle its type (single → double → triple → single)
   - Hover highlighting on atoms and bonds for visual feedback
   - Formal charge tools ⊕/⊖ (increase/decrease)
@@ -28,7 +29,7 @@ Recognize molecular structures from images (screenshots, papers, web pages), con
 - **Smart element substitution** — Changing an atom to a lower-valence element automatically downgrades bond orders (e.g. C→S in a ring converts double bonds to single). Undo fully restores original bond types.
 - **Valence checking** — Automatic validation with over-valence warnings; hydrogen counts derived via RDKit sanitization with valence-table fallback for robustness with hypervalent atoms
 - **SMILES export** — Live SMILES conversion as you edit, copy to clipboard or save to file; auto-inferred charges reflected in SMILES (e.g. `[N+]`)
-- **Logging** — All warnings/errors (including RDKit C++ messages) written to `~/.molrecognizer/molrecognizer.log` instead of the terminal; log refreshed on each run
+- **Logging** — All warnings/errors (Python and C++/RDKit/Qt) written to `~/.molrecognizer/molrecognizer.log` instead of the terminal; log refreshed on each run; C-level stderr redirected after display server init to avoid cursor issues on WSLg
 - **Python API** — Use programmatically from other Python packages
 
 ## Installation
@@ -94,11 +95,12 @@ molrecognizer
 | Export SMILES | Ctrl+E |
 | Undo | Ctrl+Z |
 | Redo | Ctrl+Shift+Z |
+| Quit | Ctrl+Q |
 | Delete selection | Delete / Backspace |
 
 **Editing tools:**
 - **Select** — Click atom to substitute element; drag atom to move it; drag empty space to box-select; drag selection to move group; click bond to cycle type
-- **Bond** (with ▾ dropdown for Single/Double/Triple) — Click atom to add a bonded atom (VSEPR-aware direction); click bond to cycle type; drag atom to create bond
+- **Bond** (with ▾ dropdown: Single/Double/Triple/Wedge/Dash) — Click atom to add a bonded atom (VSEPR-aware direction); click bond to cycle type; drag atom to create bond
 - **Atom** — Click empty space to add an atom; click existing atom to change its element; drag atom to create bond
 - **Eraser** — Click an atom or bond to delete it; drag empty space to box-select and bulk-delete
 - **Ring** (⌬ with ▾ dropdown: Benzene/6-ring/5-ring/4-ring/3-ring) — Click atom or bond to attach ring; click empty space to place standalone ring; drag to orient
