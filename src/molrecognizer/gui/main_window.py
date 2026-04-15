@@ -455,6 +455,7 @@ class MainWindow(QMainWindow):
         self.showNormal()
         self.raise_()
         self.activateWindow()
+        self.unsetCursor()
         QApplication.processEvents()
 
         if result == QDialog.DialogCode.Accepted and dlg.result_pixmap:

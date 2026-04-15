@@ -316,9 +316,26 @@ class BondItem(QGraphicsLineItem):
             self._extra_lines.append(line2)
 
     def set_highlighted(self, highlighted: bool):
-        color = QColor("#00AAFF") if highlighted else QColor(BOND_COLOR)
-        w = BOND_WIDTH + (1 if highlighted else 0)
-        self.setPen(QPen(color, w))
+        if self.bond_type in (BondType.WEDGE, BondType.DASH):
+            # Wedge/dash: highlight the child shapes, keep parent NoPen
+            if highlighted:
+                hl_pen = QPen(QColor("#00AAFF"), BOND_WIDTH + 1)
+                for poly in self._extra_polys:
+                    poly.setPen(hl_pen)
+                for ln in self._extra_lines:
+                    ln.setPen(hl_pen)
+            else:
+                for poly in self._extra_polys:
+                    poly.setPen(QPen(Qt.PenStyle.NoPen))
+                dash_pen = QPen(QColor(BOND_COLOR), BOND_WIDTH)
+                dash_pen.setCapStyle(Qt.PenCapStyle.FlatCap)
+                for ln in self._extra_lines:
+                    ln.setPen(dash_pen)
+            self.setPen(QPen(Qt.PenStyle.NoPen))
+        else:
+            color = QColor("#00AAFF") if highlighted else QColor(BOND_COLOR)
+            w = BOND_WIDTH + (1 if highlighted else 0)
+            self.setPen(QPen(color, w))
 
     def update_positions(self, p1: QPointF, p2: QPointF):
         self._p1 = p1
@@ -534,6 +551,8 @@ class MoleculeCanvas(QGraphicsView):
         self.setBackgroundBrush(QBrush(QColor("#FAFAFA")))
         self.setMinimumSize(400, 300)
         self.setMouseTracking(True)  # receive hover moves without button press
+        self.setCursor(Qt.CursorShape.ArrowCursor)
+        self.viewport().setCursor(Qt.CursorShape.ArrowCursor)
         # Allow the view to scroll beyond the content
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
