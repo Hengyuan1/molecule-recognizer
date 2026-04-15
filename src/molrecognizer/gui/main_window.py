@@ -20,7 +20,7 @@ import os
 
 from PIL import Image
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
-from PySide6.QtGui import QAction, QKeySequence, QPixmap
+from PySide6.QtGui import QKeySequence, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -307,56 +307,29 @@ class MainWindow(QMainWindow):
         self._worker: RecognitionWorker | None = None
         self._source_pixmap: QPixmap | None = None
 
-        self._setup_menu()
         self._setup_ui()
         self._setup_statusbar()
+        self._setup_shortcuts()
 
     # ------------------------------------------------------------------
     # UI setup
     # ------------------------------------------------------------------
 
-    def _setup_menu(self):
-        menu = self.menuBar()
-
-        file_menu = menu.addMenu("&File")
-        open_act = QAction("&Open Image…", self)
-        open_act.setShortcut(QKeySequence.StandardKey.Open)
-        open_act.triggered.connect(self._on_open_image)
-        file_menu.addAction(open_act)
-
-        screenshot_act = QAction("&Screenshot", self)
-        screenshot_act.setShortcut(QKeySequence("Ctrl+Shift+S"))
-        screenshot_act.triggered.connect(self._on_screenshot)
-        file_menu.addAction(screenshot_act)
-
-        file_menu.addSeparator()
-
-        load_smiles_act = QAction("Load from S&MILES…", self)
-        load_smiles_act.triggered.connect(self._on_load_smiles)
-        file_menu.addAction(load_smiles_act)
-
-        export_act = QAction("&Export SMILES…", self)
-        export_act.setShortcut(QKeySequence("Ctrl+E"))
-        export_act.triggered.connect(self._on_export_smiles)
-        file_menu.addAction(export_act)
-
-        file_menu.addSeparator()
-
-        quit_act = QAction("&Quit", self)
-        quit_act.setShortcut(QKeySequence.StandardKey.Quit)
-        quit_act.triggered.connect(self.close)
-        file_menu.addAction(quit_act)
-
-        edit_menu = menu.addMenu("&Edit")
-        self._undo_act = QAction("&Undo", self)
-        self._undo_act.setShortcut(QKeySequence.StandardKey.Undo)
-        self._undo_act.setEnabled(False)
-        edit_menu.addAction(self._undo_act)
-
-        self._redo_act = QAction("&Redo", self)
-        self._redo_act.setShortcut(QKeySequence.StandardKey.Redo)
-        self._redo_act.setEnabled(False)
-        edit_menu.addAction(self._redo_act)
+    def _setup_shortcuts(self):
+        """Register keyboard shortcuts (no menu bar)."""
+        from PySide6.QtGui import QShortcut
+        QShortcut(QKeySequence.StandardKey.Open, self,
+                  activated=self._on_open_image)
+        QShortcut(QKeySequence("Ctrl+Shift+S"), self,
+                  activated=self._on_screenshot)
+        QShortcut(QKeySequence("Ctrl+E"), self,
+                  activated=self._on_export_smiles)
+        QShortcut(QKeySequence.StandardKey.Undo, self,
+                  activated=self._editor._undo)
+        QShortcut(QKeySequence("Ctrl+Shift+Z"), self,
+                  activated=self._editor._redo)
+        QShortcut(QKeySequence.StandardKey.Quit, self,
+                  activated=self.close)
 
     def _setup_ui(self):
         central = QWidget()
@@ -398,9 +371,6 @@ class MainWindow(QMainWindow):
         self._bottom_bar.export_smiles.connect(self._on_export_smiles)
         outer.addWidget(self._bottom_bar)
 
-        # Wire undo/redo from menu to editor
-        self._undo_act.triggered.connect(self._editor._undo)
-        self._redo_act.triggered.connect(self._editor._redo)
 
     def _setup_statusbar(self):
         self.setStatusBar(QStatusBar())
@@ -538,8 +508,6 @@ class MainWindow(QMainWindow):
         self._molecule = mol
         self._editor.load_molecule(mol)
         self._update_info()
-        self._undo_act.setEnabled(True)
-        self._redo_act.setEnabled(True)
 
     def _on_editor_changed(self):
         self._molecule = self._editor.molecule

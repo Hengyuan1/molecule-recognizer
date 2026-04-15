@@ -33,25 +33,7 @@ QMainWindow {
     background-color: #f8f9fa;
 }
 
-/* ---- Menu bar (light) ---- */
-QMenuBar {
-    background-color: #ffffff;
-    color: #333333;
-    font-size: 15px;
-    font-weight: 500;
-    border-bottom: 1px solid #dde1e6;
-    padding: 2px 0;
-}
-QMenuBar::item {
-    padding: 6px 14px;
-    border-radius: 4px;
-}
-QMenuBar::item:selected {
-    background-color: #e8f0fe;
-    color: #1a73e8;
-}
-
-/* ---- Drop-down menus ---- */
+/* ---- Drop-down menus (bond/ring dropdowns) ---- */
 QMenu {
     background-color: #ffffff;
     color: #333333;
@@ -68,11 +50,6 @@ QMenu::item:selected {
     background-color: #e8f0fe;
     color: #1a73e8;
 }
-QMenu::separator {
-    height: 1px;
-    background: #e8eaed;
-    margin: 4px 10px;
-}
 
 /* ---- Toolbar container ---- */
 QWidget#toolbar_container {
@@ -85,7 +62,7 @@ QToolButton {
     background-color: #f1f3f5;
     border: 1px solid #dde1e6;
     border-radius: 6px;
-    padding: 3px 14px;
+    padding: 3px 8px;
     font-size: 17px;
     font-weight: 600;
     min-height: 24px;
