@@ -15,6 +15,8 @@ class BondType(Enum):
     DOUBLE = Chem.rdchem.BondType.DOUBLE
     TRIPLE = Chem.rdchem.BondType.TRIPLE
     AROMATIC = Chem.rdchem.BondType.AROMATIC
+    WEDGE = "wedge"    # stereo: filled triangle (single + BondDir.BEGINWEDGE)
+    DASH = "dash"      # stereo: dashed wedge  (single + BondDir.BEGINDASH)
 
 
 @dataclass
@@ -35,6 +37,26 @@ class BondInfo:
     begin_atom_idx: int
     end_atom_idx: int
     bond_type: BondType
+
+
+def _bond_type_to_rdkit(bt: BondType) -> tuple:
+    """Map our BondType to (RDKit BondType, BondDir)."""
+    if bt == BondType.WEDGE:
+        return (rdchem.BondType.SINGLE, rdchem.BondDir.BEGINWEDGE)
+    if bt == BondType.DASH:
+        return (rdchem.BondType.SINGLE, rdchem.BondDir.BEGINDASH)
+    return (bt.value, rdchem.BondDir.NONE)
+
+
+def _rdkit_to_bond_type(bond) -> BondType:
+    """Map an RDKit bond to our BondType, checking BondDir for stereo."""
+    d = bond.GetBondDir()
+    if bond.GetBondType() == rdchem.BondType.SINGLE:
+        if d == rdchem.BondDir.BEGINWEDGE:
+            return BondType.WEDGE
+        if d == rdchem.BondDir.BEGINDASH:
+            return BondType.DASH
+    return BondType(bond.GetBondType())
 
 
 class Molecule:
@@ -168,7 +190,11 @@ class Molecule:
 
     def add_bond(self, a1: int, a2: int, bond_type: BondType = BondType.SINGLE) -> int:
         """Add a bond between two atoms. Returns the bond index."""
-        return self._mol.AddBond(a1, a2, bond_type.value) - 1  # RDKit returns 1-based
+        rdkit_bt, bond_dir = _bond_type_to_rdkit(bond_type)
+        idx = self._mol.AddBond(a1, a2, rdkit_bt) - 1  # RDKit returns 1-based
+        if bond_dir != rdchem.BondDir.NONE:
+            self._mol.GetBondWithIdx(idx).SetBondDir(bond_dir)
+        return idx
 
     def remove_bond(self, a1: int, a2: int) -> None:
         self._mol.RemoveBond(a1, a2)
@@ -177,19 +203,21 @@ class Molecule:
         bond = self._mol.GetBondBetweenAtoms(a1, a2)
         if bond is None:
             raise ValueError(f"No bond between atoms {a1} and {a2}")
-        bond.SetBondType(bond_type.value)
+        rdkit_bt, bond_dir = _bond_type_to_rdkit(bond_type)
+        bond.SetBondType(rdkit_bt)
+        bond.SetBondDir(bond_dir)
 
     def get_bond_info(self, a1: int, a2: int) -> Optional[BondInfo]:
         bond = self._mol.GetBondBetweenAtoms(a1, a2)
         if bond is None:
             return None
-        bt = BondType(bond.GetBondType())
+        bt = _rdkit_to_bond_type(bond)
         return BondInfo(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx(), bt)
 
     def get_all_bonds(self) -> list[BondInfo]:
         bonds = []
         for bond in self._mol.GetBonds():
-            bt = BondType(bond.GetBondType())
+            bt = _rdkit_to_bond_type(bond)
             bonds.append(BondInfo(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx(), bt))
         return bonds
 

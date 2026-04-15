@@ -26,7 +26,8 @@ def molecule_to_smiles(mol: Molecule) -> str:
 
     # Pre-compute inferred charges
     _bv = {BondType.SINGLE: 1, BondType.DOUBLE: 2,
-           BondType.TRIPLE: 3, BondType.AROMATIC: 1.5}
+           BondType.TRIPLE: 3, BondType.AROMATIC: 1.5,
+           BondType.WEDGE: 1, BondType.DASH: 1}
     all_bonds = mol.get_all_bonds()
     inferred: dict[int, int] = {}
     for i in range(mol.num_atoms):

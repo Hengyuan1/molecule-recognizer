@@ -21,6 +21,8 @@ BOND_TYPES = [
     ("Single", BondType.SINGLE),
     ("Double", BondType.DOUBLE),
     ("Triple", BondType.TRIPLE),
+    ("\u25B6 Wedge", BondType.WEDGE),
+    ("\u2504 Dash", BondType.DASH),
 ]
 
 # (label, tool_data_key, n_sides, aromatic)

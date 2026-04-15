@@ -534,7 +534,8 @@ class BondTool(Tool):
 
         # Bond-order lookup
         _bv = {BondType.SINGLE: 1, BondType.DOUBLE: 2,
-               BondType.TRIPLE: 3, BondType.AROMATIC: 1.5}
+               BondType.TRIPLE: 3, BondType.AROMATIC: 1.5,
+               BondType.WEDGE: 1, BondType.DASH: 1}
 
         # Compute bond-order sum and max existing bond order
         bos = 0.0

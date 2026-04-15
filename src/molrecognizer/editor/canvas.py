@@ -12,11 +12,12 @@ import math
 from typing import Optional
 
 from PySide6.QtCore import QLineF, QPointF, QRectF, Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
+from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import (
     QGraphicsEllipseItem,
     QGraphicsItem,
     QGraphicsLineItem,
+    QGraphicsPolygonItem,
     QGraphicsRectItem,
     QGraphicsScene,
     QGraphicsSimpleTextItem,
@@ -204,6 +205,7 @@ class BondItem(QGraphicsLineItem):
         self._a1_lw = a1_lw
         self._a2_lw = a2_lw
         self._extra_lines: list[QGraphicsLineItem] = []
+        self._extra_polys: list[QGraphicsPolygonItem] = []
         self.setZValue(1)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
         self._render()
@@ -258,6 +260,44 @@ class BondItem(QGraphicsLineItem):
                 ln.setPen(pen)
                 self._extra_lines.append(ln)
 
+        elif self.bond_type == BondType.WEDGE:
+            # Filled black triangle: narrow at start, wide at end
+            self.setLine(QLineF(start, end))  # invisible backbone for hit-test
+            self.setPen(QPen(Qt.PenStyle.NoPen))
+            wedge_w = 5.0  # half-width at the wide end
+            nx, ny = -uy * wedge_w, ux * wedge_w
+            tri = QPolygonF([
+                start,
+                QPointF(end.x() + nx, end.y() + ny),
+                QPointF(end.x() - nx, end.y() - ny),
+            ])
+            poly = QGraphicsPolygonItem(tri, self)
+            poly.setBrush(QBrush(QColor(BOND_COLOR)))
+            poly.setPen(QPen(Qt.PenStyle.NoPen))
+            self._extra_polys.append(poly)
+
+        elif self.bond_type == BondType.DASH:
+            # Dashed wedge: series of short lines perpendicular to the bond,
+            # getting wider from start to end
+            self.setLine(QLineF(start, end))
+            self.setPen(QPen(Qt.PenStyle.NoPen))
+            n_dashes = 7
+            dash_pen = QPen(QColor(BOND_COLOR), BOND_WIDTH)
+            dash_pen.setCapStyle(Qt.PenCapStyle.FlatCap)
+            max_w = 5.0
+            for i in range(n_dashes):
+                t = (i + 0.5) / n_dashes
+                cx = start.x() + (end.x() - start.x()) * t
+                cy = start.y() + (end.y() - start.y()) * t
+                hw = max_w * t  # half-width grows with t
+                ln = QGraphicsLineItem(
+                    cx - uy * hw, cy + ux * hw,
+                    cx + uy * hw, cy - ux * hw,
+                    self,
+                )
+                ln.setPen(dash_pen)
+                self._extra_lines.append(ln)
+
         elif self.bond_type == BondType.AROMATIC:
             # Solid line + dashed line (standard representation)
             nx, ny = -uy * DOUBLE_BOND_OFFSET, ux * DOUBLE_BOND_OFFSET
@@ -288,6 +328,11 @@ class BondItem(QGraphicsLineItem):
             if scene:
                 scene.removeItem(line)
         self._extra_lines.clear()
+        for poly in self._extra_polys:
+            scene = poly.scene()
+            if scene:
+                scene.removeItem(poly)
+        self._extra_polys.clear()
         self._render()
 
 
@@ -352,7 +397,8 @@ class MoleculeScene(QGraphicsScene):
         from ..core.valence import infer_formal_charge
 
         _bv = {BondType.SINGLE: 1, BondType.DOUBLE: 2,
-               BondType.TRIPLE: 3, BondType.AROMATIC: 1.5}
+               BondType.TRIPLE: 3, BondType.AROMATIC: 1.5,
+               BondType.WEDGE: 1, BondType.DASH: 1}
         all_bonds = mol.get_all_bonds()
         result: dict[int, int] = {}
         for i in range(mol.num_atoms):
