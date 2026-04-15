@@ -23,15 +23,35 @@ BOND_TYPES = [
     ("Triple", BondType.TRIPLE),
 ]
 
+# (label, tool_data_key, n_sides, aromatic)
+RING_TYPES = [
+    ("\u232C Benzene", "benzene", 6, True),     # ⌬
+    ("\u2B21 6-ring", "ring6", 6, False),        # ⬡
+    ("\u2B20 5-ring", "ring5", 5, False),        # ⬠
+    ("\u25A1 4-ring", "ring4", 4, False),         # □
+    ("\u25B3 3-ring", "ring3", 3, False),         # △
+]
+
+# Short labels for the button face
+_RING_SHORT = {
+    "benzene": "\u232C",
+    "ring6": "\u2B21",
+    "ring5": "\u2B20",
+    "ring4": "\u25A1",
+    "ring3": "\u25B3",
+}
+
 
 class EditorToolbar(QWidget):
-    """Single-row toolbar: tools | bond dropdown | charge | PT | undo/redo."""
+    """Single-row toolbar: tools | bond dropdown | ring dropdown | charge | PT | undo/redo."""
 
     tool_changed = Signal(str)
     element_changed = Signal(str)       # kept for EditorWidget compat
     bond_type_changed = Signal(object)
+    ring_type_changed = Signal(str)     # key like "benzene", "ring6", …
     undo_requested = Signal()
     redo_requested = Signal()
+    cleanup_requested = Signal()
     charge_tool_requested = Signal(int)  # +1 or -1
     periodic_table_requested = Signal()
 
@@ -81,6 +101,34 @@ class EditorToolbar(QWidget):
 
         row.addWidget(self._sep())
 
+        # Ring button with dropdown for ring-type selection
+        self._ring_btn = QToolButton()
+        self._ring_btn.setText("\u232C")        # default: benzene ⌬
+        self._ring_btn.setCheckable(True)
+        self._ring_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        self._ring_btn.setPopupMode(
+            QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        self._ring_btn.clicked.connect(lambda: self._on_tool_click("ring"))
+
+        ring_menu = QMenu(self)
+        self._ring_action_group = QActionGroup(self)
+        self._ring_action_group.setExclusive(True)
+        for label, key, _n, _aro in RING_TYPES:
+            action = ring_menu.addAction(label)
+            action.setCheckable(True)
+            action.setData(key)
+            self._ring_action_group.addAction(action)
+            if key == "benzene":
+                action.setChecked(True)
+        ring_menu.triggered.connect(self._on_ring_menu_triggered)
+        self._ring_btn.setMenu(ring_menu)
+
+        self._button_group.addButton(self._ring_btn)
+        self._tool_buttons["ring"] = self._ring_btn
+        row.addWidget(self._ring_btn)
+
+        row.addWidget(self._sep())
+
         # Charge buttons (in the exclusive group so they act as tools)
         self._make_tool_button("\u2295", "charge+", row)   # ⊕
         self._make_tool_button("\u2296", "charge-", row)   # ⊖
@@ -95,6 +143,13 @@ class EditorToolbar(QWidget):
         row.addWidget(self._pt_btn)
 
         row.addStretch()
+
+        # Clean up layout
+        self._cleanup_btn = QToolButton()
+        self._cleanup_btn.setText("Clean")
+        self._cleanup_btn.setToolTip("Reformat structure layout")
+        self._cleanup_btn.clicked.connect(self.cleanup_requested.emit)
+        row.addWidget(self._cleanup_btn)
 
         # Undo / Redo
         self._undo_btn = QToolButton()
@@ -152,6 +207,15 @@ class EditorToolbar(QWidget):
         # Also activate the bond tool
         self._tool_buttons["bond"].setChecked(True)
         self.tool_changed.emit("bond")
+
+    def _on_ring_menu_triggered(self, action):
+        key = action.data()
+        # Update button label to show selected ring
+        self._ring_btn.setText(_RING_SHORT.get(key, "\u232C"))
+        self.ring_type_changed.emit(key)
+        # Also activate the ring tool
+        self._ring_btn.setChecked(True)
+        self.tool_changed.emit("ring")
 
     def set_pt_label(self, symbol: str):
         """Update the periodic-table button text to show the chosen element."""

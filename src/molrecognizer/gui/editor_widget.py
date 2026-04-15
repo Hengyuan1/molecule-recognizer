@@ -11,7 +11,7 @@ from ..core.molecule import BondType, Molecule
 from ..editor.canvas import AtomItem, BondItem, MoleculeCanvas, MoleculeScene
 from ..editor.history import HistoryManager
 from ..editor.tools import (
-    AtomTool, BondTool, ChargeTool, EraseTool, SelectTool, Tool,
+    AtomTool, BondTool, ChargeTool, EraseTool, RingTool, SelectTool, Tool,
 )
 from .periodic_table import PeriodicTableDialog
 from .toolbar import EditorToolbar
@@ -57,6 +57,8 @@ class EditorWidget(QWidget):
         self._toolbar.tool_changed.connect(self._set_tool)
         self._toolbar.element_changed.connect(self._on_element_changed)
         self._toolbar.bond_type_changed.connect(self._on_bond_type_changed)
+        self._toolbar.ring_type_changed.connect(self._on_ring_type_changed)
+        self._toolbar.cleanup_requested.connect(self._cleanup_layout)
         self._toolbar.undo_requested.connect(self._undo)
         self._toolbar.redo_requested.connect(self._redo)
         self._toolbar.charge_tool_requested.connect(self._on_charge_tool)
@@ -96,6 +98,8 @@ class EditorWidget(QWidget):
             "atom": AtomTool(scene, self._history),
             "eraser": EraseTool(scene, self._history),
             "charge": ChargeTool(scene, self._history, self._charge_delta),
+            "ring": RingTool(scene, self._history, 6, aromatic=True,
+                             tool_name="ring"),
         }
         # Propagate current element / bond type to all tools
         self._sync_tools()
@@ -124,6 +128,17 @@ class EditorWidget(QWidget):
             tool.element = self._current_element
             tool.bond_type = self._current_bond_type
 
+    def _on_ring_type_changed(self, key: str):
+        """Reconfigure the ring tool when a different ring type is selected."""
+        from .toolbar import RING_TYPES
+        ring_tool = self._tools.get("ring")
+        if isinstance(ring_tool, RingTool):
+            for _label, rkey, n, aro in RING_TYPES:
+                if rkey == key:
+                    ring_tool._n = n
+                    ring_tool._aromatic = aro
+                    break
+
     def _on_charge_tool(self, delta: int):
         self._charge_delta = delta
         if isinstance(self._tools.get("charge"), ChargeTool):
@@ -148,12 +163,30 @@ class EditorWidget(QWidget):
         and a bond, the atom wins only when it's very close.
         """
         from ..editor.canvas import HIT_RADIUS
+        from ..editor.tools import SelectTool
         scene = self._canvas.mol_scene
 
-        # Clear previous highlight
+        # Items that are part of the active selection stay highlighted
+        sel_atoms: set[int] = set()
+        sel_bonds: set[tuple[int, int]] = set()
+        tool = self._current_tool
+        if isinstance(tool, SelectTool):
+            sel_atoms = tool._selected
+            sel_bonds = tool._selected_bonds
+
+        # Clear previous highlight (unless it's part of the selection)
         if self._hover_item is not None:
+            keep = False
             try:
-                self._hover_item.set_highlighted(False)
+                from ..editor.canvas import AtomItem, BondItem
+                if isinstance(self._hover_item, AtomItem):
+                    keep = self._hover_item.atom_idx in sel_atoms
+                elif isinstance(self._hover_item, BondItem):
+                    key = (min(self._hover_item.a1_idx, self._hover_item.a2_idx),
+                           max(self._hover_item.a1_idx, self._hover_item.a2_idx))
+                    keep = key in sel_bonds
+                if not keep:
+                    self._hover_item.set_highlighted(False)
             except RuntimeError:
                 pass  # item was deleted by canvas refresh
             self._hover_item = None
@@ -211,9 +244,57 @@ class EditorWidget(QWidget):
 
         return super().eventFilter(obj, event)
 
+    def keyPressEvent(self, event):
+        """Handle Delete/Backspace to delete the current selection."""
+        from ..editor.tools import SelectTool
+        key = event.key()
+        if key in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
+            tool = self._current_tool
+            if isinstance(tool, SelectTool) and tool._selected:
+                tool.delete_selection()
+                return
+        super().keyPressEvent(event)
+
     # ------------------------------------------------------------------
     # Undo / Redo
     # ------------------------------------------------------------------
+
+    def _cleanup_layout(self):
+        """Recompute 2D coordinates using RDKit for a clean layout."""
+        from rdkit.Chem import AllChem
+        from ..editor.history import CompoundCommand, MoveAtomCommand
+
+        mol = self._molecule
+        if mol.num_atoms == 0:
+            return
+
+        # Save old positions
+        old_coords = mol.get_2d_coords()
+
+        # Use RDKit to compute optimal 2D layout
+        rdmol = mol.to_rdkit()
+        AllChem.Compute2DCoords(rdmol)
+        conf = rdmol.GetConformer(0)
+
+        # Build compound MoveAtomCommand for full undo
+        cmds = []
+        for i in range(mol.num_atoms):
+            pos = conf.GetAtomPosition(i)
+            ox, oy = old_coords[i]
+            # RDKit coords are in Angstrom-like units; match our scale
+            if ox != pos.x or oy != pos.y:
+                cmds.append(MoveAtomCommand(i, ox, oy, pos.x, pos.y))
+
+        if cmds:
+            # Execute all moves
+            for cmd in cmds:
+                cmd.execute(mol)
+            compound = CompoundCommand(cmds)
+            self._history._undo_stack.append(compound)
+            self._history._redo_stack.clear()
+            self._hover_item = None
+            self._refresh_canvas()
+            self.molecule_changed.emit()
 
     def _undo(self):
         if self._history.undo():

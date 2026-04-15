@@ -21,7 +21,9 @@ import tempfile
 
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QPoint, QRect, Qt
 from PySide6.QtGui import QColor, QGuiApplication, QPainter, QPen, QPixmap
-from PySide6.QtWidgets import QApplication, QDialog
+from PySide6.QtWidgets import (
+    QApplication, QDialog, QHBoxLayout, QPushButton, QVBoxLayout, QWidget,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -112,25 +114,17 @@ def _find_powershell() -> str | None:
 
 
 def _grab_wsl_powershell() -> QPixmap | None:
-    """WSL2 fallback: capture the Windows desktop via PowerShell.
-
-    Minimizes the Molecule Recognizer window on the Windows side (since
-    Qt ``hide()`` doesn't propagate to the Windows desktop reliably on
-    WSLg), then captures at physical resolution via ``SetProcessDPIAware``.
-    """
+    """WSL2 fallback: capture the Windows desktop via PowerShell."""
     ps = _find_powershell()
     if not ps:
         return None
 
-    # Write the script to a temp file to avoid shell-escaping issues
-    # with nested quotes (C# attributes inside PowerShell strings).
     script = """\
 Add-Type -MemberDefinition @"
 [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 "@ -Name User32 -Namespace Win32 -PassThru | Out-Null
 
-# Minimize the Molecule Recognizer window so it doesn't appear in the capture
 Get-Process | Where-Object { $_.MainWindowTitle -like "*Molecule*" } | ForEach-Object {
     [Win32.User32]::ShowWindow($_.MainWindowHandle, 6) | Out-Null
 }
@@ -149,14 +143,12 @@ $bmp.Save($tmpPath, [System.Drawing.Imaging.ImageFormat]::Png)
 $gfx.Dispose()
 $bmp.Dispose()
 
-# Restore the Molecule Recognizer window (SW_RESTORE = 9)
 Get-Process | Where-Object { $_.MainWindowTitle -like "*Molecule*" } | ForEach-Object {
     [Win32.User32]::ShowWindow($_.MainWindowHandle, 9) | Out-Null
 }
 
 Write-Output $tmpPath
 """
-    # Save script to a temp .ps1 file to avoid encoding/escaping issues
     fd, script_path = tempfile.mkstemp(suffix=".ps1")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -199,35 +191,21 @@ Write-Output $tmpPath
 # ---------------------------------------------------------------------------
 
 def grab_screen() -> QPixmap | None:
-    """Capture the full screen using the best available method.
-
-    Tries Linux-native methods first, then falls back to PowerShell on
-    WSL2.  Returns ``None`` if all methods fail.
-    """
-    # 1. Qt native (X11, macOS)
+    """Capture the full screen using the best available method."""
     pixmap = _grab_qt()
     if pixmap:
         return pixmap
-
-    # 2. grim (Wayland)
     pixmap = _grab_grim()
     if pixmap:
         return pixmap
-
-    # 3. scrot (X11)
     pixmap = _grab_scrot()
     if pixmap:
         return pixmap
-
-    # 4. gnome-screenshot
     pixmap = _grab_gnome_screenshot()
     if pixmap:
         return pixmap
-
-    # 5. PowerShell (WSL2 only)
     if is_wsl():
         return _grab_wsl_powershell()
-
     return None
 
 
@@ -249,11 +227,18 @@ def pixmap_to_png_bytes(pixmap: QPixmap) -> bytes:
 # Region-selection dialog
 # ---------------------------------------------------------------------------
 
+_HANDLE = 8          # resize-handle half-size in pixels
+_EDGE_MARGIN = 12    # hit-test margin for edges
+
+
 class ScreenshotDialog(QDialog):
     """Dialog showing a captured screenshot for region selection.
 
-    The user draws a rectangle by clicking and dragging, then releases
-    the mouse to confirm.  Press Escape to cancel.
+    The user draws a rectangle, then adjusts it by dragging edges or
+    corners.  A small ✓ / ✗ toolbar appears below the selection.
+
+    - **✓** (or Enter) — accept the selection.
+    - **✗** (or Escape) — discard and return.
 
     Usage::
 
@@ -264,18 +249,23 @@ class ScreenshotDialog(QDialog):
 
     def __init__(self, screenshot: QPixmap, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Select region to recognize  (Esc to cancel)")
+        self.setWindowTitle("Select region  (draw box, then ✓ to accept)")
         self.setCursor(Qt.CursorShape.CrossCursor)
         self.setMouseTracking(True)
 
         self._screenshot = screenshot
         self.result_pixmap: QPixmap | None = None
 
-        self._selecting = False
-        self._origin = QPoint()
-        self._current = QPoint()
+        # Selection state
+        self._sel: QRect | None = None      # current selection in display coords
+        self._drawing = False               # user is drawing a NEW box
+        self._dragging = False              # user is moving the box
+        self._resizing = False              # user is resizing the box
+        self._drag_edge = ""                # which edge/corner: "tl","t","tr",...
+        self._drag_origin = QPoint()
+        self._sel_origin = QRect()
 
-        # Scale screenshot to fit ~90% of available screen area
+        # Scale screenshot
         screen = QGuiApplication.primaryScreen()
         if screen:
             avail = screen.availableGeometry()
@@ -305,35 +295,195 @@ class ScreenshotDialog(QDialog):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.drawPixmap(0, 0, self._display_pixmap)
+        # Dim the whole image
         painter.fillRect(self.rect(), QColor(0, 0, 0, 60))
 
-        if self._selecting:
-            rect = QRect(self._origin, self._current).normalized()
-            painter.drawPixmap(rect, self._display_pixmap, rect)
+        if self._sel and self._sel.width() > 0 and self._sel.height() > 0:
+            r = self._sel.normalized()
+            # Draw the clear (un-dimmed) region
+            painter.drawPixmap(r, self._display_pixmap, r)
+            # Blue border
             painter.setPen(QPen(QColor(0, 120, 215), 2))
-            painter.drawRect(rect)
+            painter.drawRect(r)
+            # Resize handles (small squares at corners and edge midpoints)
+            painter.setBrush(QColor(0, 120, 215))
+            painter.setPen(Qt.PenStyle.NoPen)
+            for hx, hy in self._handle_positions(r):
+                painter.drawRect(hx - _HANDLE // 2, hy - _HANDLE // 2,
+                                 _HANDLE, _HANDLE)
+            # ✓ / ✗ buttons drawn as text below the selection
+            bar_y = r.bottom() + 8
+            bar_x = r.center().x() - 30
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(50, 50, 50, 200))
+            painter.drawRoundedRect(bar_x, bar_y, 60, 28, 6, 6)
+            painter.setPen(QColor(255, 255, 255))
+            from PySide6.QtGui import QFont
+            painter.setFont(QFont("Arial", 14))
+            painter.drawText(bar_x + 6, bar_y + 21, "\u2717")   # ✗
+            painter.drawText(bar_x + 36, bar_y + 21, "\u2713")  # ✓
+            self._btn_bar = QRect(bar_x, bar_y, 60, 28)
 
         painter.end()
+
+    @staticmethod
+    def _handle_positions(r: QRect):
+        """Yield (x, y) for the 8 resize handles."""
+        mx, my = r.center().x(), r.center().y()
+        return [
+            (r.left(), r.top()), (mx, r.top()), (r.right(), r.top()),
+            (r.left(), my),                       (r.right(), my),
+            (r.left(), r.bottom()), (mx, r.bottom()), (r.right(), r.bottom()),
+        ]
+
+    # -- hit testing -------------------------------------------------------
+
+    def _hit_edge(self, pos: QPoint) -> str:
+        """Return which edge/corner the point is on, or '' for interior,
+        or None if outside."""
+        if not self._sel:
+            return ""
+        r = self._sel.normalized()
+        m = _EDGE_MARGIN
+        inside = r.adjusted(-m, -m, m, m).contains(pos)
+        if not inside:
+            return ""
+        on_left = abs(pos.x() - r.left()) < m
+        on_right = abs(pos.x() - r.right()) < m
+        on_top = abs(pos.y() - r.top()) < m
+        on_bottom = abs(pos.y() - r.bottom()) < m
+        if on_top and on_left:
+            return "tl"
+        if on_top and on_right:
+            return "tr"
+        if on_bottom and on_left:
+            return "bl"
+        if on_bottom and on_right:
+            return "br"
+        if on_top:
+            return "t"
+        if on_bottom:
+            return "b"
+        if on_left:
+            return "l"
+        if on_right:
+            return "r"
+        if r.contains(pos):
+            return "move"
+        return ""
+
+    def _hit_btn(self, pos: QPoint) -> str:
+        """Return 'accept', 'reject', or '' based on ✓/✗ button click."""
+        if not hasattr(self, "_btn_bar") or not self._sel:
+            return ""
+        bar = self._btn_bar
+        if not bar.contains(pos):
+            return ""
+        if pos.x() < bar.center().x():
+            return "reject"
+        return "accept"
 
     # -- mouse handling ----------------------------------------------------
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            self._origin = event.pos()
-            self._current = event.pos()
-            self._selecting = True
-            self.update()
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        pos = event.pos()
+
+        # Check ✓/✗ buttons first
+        btn = self._hit_btn(pos)
+        if btn == "accept":
+            self._accept_selection()
+            return
+        if btn == "reject":
+            self.reject()
+            return
+
+        # If selection exists, check for resize / move
+        if self._sel:
+            edge = self._hit_edge(pos)
+            if edge == "move":
+                self._dragging = True
+                self._drag_origin = pos
+                self._sel_origin = QRect(self._sel)
+                self.setCursor(Qt.CursorShape.SizeAllCursor)
+                return
+            if edge:
+                self._resizing = True
+                self._drag_edge = edge
+                self._drag_origin = pos
+                self._sel_origin = QRect(self._sel)
+                return
+
+        # Start drawing a new box
+        self._sel = QRect(pos, pos)
+        self._drawing = True
+        self.setCursor(Qt.CursorShape.CrossCursor)
+        self.update()
 
     def mouseMoveEvent(self, event):
-        if self._selecting:
-            self._current = event.pos()
+        pos = event.pos()
+
+        if self._drawing:
+            self._sel = QRect(self._drag_origin if hasattr(self, '_draw_start') else self._sel.topLeft(), pos)
+            # Keep _sel with the original top-left during drawing
+            self._sel.setBottomRight(pos)
             self.update()
+            return
+
+        if self._dragging:
+            delta = pos - self._drag_origin
+            self._sel = self._sel_origin.translated(delta)
+            self.update()
+            return
+
+        if self._resizing:
+            r = QRect(self._sel_origin)
+            dx = pos.x() - self._drag_origin.x()
+            dy = pos.y() - self._drag_origin.y()
+            e = self._drag_edge
+            if "l" in e:
+                r.setLeft(r.left() + dx)
+            if "r" in e:
+                r.setRight(r.right() + dx)
+            if "t" in e:
+                r.setTop(r.top() + dy)
+            if "b" in e:
+                r.setBottom(r.bottom() + dy)
+            self._sel = r
+            self.update()
+            return
+
+        # Update cursor based on hover
+        if self._sel:
+            edge = self._hit_edge(pos)
+            cursors = {
+                "tl": Qt.CursorShape.SizeFDiagCursor,
+                "br": Qt.CursorShape.SizeFDiagCursor,
+                "tr": Qt.CursorShape.SizeBDiagCursor,
+                "bl": Qt.CursorShape.SizeBDiagCursor,
+                "t": Qt.CursorShape.SizeVerCursor,
+                "b": Qt.CursorShape.SizeVerCursor,
+                "l": Qt.CursorShape.SizeHorCursor,
+                "r": Qt.CursorShape.SizeHorCursor,
+                "move": Qt.CursorShape.SizeAllCursor,
+            }
+            self.setCursor(cursors.get(edge, Qt.CursorShape.CrossCursor))
 
     def mouseReleaseEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton and self._selecting:
-            self._selecting = False
-            rect = QRect(self._origin, self._current).normalized()
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        if self._drawing:
+            self._drawing = False
+            if self._sel:
+                self._sel = self._sel.normalized()
+            self.update()
+        self._dragging = False
+        self._resizing = False
 
+    def _accept_selection(self):
+        if self._sel:
+            rect = self._sel.normalized()
             if rect.width() > 5 and rect.height() > 5:
                 inv = 1.0 / self._scale
                 src_rect = QRect(
@@ -341,11 +491,13 @@ class ScreenshotDialog(QDialog):
                     int(rect.width() * inv), int(rect.height() * inv),
                 )
                 self.result_pixmap = self._screenshot.copy(src_rect)
-
-            self.accept()
+        self.accept()
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key.Key_Escape:
+        key = event.key()
+        if key == Qt.Key.Key_Escape:
             self.reject()
+        elif key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            self._accept_selection()
         else:
             super().keyPressEvent(event)

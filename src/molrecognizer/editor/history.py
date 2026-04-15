@@ -208,6 +208,51 @@ class ChangeChargeCommand(Command):
         return f"Change charge on atom {self.idx} by {sign}{self.delta}"
 
 
+class MoveAtomCommand(Command):
+    def __init__(self, idx: int, old_x: float, old_y: float,
+                 new_x: float, new_y: float):
+        self.idx = idx
+        self.old_x = old_x
+        self.old_y = old_y
+        self.new_x = new_x
+        self.new_y = new_y
+
+    def execute(self, mol: Molecule) -> None:
+        mol.set_atom_position(self.idx, self.new_x, self.new_y)
+
+    def undo(self, mol: Molecule) -> None:
+        mol.set_atom_position(self.idx, self.old_x, self.old_y)
+
+    def description(self) -> str:
+        return f"Move atom {self.idx}"
+
+
+class BulkDeleteCommand(Command):
+    """Delete a set of atoms (and their bonds) with correct undo.
+
+    Saves a full copy of the underlying RDKit mol so that undo restores
+    all atoms, bonds, positions, and charges exactly — avoiding the
+    index-shifting problems of individual RemoveAtomCommands.
+    """
+
+    def __init__(self, indices: list[int]):
+        self._indices = sorted(indices, reverse=True)
+        self._saved_rwmol = None  # deep copy before deletion
+
+    def execute(self, mol: Molecule) -> None:
+        from rdkit import Chem
+        self._saved_rwmol = Chem.RWMol(mol._mol)
+        for idx in self._indices:
+            mol.remove_atom(idx)
+
+    def undo(self, mol: Molecule) -> None:
+        from rdkit import Chem
+        mol._mol = Chem.RWMol(self._saved_rwmol)
+
+    def description(self) -> str:
+        return f"Delete {len(self._indices)} atoms"
+
+
 class HistoryManager:
     """Manages an undo/redo stack of commands against a Molecule."""
 

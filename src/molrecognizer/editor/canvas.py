@@ -76,6 +76,11 @@ class AtomItem(QGraphicsEllipseItem):
         self._bg_rect: QGraphicsRectItem | None = None
         self._label_items: list[QGraphicsSimpleTextItem] = []
         self.label_width: float = 0.0   # used by BondItem for shortening
+        # Highlight overlay — child item above bg rect and text
+        self._highlight = QGraphicsEllipseItem(-r, -r, 2 * r, 2 * r, self)
+        self._highlight.setPen(QPen(Qt.PenStyle.NoPen))
+        self._highlight.setBrush(QBrush(Qt.GlobalColor.transparent))
+        self._highlight.setZValue(15)   # above bg (11) and text (12)
         self._build_label()
 
     @property
@@ -103,8 +108,8 @@ class AtomItem(QGraphicsEllipseItem):
             return
 
         color = QColor(ELEMENT_COLORS.get(self.element, "#DD44AA"))
-        main_font = QFont("Arial", 12, QFont.Weight.Bold)
-        small_font = QFont("Arial", 8, QFont.Weight.Bold)
+        main_font = QFont("Arial", 16, QFont.Weight.Bold)
+        small_font = QFont("Arial", 11, QFont.Weight.Bold)
 
         # Measure main font metrics for vertical positioning
         # (use a throwaway item to get bounding rect height)
@@ -170,11 +175,11 @@ class AtomItem(QGraphicsEllipseItem):
 
     def set_highlighted(self, highlighted: bool):
         if highlighted:
-            self.setPen(QPen(QColor("#00AAFF"), 2))
-            self.setBrush(QBrush(QColor(0, 170, 255, 40)))
+            self._highlight.setPen(QPen(QColor("#00AAFF"), 2))
+            self._highlight.setBrush(QBrush(QColor(0, 170, 255, 40)))
         else:
-            self.setPen(QPen(Qt.PenStyle.NoPen))
-            self.setBrush(QBrush(Qt.GlobalColor.transparent))
+            self._highlight.setPen(QPen(Qt.PenStyle.NoPen))
+            self._highlight.setBrush(QBrush(Qt.GlobalColor.transparent))
 
     def update_element(self, element: str):
         self.element = element
@@ -497,10 +502,15 @@ class MoleculeCanvas(QGraphicsView):
     def load_molecule(self, mol: Molecule):
         self._scene.load_molecule(mol)
         # Expand scene rect so there is room to pan/scroll around
-        br = self._scene.itemsBoundingRect().adjusted(-200, -200, 200, 200)
+        br = self._scene.itemsBoundingRect().adjusted(-500, -500, 500, 500)
         self._scene.setSceneRect(br)
-        self.fitInView(self._scene.itemsBoundingRect().adjusted(-50, -50, 50, 50),
-                       Qt.AspectRatioMode.KeepAspectRatio)
+        # Use 1:1 pixel scale (SCALE px per coordinate unit) and centre
+        # on the molecule.  This gives a comfortable default size; the
+        # user can zoom with the scroll wheel.
+        self.resetTransform()
+        items_br = self._scene.itemsBoundingRect()
+        if not items_br.isEmpty():
+            self.centerOn(items_br.center())
 
     # -- zoom --------------------------------------------------------------
 
