@@ -1,6 +1,6 @@
 # Molecule Recognizer
 
-Recognize molecular structures from images (screenshots, papers, web pages), convert them to SMILES strings, and interactively edit the recognized structure. Built for computational chemistry workflows.
+Recognize molecular structures from images (screenshots, papers, web pages), convert them to SMILES strings, interactively edit the recognized structure, and save the 3D structure in xyz format. Built for computational chemistry workflows.
 
 ![UI Demo](docs/media/UI-demo.png)
 
