@@ -13,7 +13,8 @@ Recognize molecular structures from images (screenshots, papers, web pages), con
     - Zig-zag chain pattern when extending a chain of single bonds
     - Clash avoidance: angular sweep finds the best direction at normal bond length before resorting to longer bonds
   - Bond tool has a dropdown menu (▾) for selecting Single/Double/Triple/Wedge/Dash bond type
-  - Wedge (▶ filled triangle) and Dash (dashed wedge) stereo bonds for stereochemistry display; stereo preserved from SMILES and image recognition
+  - Wedge (▶ filled triangle) and Dash (dashed wedge) stereo bonds for stereochemistry display; stereo preserved from SMILES, image recognition, and manually-drawn wedge/dash bonds
+  - In Bond mode with Wedge/Dash selected, clicking a bond sets it to that type (click again to toggle back to single)
   - Click a bond to cycle its type (single → double → triple → single)
   - Hover highlighting on atoms and bonds for visual feedback
   - Formal charge tools ⊕/⊖ (increase/decrease)
@@ -23,12 +24,16 @@ Recognize molecular structures from images (screenshots, papers, web pages), con
   - Pan (middle/right-mouse drag) and zoom (scroll wheel)
   - Ring tools (⌬ ⬡ ⬠ □ △) — draw benzene, 6/5/4/3-membered rings on atoms, bonds (fused), or empty canvas; dropdown selector with ghost preview on hover
   - Box selection — drag on empty space to select atoms and bonds; drag the selection to move it as a group; Delete key removes the selection
-  - Clean button — recompute 2D layout via RDKit for a tidy structure after manual edits
+  - Format button — recompute 2D layout via RDKit for a tidy structure after manual edits
+  - Clean button — clear the canvas, loaded images, and 3D viewer to start fresh
   - Full undo/redo — adding a bonded atom undoes as a single step (atom + bond together); bulk delete uses snapshot-based undo for correctness
 - **Kekulé structure display** — Aromatic systems shown as conjugated single/double bonds (not aromatic notation) for easy valence verification. Implicit Hs displayed on heteroatoms with subscript counts and superscript charges (e.g. NH₂, OH, SH, N⁺, NH₃⁺). Isolated atoms show all Hs (e.g. CH₄, NH₃).
 - **Smart element substitution** — Changing an atom to a lower-valence element automatically downgrades bond orders (e.g. C→S in a ring converts double bonds to single). Undo fully restores original bond types.
 - **Valence checking** — Automatic validation with over-valence warnings; hydrogen counts derived via RDKit sanitization with valence-table fallback for robustness with hypervalent atoms
-- **SMILES export** — Live SMILES conversion as you edit, copy to clipboard or save to file; auto-inferred charges reflected in SMILES (e.g. `[N+]`)
+- **Stereochemistry** — Wedge/dash bonds correctly encode chirality for both SMILES-loaded and manually-drawn structures; chiral tags derived from 2D bond directions; stereo preserved through SMILES export and 3D generation
+- **3D structure viewer** — Generate and view 3D conformers (RDKit ETKDG + MMFF optimization) in an interactive ball-and-stick viewer; left-drag to rotate, right-drag to pan, scroll to zoom; double-click the preview to open a larger viewer window; double/triple bonds drawn explicitly
+- **XYZ export** — Save 3D coordinates in XYZ format; dropdown to choose Angstrom (default) or Bohr units
+- **SMILES export** — Live SMILES conversion as you edit, copy to clipboard or save to file; auto-inferred charges reflected in SMILES (e.g. `[N+]`); chirality (`@`/`@@`) and E/Z geometry preserved
 - **Logging** — All warnings/errors (Python and C++/RDKit/Qt) written to `~/.molrecognizer/molrecognizer.log` instead of the terminal; log refreshed on each run; C-level stderr redirected after display server init to avoid cursor issues on WSLg
 - **Python API** — Use programmatically from other Python packages
 
@@ -100,12 +105,13 @@ molrecognizer
 
 **Editing tools:**
 - **Select** — Click atom to substitute element; drag atom to move it; drag empty space to box-select; drag selection to move group; click bond to cycle type
-- **Bond** (with ▾ dropdown: Single/Double/Triple/Wedge/Dash) — Click atom to add a bonded atom (VSEPR-aware direction); click bond to cycle type; drag atom to create bond
+- **Bond** (with ▾ dropdown: Single/Double/Triple/Wedge/Dash) — Click atom to add a bonded atom (VSEPR-aware direction); click bond to cycle type (or set to wedge/dash when selected); drag atom to create bond
 - **Atom** — Click empty space to add an atom; click existing atom to change its element; drag atom to create bond
 - **Eraser** — Click an atom or bond to delete it; drag empty space to box-select and bulk-delete
 - **Ring** (⌬ with ▾ dropdown: Benzene/6-ring/5-ring/4-ring/3-ring) — Click atom or bond to attach ring; click empty space to place standalone ring; drag to orient
 - **Charge ⊕/⊖** — Click an atom to increase or decrease its formal charge
-- **Clean** — Reformat structure with optimal 2D layout (undoable)
+- **Format** — Reformat structure with optimal 2D layout (undoable)
+- **Clean** — Clear canvas, loaded images, and 3D viewer
 - **PT** — Opens a periodic table dialog to pick any element (button shows current selection)
 
 **Canvas navigation:**
@@ -170,8 +176,9 @@ molecule-recognizer/
 │   ├── __init__.py          # Public API
 │   ├── core/
 │   │   ├── molecule.py      # Molecule class (RDKit wrapper)
-│   │   ├── smiles.py        # SMILES ↔ Molecule conversion
+│   │   ├── smiles.py        # SMILES ↔ Molecule conversion (with stereo)
 │   │   ├── valence.py       # Valence checking
+│   │   ├── xyz.py           # 3D conformer generation & XYZ export
 │   │   └── recognizer.py    # MolScribe integration
 │   ├── editor/
 │   │   ├── canvas.py        # QGraphicsView molecular canvas (skeletal rendering)
@@ -183,6 +190,7 @@ molecule-recognizer/
 │       ├── screenshot.py    # Screen capture (grim/Qt/PowerShell fallback)
 │       ├── editor_widget.py # Editor integration
 │       ├── toolbar.py       # Tool bar
+│       ├── viewer3d.py      # Interactive 3D ball-and-stick viewer
 │       └── periodic_table.py # Periodic table dialog
 └── tests/
 ```

@@ -55,7 +55,8 @@ class EditorToolbar(QWidget):
     ring_type_changed = Signal(str)     # key like "benzene", "ring6", …
     undo_requested = Signal()
     redo_requested = Signal()
-    cleanup_requested = Signal()
+    cleanup_requested = Signal()   # reformat layout
+    clear_requested = Signal()     # clear canvas + images
     charge_tool_requested = Signal(int)  # +1 or -1
     periodic_table_requested = Signal()
 
@@ -157,12 +158,19 @@ class EditorToolbar(QWidget):
 
         row.addStretch()
 
-        # Clean up layout
-        self._cleanup_btn = QToolButton()
-        self._cleanup_btn.setText("Clean")
-        self._cleanup_btn.setToolTip("Reformat structure layout")
-        self._cleanup_btn.clicked.connect(self.cleanup_requested.emit)
-        row.addWidget(self._cleanup_btn)
+        # Format (recompute 2D layout)
+        self._format_btn = QToolButton()
+        self._format_btn.setText("Format")
+        self._format_btn.setToolTip("Reformat structure layout")
+        self._format_btn.clicked.connect(self.cleanup_requested.emit)
+        row.addWidget(self._format_btn)
+
+        # Clean (clear canvas)
+        self._clear_btn = QToolButton()
+        self._clear_btn.setText("Clean")
+        self._clear_btn.setToolTip("Clear canvas and loaded images")
+        self._clear_btn.clicked.connect(self.clear_requested.emit)
+        row.addWidget(self._clear_btn)
 
         # Undo / Redo
         self._undo_btn = QToolButton()

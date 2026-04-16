@@ -62,6 +62,15 @@ QMenu::item:selected {
     background-color: #e8f0fe;
     color: #1a73e8;
 }
+QMenu::item:checked {
+    border: 2px solid #1a73e8;
+    background-color: #f0f5ff;
+    color: #1a73e8;
+}
+QMenu::item:checked:selected {
+    border: 2px solid #1a73e8;
+    background-color: #e8f0fe;
+}
 
 /* ---- Toolbar container ---- */
 QWidget#toolbar_container {
@@ -99,6 +108,21 @@ QToolButton::menu-indicator {
     subcontrol-origin: padding;
     width: 12px;
     padding-right: 2px;
+}
+
+/* Save xyz button (left panel) */
+QToolButton#save_xyz_btn {
+    background-color: #ffffff;
+    color: #1a73e8;
+    border: 1.5px solid #1a73e8;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 13px;
+    font-weight: 600;
+    min-height: 24px;
+}
+QToolButton#save_xyz_btn:hover {
+    background-color: #e8f0fe;
 }
 
 /* ---- Combo boxes ---- */

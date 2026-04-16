@@ -30,10 +30,12 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMenu,
     QMessageBox,
     QPushButton,
     QSplitter,
     QStatusBar,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -43,6 +45,7 @@ from ..core.smiles import molecule_to_smiles, smiles_to_molecule
 from ..core.valence import check_valence
 from .editor_widget import EditorWidget
 from .screenshot import ScreenshotDialog, grab_screen, is_wsl, pixmap_to_png_bytes
+from .viewer3d import Viewer3DWidget
 
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
@@ -155,6 +158,8 @@ class LeftPanel(QWidget):
     open_image = Signal()
     screenshot = Signal()
     load_smiles = Signal()
+    render_3d = Signal()
+    save_xyz = Signal(str)  # "angstrom" or "bohr"
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -203,6 +208,40 @@ class LeftPanel(QWidget):
         btn_smiles.setObjectName("action_btn_secondary")
         btn_smiles.clicked.connect(self.load_smiles.emit)
         layout.addWidget(btn_smiles)
+
+        # ---- 3D Structure section ----
+        title_3d = QLabel("3D Structure")
+        title_3d.setObjectName("panel_title")
+        layout.addWidget(title_3d)
+
+        self._viewer_3d = Viewer3DWidget()
+        self._viewer_3d.setFixedHeight(160)
+        layout.addWidget(self._viewer_3d)
+
+        # Render + Save xyz row
+        row_3d = QHBoxLayout()
+        row_3d.setSpacing(6)
+
+        btn_render = QPushButton("Render")
+        btn_render.setObjectName("action_btn")
+        btn_render.clicked.connect(self.render_3d.emit)
+        row_3d.addWidget(btn_render)
+
+        self._xyz_btn = QToolButton()
+        self._xyz_btn.setText("Save xyz")
+        self._xyz_btn.setObjectName("save_xyz_btn")
+        self._xyz_btn.setPopupMode(
+            QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        xyz_menu = QMenu(self)
+        act_ang = xyz_menu.addAction("Angstrom")
+        act_bohr = xyz_menu.addAction("Bohr")
+        act_ang.triggered.connect(lambda: self.save_xyz.emit("angstrom"))
+        act_bohr.triggered.connect(lambda: self.save_xyz.emit("bohr"))
+        self._xyz_btn.setMenu(xyz_menu)
+        self._xyz_btn.clicked.connect(lambda: self.save_xyz.emit("angstrom"))
+        row_3d.addWidget(self._xyz_btn)
+
+        layout.addLayout(row_3d)
 
         layout.addStretch()
 
@@ -306,6 +345,7 @@ class MainWindow(QMainWindow):
         self._molecule: Molecule | None = None
         self._worker: RecognitionWorker | None = None
         self._source_pixmap: QPixmap | None = None
+        self._mol_3d = None  # RDKit Mol with 3D conformer (for xyz export)
 
         self._setup_ui()
         self._setup_statusbar()
@@ -347,10 +387,13 @@ class MainWindow(QMainWindow):
         self._left_panel.open_image.connect(self._on_open_image)
         self._left_panel.screenshot.connect(self._on_screenshot)
         self._left_panel.load_smiles.connect(self._on_load_smiles)
+        self._left_panel.render_3d.connect(self._on_render_3d)
+        self._left_panel.save_xyz.connect(self._on_save_xyz)
         splitter.addWidget(self._left_panel)
 
         self._editor = EditorWidget()
         self._editor.molecule_changed.connect(self._on_editor_changed)
+        self._editor.clear_all_requested.connect(self._on_clear_all)
         splitter.addWidget(self._editor)
 
         self._palette = ElementPalette()
@@ -513,6 +556,17 @@ class MainWindow(QMainWindow):
         self._molecule = self._editor.molecule
         self._update_info()
 
+    def _on_clear_all(self):
+        """Clear the canvas, loaded images, 3D viewer, and SMILES."""
+        self._molecule = None
+        self._mol_3d = None
+        self._source_pixmap = None
+        self._editor.load_molecule(Molecule())
+        self._left_panel.clear_preview()
+        self._left_panel._viewer_3d.clear()
+        self._bottom_bar.clear()
+        self.statusBar().showMessage("Canvas cleared", 3000)
+
     def _update_info(self):
         if self._molecule is None:
             self._bottom_bar.clear()
@@ -529,6 +583,49 @@ class MainWindow(QMainWindow):
             self._bottom_bar.set_valence_warnings(warnings)
         else:
             self._bottom_bar.set_valence_ok()
+
+    # ------------------------------------------------------------------
+    # 3D rendering / XYZ export
+    # ------------------------------------------------------------------
+
+    def _on_render_3d(self):
+        if self._molecule is None or self._molecule.num_atoms == 0:
+            self.statusBar().showMessage("No molecule to render", 3000)
+            return
+        try:
+            smiles = molecule_to_smiles(self._molecule)
+        except Exception:
+            self.statusBar().showMessage("Cannot generate SMILES for 3D", 3000)
+            return
+        try:
+            from ..core.xyz import generate_3d, mol_to_atoms_bonds
+            self._mol_3d = generate_3d(smiles)
+            atoms, bonds = mol_to_atoms_bonds(self._mol_3d)
+            self._left_panel._viewer_3d.set_molecule(atoms, bonds)
+            self.statusBar().showMessage("3D structure rendered", 3000)
+        except Exception as e:
+            self.statusBar().showMessage(f"3D generation failed: {e}", 5000)
+
+    def _on_save_xyz(self, unit: str):
+        if self._mol_3d is None:
+            self.statusBar().showMessage(
+                "Render 3D first before saving xyz", 3000)
+            return
+        default_name = "molecule.xyz"
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save XYZ", default_name,
+            "XYZ Files (*.xyz);;All Files (*)",
+        )
+        if path:
+            try:
+                from ..core.xyz import mol_to_xyz_string
+                xyz_str = mol_to_xyz_string(self._mol_3d, unit=unit)
+                with open(path, "w") as f:
+                    f.write(xyz_str)
+                self.statusBar().showMessage(
+                    f"Saved xyz ({unit}) to {path}", 3000)
+            except Exception as e:
+                self.statusBar().showMessage(f"Save failed: {e}", 5000)
 
     # ------------------------------------------------------------------
     # Window close

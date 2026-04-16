@@ -39,19 +39,52 @@ def molecule_to_smiles(mol: Molecule) -> str:
         inferred[i] = infer_formal_charge(info.element, bos,
                                           info.formal_charge)
 
-    src = mol.to_rdkit()
+    src = Chem.RWMol(mol.to_rdkit())
+    # Clear NoImplicit so RDKit sees implicit Hs when determining chirality
+    # for atoms with fewer than 4 explicit bonds (the common drawing case).
+    for _a in src.GetAtoms():
+        _a.SetNoImplicit(False)
+    try:
+        src.UpdatePropertyCache(strict=False)
+    except Exception:
+        pass
+    # RDKit's AssignChiralTypesFromBondDirs rejects atoms that carry both
+    # a wedge and a dash when an implicit H is present ("rule 1a").  One
+    # stereo indicator is sufficient, so drop the dash when a wedge exists.
+    for _a in src.GetAtoms():
+        has_wedge = False
+        dash_bonds = []
+        for _b in _a.GetBonds():
+            if _b.GetBeginAtomIdx() == _a.GetIdx():
+                _bd = _b.GetBondDir()
+                if _bd == Chem.rdchem.BondDir.BEGINWEDGE:
+                    has_wedge = True
+                elif _bd == Chem.rdchem.BondDir.BEGINDASH:
+                    dash_bonds.append(_b)
+        if has_wedge and dash_bonds:
+            for _b in dash_bonds:
+                _b.SetBondDir(Chem.rdchem.BondDir.NONE)
+    # Derive chiral tags from wedge/dash bond directions + 2D coords
+    # so that manually-drawn stereo bonds produce correct SMILES.
+    Chem.AssignChiralTypesFromBondDirs(src)
     fresh = Chem.RWMol()
     for i in range(src.GetNumAtoms()):
         a = src.GetAtomWithIdx(i)
         na = Chem.Atom(a.GetAtomicNum())
         na.SetFormalCharge(inferred.get(i, a.GetFormalCharge()))
+        na.SetChiralTag(a.GetChiralTag())
         # Keep explicit Hs that are required for aromaticity (pyrrole N, etc.)
         if a.GetNumExplicitHs() > 0:
             na.SetNumExplicitHs(a.GetNumExplicitHs())
         fresh.AddAtom(na)
     for bond in src.GetBonds():
-        fresh.AddBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx(),
-                      bond.GetBondType())
+        bi = fresh.AddBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx(),
+                           bond.GetBondType()) - 1
+        new_bond = fresh.GetBondWithIdx(bi)
+        new_bond.SetBondDir(bond.GetBondDir())
+        stereo = bond.GetStereo()
+        if stereo != Chem.BondStereo.STEREONONE:
+            new_bond.SetStereo(stereo)
     try:
         Chem.SanitizeMol(fresh)
     except Exception:

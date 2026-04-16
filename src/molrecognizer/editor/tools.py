@@ -525,6 +525,21 @@ class BondTool(Tool):
 
     name = "bond"
 
+    def _cycle_bond(self, bond_item: BondItem):
+        """When wedge/dash is selected, set the bond to that type
+        (or toggle back to single).  Otherwise fall through to the
+        normal single → double → triple cycle."""
+        if self.bond_type in (BondType.WEDGE, BondType.DASH):
+            current = bond_item.bond_type
+            new_type = (BondType.SINGLE if current == self.bond_type
+                        else self.bond_type)
+            self._history.execute(
+                ChangeBondTypeCommand(
+                    bond_item.a1_idx, bond_item.a2_idx, new_type)
+            )
+        else:
+            super()._cycle_bond(bond_item)
+
     def _on_atom_click(self, atom_idx: int) -> None:
         import math
         from ..core.valence import STANDARD_VALENCES

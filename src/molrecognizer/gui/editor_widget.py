@@ -25,6 +25,7 @@ class EditorWidget(QWidget):
     """
 
     molecule_changed = Signal()
+    clear_all_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -59,6 +60,7 @@ class EditorWidget(QWidget):
         self._toolbar.bond_type_changed.connect(self._on_bond_type_changed)
         self._toolbar.ring_type_changed.connect(self._on_ring_type_changed)
         self._toolbar.cleanup_requested.connect(self._cleanup_layout)
+        self._toolbar.clear_requested.connect(self.clear_all_requested.emit)
         self._toolbar.undo_requested.connect(self._undo)
         self._toolbar.redo_requested.connect(self._redo)
         self._toolbar.charge_tool_requested.connect(self._on_charge_tool)
