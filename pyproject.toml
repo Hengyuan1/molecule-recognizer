@@ -3,7 +3,21 @@ name = "molrecognizer"
 version = "0.1.0"
 description = "Recognize molecular structures from images, convert to SMILES, and edit interactively"
 readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.10"
+authors = [
+    { name = "Hengyuan Shen" },
+]
+keywords = ["chemistry", "molecules", "SMILES", "RDKit", "structure-recognition", "cheminformatics"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
 dependencies = [
     "rdkit-pypi",
     "Pillow",
@@ -12,6 +26,11 @@ dependencies = [
     "huggingface-hub",
     "numpy<2",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Hengyuan1/molecule-recognizer"
+Repository = "https://github.com/Hengyuan1/molecule-recognizer"
+"Bug Tracker" = "https://github.com/Hengyuan1/molecule-recognizer/issues"
 
 [project.scripts]
 molrecognizer = "molrecognizer.gui.app:main"

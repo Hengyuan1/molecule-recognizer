@@ -41,7 +41,7 @@ Recognize molecular structures from images (screenshots, papers, web pages), con
 
 ```bash
 # Clone the repository
-git clone <repo-url>
+git clone https://github.com/Hengyuan1/molecule-recognizer.git
 cd molecule-recognizer
 
 # Install with uv (recommended)
