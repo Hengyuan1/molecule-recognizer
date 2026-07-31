@@ -44,7 +44,9 @@ from ..core.molecule import Molecule
 from ..core.smiles import molecule_to_smiles, smiles_to_molecule
 from ..core.valence import check_valence
 from .editor_widget import EditorWidget
-from .screenshot import ScreenshotDialog, grab_screen, is_wsl, pixmap_to_png_bytes
+from .screenshot import (
+    GlobalScreenshotHotkey, ScreenshotDialog, grab_screen, pixmap_to_png_bytes,
+)
 from .viewer3d import Viewer3DWidget
 
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
@@ -71,7 +73,7 @@ ELEMENT_PALETTE = [
 # ======================================================================
 
 class RecognitionWorker(QThread):
-    finished = Signal(object)
+    result_ready = Signal(object)
     status = Signal(str)
 
     def __init__(self, image: Image.Image, parent=None):
@@ -80,17 +82,13 @@ class RecognitionWorker(QThread):
 
     def run(self):
         try:
-            from ..core.recognizer import MoleculeRecognizer, _model_cache
-            if "cpu" not in _model_cache:
-                self.status.emit("Loading model into memory (~6 s, once per session)…")
-            else:
-                self.status.emit("Recognizing structure…")
-            recognizer = MoleculeRecognizer(device="cpu")
-            self.status.emit("Recognizing structure…")
+            from ..core.recognizer import MoleculeRecognizer
+            self.status.emit("Recognizing structure with OSRA…")
+            recognizer = MoleculeRecognizer()
             mol = recognizer.recognize(self._image)
-            self.finished.emit(mol)
+            self.result_ready.emit(mol)
         except Exception as e:
-            self.finished.emit(e)
+            self.result_ready.emit(e)
 
 
 # ======================================================================
@@ -160,6 +158,7 @@ class LeftPanel(QWidget):
     load_smiles = Signal()
     render_3d = Signal()
     save_xyz = Signal(str)  # "angstrom" or "bohr"
+    copy_xyz = Signal(str)  # "angstrom" or "bohr"
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -218,7 +217,7 @@ class LeftPanel(QWidget):
         self._viewer_3d.setFixedHeight(160)
         layout.addWidget(self._viewer_3d)
 
-        # Render + Save xyz row
+        # Render + XYZ actions
         row_3d = QHBoxLayout()
         row_3d.setSpacing(6)
 
@@ -226,6 +225,9 @@ class LeftPanel(QWidget):
         btn_render.setObjectName("action_btn")
         btn_render.clicked.connect(self.render_3d.emit)
         row_3d.addWidget(btn_render)
+
+        xyz_actions = QVBoxLayout()
+        xyz_actions.setSpacing(6)
 
         self._xyz_btn = QToolButton()
         self._xyz_btn.setText("Save xyz")
@@ -239,7 +241,24 @@ class LeftPanel(QWidget):
         act_bohr.triggered.connect(lambda: self.save_xyz.emit("bohr"))
         self._xyz_btn.setMenu(xyz_menu)
         self._xyz_btn.clicked.connect(lambda: self.save_xyz.emit("angstrom"))
-        row_3d.addWidget(self._xyz_btn)
+        xyz_actions.addWidget(self._xyz_btn)
+
+        self._copy_xyz_btn = QToolButton()
+        self._copy_xyz_btn.setText("Copy xyz")
+        self._copy_xyz_btn.setObjectName("copy_xyz_btn")
+        self._copy_xyz_btn.setPopupMode(
+            QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        copy_xyz_menu = QMenu(self)
+        copy_ang = copy_xyz_menu.addAction("Angstrom")
+        copy_bohr = copy_xyz_menu.addAction("Bohr")
+        copy_ang.triggered.connect(lambda: self.copy_xyz.emit("angstrom"))
+        copy_bohr.triggered.connect(lambda: self.copy_xyz.emit("bohr"))
+        self._copy_xyz_btn.setMenu(copy_xyz_menu)
+        self._copy_xyz_btn.clicked.connect(
+            lambda: self.copy_xyz.emit("angstrom"))
+        xyz_actions.addWidget(self._copy_xyz_btn)
+
+        row_3d.addLayout(xyz_actions)
 
         layout.addLayout(row_3d)
 
@@ -346,10 +365,14 @@ class MainWindow(QMainWindow):
         self._worker: RecognitionWorker | None = None
         self._source_pixmap: QPixmap | None = None
         self._mol_3d = None  # RDKit Mol with 3D conformer (for xyz export)
+        self._was_maximized_before_screenshot = False
+        self._screenshot_pending = False
 
         self._setup_ui()
         self._setup_statusbar()
         self._setup_shortcuts()
+        self._global_hotkey = GlobalScreenshotHotkey(self)
+        self._global_hotkey.activated.connect(self._on_screenshot)
 
     # ------------------------------------------------------------------
     # UI setup
@@ -361,6 +384,8 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence.StandardKey.Open, self,
                   activated=self._on_open_image)
         QShortcut(QKeySequence("Ctrl+Shift+S"), self,
+                  activated=self._on_screenshot)
+        QShortcut(QKeySequence("Alt+Y"), self,
                   activated=self._on_screenshot)
         QShortcut(QKeySequence("Ctrl+E"), self,
                   activated=self._on_export_smiles)
@@ -389,6 +414,7 @@ class MainWindow(QMainWindow):
         self._left_panel.load_smiles.connect(self._on_load_smiles)
         self._left_panel.render_3d.connect(self._on_render_3d)
         self._left_panel.save_xyz.connect(self._on_save_xyz)
+        self._left_panel.copy_xyz.connect(self._on_copy_xyz)
         splitter.addWidget(self._left_panel)
 
         self._editor = EditorWidget()
@@ -442,7 +468,13 @@ class MainWindow(QMainWindow):
             self._recognize_image(img)
 
     def _on_screenshot(self):
+        # A focused WSL window can receive both Qt's shortcut and Windows'
+        # registered hotkey for the same keypress.
+        if self._screenshot_pending:
+            return
+        self._screenshot_pending = True
         self.statusBar().showMessage("Capturing screen…")
+        self._was_maximized_before_screenshot = self.isMaximized()
         self.hide()
         QApplication.processEvents()
         QTimer.singleShot(300, self._do_screenshot)
@@ -451,9 +483,7 @@ class MainWindow(QMainWindow):
         screenshot = grab_screen()
 
         if screenshot is None or screenshot.isNull():
-            self.show()
-            self.raise_()
-            self.activateWindow()
+            self._restore_after_screenshot()
             self.statusBar().showMessage("Screenshot failed", 5000)
             return
 
@@ -464,12 +494,7 @@ class MainWindow(QMainWindow):
         result = dlg.exec()
 
         # Always restore main window after dialog closes
-        self.show()
-        self.showNormal()
-        self.raise_()
-        self.activateWindow()
-        self.unsetCursor()
-        QApplication.processEvents()
+        self._restore_after_screenshot()
 
         if result == QDialog.DialogCode.Accepted and dlg.result_pixmap:
             self._source_pixmap = dlg.result_pixmap
@@ -483,6 +508,20 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage(f"Screenshot error: {e}", 5000)
         else:
             self.statusBar().showMessage("Screenshot cancelled", 3000)
+
+    def _restore_after_screenshot(self):
+        """Restore the window without losing its pre-capture state."""
+        if self._was_maximized_before_screenshot:
+            self.showMaximized()
+        else:
+            self.showNormal()
+        self.raise_()
+        self.activateWindow()
+        self.unsetCursor()
+        QApplication.processEvents()
+        self._screenshot_pending = False
+        QTimer.singleShot(0, self._refresh_display)
+        QTimer.singleShot(150, self._refresh_display)
 
     def _on_load_smiles(self):
         smiles, ok = QInputDialog.getText(
@@ -529,7 +568,8 @@ class MainWindow(QMainWindow):
         self._worker.status.connect(
             lambda msg: self.statusBar().showMessage(msg)
         )
-        self._worker.finished.connect(self._on_recognition_done)
+        self._worker.result_ready.connect(self._on_recognition_done)
+        self._worker.finished.connect(self._on_worker_finished)
         self._worker.start()
 
     def _on_recognition_done(self, result):
@@ -543,6 +583,12 @@ class MainWindow(QMainWindow):
         self._set_molecule(result)
         self.statusBar().showMessage("Structure recognized", 3000)
 
+    def _on_worker_finished(self):
+        """Release the completed worker after its result has been delivered."""
+        if self._worker is not None:
+            self._worker.deleteLater()
+            self._worker = None
+
     # ------------------------------------------------------------------
     # Molecule state
     # ------------------------------------------------------------------
@@ -551,6 +597,24 @@ class MainWindow(QMainWindow):
         self._molecule = mol
         self._editor.load_molecule(mol)
         self._update_info()
+        # WSLg can miss the first paint request after a hidden maximized
+        # window is restored. A deferred refresh runs after the queued
+        # recognition result and window-exposure events have settled.
+        QTimer.singleShot(0, self._refresh_display)
+        QTimer.singleShot(150, self._refresh_display)
+
+    def _refresh_display(self):
+        """Force WSLg/Qt to paint newly loaded recognition results."""
+        central = self.centralWidget()
+        if central is not None and central.layout() is not None:
+            central.layout().activate()
+        canvas = self._editor.canvas
+        canvas.mol_scene.update()
+        canvas.viewport().update()
+        canvas.viewport().repaint()
+        self._editor.update()
+        self._bottom_bar.update()
+        self.update()
 
     def _on_editor_changed(self):
         self._molecule = self._editor.molecule
@@ -626,6 +690,20 @@ class MainWindow(QMainWindow):
                     f"Saved xyz ({unit}) to {path}", 3000)
             except Exception as e:
                 self.statusBar().showMessage(f"Save failed: {e}", 5000)
+
+    def _on_copy_xyz(self, unit: str):
+        if self._mol_3d is None:
+            self.statusBar().showMessage(
+                "Render 3D first before copying xyz", 3000)
+            return
+        try:
+            from ..core.xyz import mol_to_xyz_string
+            xyz_text = mol_to_xyz_string(self._mol_3d, unit=unit)
+            QApplication.clipboard().setText(xyz_text)
+            self.statusBar().showMessage(
+                f"XYZ structure copied ({unit})", 3000)
+        except Exception as e:
+            self.statusBar().showMessage(f"Copy failed: {e}", 5000)
 
     # ------------------------------------------------------------------
     # Window close

@@ -1,11 +1,11 @@
-"""Tests for MolScribe-based recognizer.
+"""Tests for the OSRA and MolScribe recognition backends.
 
 These tests require MolScribe model weights (~400MB download on first run).
 Mark with @pytest.mark.slow so they can be skipped in quick CI runs.
 """
 
-import tempfile
-from pathlib import Path
+from subprocess import CompletedProcess
+from unittest.mock import patch
 
 import pytest
 from PIL import Image
@@ -26,7 +26,70 @@ def _draw_molecule_to_file(smiles: str, path: str, size=(300, 300)):
 def recognizer():
     """Create recognizer once for all tests in this module (model loading is slow)."""
     from molrecognizer.core.recognizer import MoleculeRecognizer
-    return MoleculeRecognizer(device="cpu")
+    return MoleculeRecognizer(device="cpu", backend="molscribe")
+
+
+class TestOSRARecognizer:
+    @patch("molrecognizer.core.recognizer.shutil.which", return_value="/usr/bin/osra")
+    @patch("molrecognizer.core.recognizer.subprocess.run")
+    def test_osra_is_default_and_returns_molecule(self, run, _which, tmp_path):
+        from molrecognizer.core.recognizer import MoleculeRecognizer
+
+        image_path = tmp_path / "structure.png"
+        image_path.write_bytes(b"image")
+        run.return_value = CompletedProcess([], 0, "CCO\n", "")
+
+        recognizer = MoleculeRecognizer()
+        molecule = recognizer.recognize(image_path)
+
+        assert recognizer.backend_name == "OSRA"
+        assert molecule.num_atoms == 3
+        command = run.call_args.args[0]
+        assert command[:3] == ["/usr/bin/osra", "-f", "can"]
+        assert command[-1] == str(image_path)
+
+    @patch("molrecognizer.core.recognizer.shutil.which", return_value="/usr/bin/osra")
+    @patch("molrecognizer.core.recognizer.subprocess.run")
+    def test_osra_uses_first_valid_output(self, run, _which, tmp_path):
+        from molrecognizer.core.recognizer import OSRARecognizer
+
+        image_path = tmp_path / "structures.png"
+        image_path.write_bytes(b"image")
+        run.return_value = CompletedProcess([], 0, "not_smiles\nc1ccccc1\nCCO\n", "")
+
+        assert OSRARecognizer().recognize_to_smiles(image_path) == "c1ccccc1"
+
+    @patch("molrecognizer.core.recognizer.shutil.which", return_value=None)
+    def test_missing_osra_has_actionable_error(self, _which):
+        from molrecognizer.core.recognizer import MoleculeRecognizer
+
+        with pytest.raises(RuntimeError, match="OSRA_EXECUTABLE"):
+            MoleculeRecognizer()
+
+    @patch("molrecognizer.core.recognizer.shutil.which", return_value="/usr/bin/osra")
+    @patch("molrecognizer.core.recognizer.subprocess.run")
+    def test_osra_failure_includes_diagnostic(self, run, _which, tmp_path):
+        from molrecognizer.core.recognizer import OSRARecognizer
+
+        image_path = tmp_path / "structure.png"
+        image_path.write_bytes(b"image")
+        run.return_value = CompletedProcess([], 2, "", "cannot read image")
+
+        with pytest.raises(RuntimeError, match="cannot read image"):
+            OSRARecognizer().recognize(image_path)
+
+    @patch("molrecognizer.core.recognizer.shutil.which", return_value="/usr/bin/osra")
+    @patch("molrecognizer.core.recognizer.subprocess.run")
+    def test_osra_accepts_valid_output_despite_nonzero_exit(
+        self, run, _which, tmp_path
+    ):
+        from molrecognizer.core.recognizer import OSRARecognizer
+
+        image_path = tmp_path / "structure.png"
+        image_path.write_bytes(b"image")
+        run.return_value = CompletedProcess([], 15, "CCO\n", "")
+
+        assert OSRARecognizer().recognize_to_smiles(image_path) == "CCO"
 
 
 @pytest.mark.slow
