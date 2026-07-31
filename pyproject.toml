@@ -19,12 +19,16 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Chemistry",
 ]
 dependencies = [
-    "rdkit-pypi",
+    "rdkit>=2023.9.1",
     "Pillow",
     "PySide6",
+    "numpy<2",
+]
+
+[project.optional-dependencies]
+molscribe = [
     "molscribe",
     "huggingface-hub",
-    "numpy<2",
 ]
 
 [project.urls]
@@ -44,6 +48,9 @@ packages = ["src/molrecognizer"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "slow: tests that load the MolScribe model",
+]
 
 [dependency-groups]
 dev = ["pytest"]

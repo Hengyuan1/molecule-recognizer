@@ -6,7 +6,7 @@ Public API:
     molecule_to_smiles(mol) → str
     check_valence(mol) → list[ValenceWarning]
     Molecule — editable molecule with 2D coordinates
-    MoleculeRecognizer — MolScribe-based recognizer class
+    MoleculeRecognizer — OSRA-based recognizer class (MolScribe optional)
 """
 
 from molrecognizer.core.molecule import BondType, Molecule
@@ -14,12 +14,17 @@ from molrecognizer.core.smiles import molecule_to_smiles, smiles_to_molecule
 from molrecognizer.core.valence import ValenceWarning, check_valence
 
 
-def recognize(image_path: str, device: str = "cpu") -> str:
+def recognize(
+    image_path: str,
+    device: str = "cpu",
+    backend: str = "osra",
+) -> str:
     """Recognize a molecular structure from an image file and return its SMILES string.
 
     Args:
         image_path: Path to a molecule image (PNG, JPG, etc.).
-        device: PyTorch device for MolScribe ("cpu" or "cuda").
+        device: PyTorch device when ``backend="molscribe"``.
+        backend: Recognition backend, ``"osra"`` (default) or ``"molscribe"``.
 
     Returns:
         Canonical SMILES string of the recognized molecule.
@@ -31,22 +36,27 @@ def recognize(image_path: str, device: str = "cpu") -> str:
         'c1ccccc1'
     """
     from molrecognizer.core.recognizer import MoleculeRecognizer
-    recognizer = MoleculeRecognizer(device=device)
+    recognizer = MoleculeRecognizer(device=device, backend=backend)
     return recognizer.recognize_to_smiles(image_path)
 
 
-def recognize_to_molecule(image_path: str, device: str = "cpu") -> Molecule:
+def recognize_to_molecule(
+    image_path: str,
+    device: str = "cpu",
+    backend: str = "osra",
+) -> Molecule:
     """Recognize a molecular structure from an image file and return a Molecule.
 
     Args:
         image_path: Path to a molecule image (PNG, JPG, etc.).
-        device: PyTorch device for MolScribe ("cpu" or "cuda").
+        device: PyTorch device when ``backend="molscribe"``.
+        backend: Recognition backend, ``"osra"`` (default) or ``"molscribe"``.
 
     Returns:
         Molecule object with atoms, bonds, and 2D coordinates.
     """
     from molrecognizer.core.recognizer import MoleculeRecognizer
-    recognizer = MoleculeRecognizer(device=device)
+    recognizer = MoleculeRecognizer(device=device, backend=backend)
     return recognizer.recognize(image_path)
 
 

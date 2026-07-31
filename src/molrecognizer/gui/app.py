@@ -111,7 +111,7 @@ QToolButton::menu-indicator {
 }
 
 /* Save xyz button (left panel) */
-QToolButton#save_xyz_btn {
+QToolButton#save_xyz_btn, QToolButton#copy_xyz_btn {
     background-color: #ffffff;
     color: #1a73e8;
     border: 1.5px solid #1a73e8;
@@ -121,7 +121,7 @@ QToolButton#save_xyz_btn {
     font-weight: 600;
     min-height: 24px;
 }
-QToolButton#save_xyz_btn:hover {
+QToolButton#save_xyz_btn:hover, QToolButton#copy_xyz_btn:hover {
     background-color: #e8f0fe;
 }
 
@@ -320,7 +320,7 @@ def main():
     app.setFont(font)
 
     window = MainWindow()
-    window.show()
+    window.showMaximized()
     # Redirect C-level stderr AFTER the window is shown so the display
     # server connection is fully established (avoids cursor issues).
     _redirect_native_stderr()
