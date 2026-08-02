@@ -6,6 +6,7 @@ MolScribe remains available as an explicit alternative.
 
 from __future__ import annotations
 
+import io
 import os
 import shutil
 import subprocess
@@ -82,7 +83,11 @@ class OSRARecognizer:
         self.timeout = timeout
 
     def recognize(self, image: ImageInput) -> Molecule:
-        return _smiles_to_molecule(self.recognize_to_smiles(image), self.backend_name)
+        if isinstance(image, np.ndarray):
+            return self._recognize_pil_structure(Image.fromarray(image))
+        if isinstance(image, Image.Image):
+            return self._recognize_pil_structure(image)
+        return self._recognize_structure_file(Path(image))
 
     def recognize_to_smiles(self, image: ImageInput) -> str:
         if isinstance(image, np.ndarray):
@@ -102,6 +107,67 @@ class OSRARecognizer:
         finally:
             if temp_path is not None:
                 temp_path.unlink(missing_ok=True)
+
+    def _recognize_pil_structure(self, image: Image.Image) -> Molecule:
+        """Recognize a PIL image while preserving OSRA's drawing geometry."""
+        temp_path: Optional[Path] = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp:
+                temp_path = Path(temp.name)
+            image.save(temp_path, format="PNG")
+            return self._recognize_structure_file(temp_path)
+        finally:
+            if temp_path is not None:
+                temp_path.unlink(missing_ok=True)
+
+    def _recognize_structure_file(self, path: Path) -> Molecule:
+        """Use SDF so coordinates and explicit bond placement survive."""
+        if not path.is_file():
+            raise FileNotFoundError(f"Image file not found: {path}")
+        command = [
+            self.executable,
+            "-f",
+            "sdf",
+            "--timeout",
+            str(self.timeout),
+            "--",
+            str(path),
+        ]
+        try:
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                timeout=self.timeout + 10,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(
+                f"OSRA recognition timed out after {self.timeout} seconds"
+            ) from exc
+
+        raw_output = result.stdout
+        if isinstance(raw_output, str):
+            raw_output = raw_output.encode("utf-8")
+        if raw_output.strip():
+            supplier = Chem.ForwardSDMolSupplier(
+                io.BytesIO(raw_output),
+                sanitize=False,
+                removeHs=False,
+                strictParsing=False,
+            )
+            for rdmol in supplier:
+                if (rdmol is not None and rdmol.GetNumAtoms() > 0
+                        and rdmol.GetNumConformers() > 0):
+                    try:
+                        rdmol.UpdatePropertyCache(strict=False)
+                    except Exception:
+                        pass
+                    return Molecule.from_rdkit(rdmol)
+
+        # A few OSRA builds have incomplete SDF support. Retain recognition
+        # through canonical SMILES, accepting that only this fallback redraws.
+        return _smiles_to_molecule(
+            self._recognize_file(path), self.backend_name)
 
     def _recognize_file(self, path: Path) -> str:
         if not path.is_file():

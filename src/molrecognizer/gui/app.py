@@ -3,7 +3,7 @@
 import os
 import sys
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QRect, QSettings, Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
 
@@ -38,6 +38,30 @@ def _redirect_native_stderr():
             os.dup2(_log_file.fileno(), 2)
         except OSError:
             pass
+
+
+def _restore_window_geometry(window: MainWindow):
+    """Restore a resizable normal window, or centre a large default one."""
+    saved = QSettings().value("main_window/normal_geometry")
+    if isinstance(saved, QRect) and saved.isValid():
+        # Ignore geometry for a monitor that is no longer connected.
+        if any(screen.availableGeometry().intersects(saved)
+               for screen in QApplication.screens()):
+            window.setGeometry(saved)
+            return
+
+    screen = QApplication.primaryScreen()
+    if screen is None:
+        return
+    available = screen.availableGeometry()
+    width = round(available.width() * 0.80)
+    height = round(available.height() * 0.80)
+    window.setGeometry(
+        available.x() + (available.width() - width) // 2,
+        available.y() + (available.height() - height) // 2,
+        width,
+        height,
+    )
 
 STYLESHEET = """
 /* ---- Main window ---- */
@@ -280,6 +304,18 @@ QStatusBar {
     border-top: 1px solid #e8eaed;
     padding: 3px 10px;
 }
+QPushButton#ui_scale_btn {
+    background-color: #ffffff;
+    color: #555555;
+    border: 1px solid #c9ced6;
+    border-radius: 4px;
+    padding: 1px 6px;
+    min-height: 18px;
+}
+QPushButton#ui_scale_btn:hover {
+    background-color: #e8f0fe;
+    border-color: #a8c7fa;
+}
 
 /* ---- General labels ---- */
 QLabel {
@@ -313,14 +349,17 @@ def main():
     _setup_logging()
     app.setApplicationName("Molecule Recognizer")
     app.setOrganizationName("molrecognizer")
+    app._base_stylesheet = STYLESHEET
     app.setStyleSheet(STYLESHEET)
 
     font = QFont("Segoe UI", 11)
     font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
+    app._base_font = QFont(font)
     app.setFont(font)
 
     window = MainWindow()
-    window.showMaximized()
+    _restore_window_geometry(window)
+    window.show()
     # Redirect C-level stderr AFTER the window is shown so the display
     # server connection is fully established (avoids cursor issues).
     _redirect_native_stderr()

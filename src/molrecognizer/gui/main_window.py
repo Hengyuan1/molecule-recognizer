@@ -17,10 +17,11 @@ from __future__ import annotations
 
 import io
 import os
+import re
 
 from PIL import Image
-from PySide6.QtCore import Qt, QThread, QTimer, Signal
-from PySide6.QtGui import QKeySequence, QPixmap
+from PySide6.QtCore import QSettings, QSize, Qt, QThread, QTimer, Signal
+from PySide6.QtGui import QFont, QKeySequence, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -45,7 +46,8 @@ from ..core.smiles import molecule_to_smiles, smiles_to_molecule
 from ..core.valence import check_valence
 from .editor_widget import EditorWidget
 from .screenshot import (
-    GlobalScreenshotHotkey, ScreenshotDialog, grab_screen, pixmap_to_png_bytes,
+    GlobalScreenshotHotkey, ScreenshotDialog, grab_screen, is_wsl,
+    pixmap_to_png_bytes,
 )
 from .viewer3d import Viewer3DWidget
 
@@ -116,23 +118,7 @@ class ElementPalette(QWidget):
             btn.setObjectName("element_btn")
             btn.setFixedSize(40, 40)
             btn.setCheckable(True)
-            btn.setStyleSheet(
-                f"QPushButton#element_btn {{"
-                f"  background-color: {colour};"
-                f"  color: white;"
-                f"  border-radius: 20px;"
-                f"  font-size: 13px;"
-                f"  font-weight: 700;"
-                f"  border: 2px solid transparent;"
-                f"}}"
-                f"QPushButton#element_btn:hover {{"
-                f"  border-color: #4A90D9;"
-                f"}}"
-                f"QPushButton#element_btn:checked {{"
-                f"  border-color: #ffffff;"
-                f"  outline: 2px solid #4A90D9;"
-                f"}}"
-            )
+            btn.setProperty("element_colour", colour)
             btn.clicked.connect(lambda checked, s=symbol: self._on_click(s))
             layout.addWidget(btn, 0, Qt.AlignmentFlag.AlignHCenter)
             self._buttons[symbol] = btn
@@ -141,6 +127,29 @@ class ElementPalette(QWidget):
 
         # Default selection
         self._buttons["C"].setChecked(True)
+        self.apply_scale(1.0)
+
+    def apply_scale(self, scale: float):
+        """Keep palette buttons circular and legible at every UI scale."""
+        size = round(40 * scale)
+        for button in self._buttons.values():
+            colour = button.property("element_colour")
+            button.setFixedSize(size, size)
+            button.setStyleSheet(
+                "QPushButton#element_btn {"
+                f"  background-color: {colour};"
+                "  color: white;"
+                f"  border-radius: {round(20 * scale)}px;"
+                f"  font-size: {round(13 * scale)}px;"
+                "  font-weight: 700;"
+                f"  border: {max(2, round(2 * scale))}px solid transparent;"
+                "}"
+                "QPushButton#element_btn:hover { border-color: #4A90D9; }"
+                "QPushButton#element_btn:checked {"
+                "  border-color: #ffffff;"
+                f"  outline: {max(2, round(2 * scale))}px solid #4A90D9;"
+                "}"
+            )
 
     def _on_click(self, symbol: str):
         for s, btn in self._buttons.items():
@@ -373,6 +382,17 @@ class MainWindow(QMainWindow):
         self._setup_shortcuts()
         self._global_hotkey = GlobalScreenshotHotkey(self)
         self._global_hotkey.activated.connect(self._on_screenshot)
+        self._ui_scale = 1.0
+        self._scale_screen_name = ""
+        self._scale_screen = None
+        self._windows_monitor_name = ""
+        self._windows_monitor_width = 0
+        self._windows_monitor_height = 0
+        self._fit_window_requested = False
+        self._setup_ui_scaling()
+        self._global_hotkey.monitor_changed.connect(
+            lambda name, width, height:
+                self._on_windows_monitor_detected((name, width, height)))
 
     # ------------------------------------------------------------------
     # UI setup
@@ -395,6 +415,14 @@ class MainWindow(QMainWindow):
                   activated=self._editor._redo)
         QShortcut(QKeySequence.StandardKey.Quit, self,
                   activated=self.close)
+        QShortcut(QKeySequence("Ctrl+Alt++"), self,
+                  activated=lambda: self._change_ui_scale(0.1))
+        QShortcut(QKeySequence("Ctrl+Alt+="), self,
+                  activated=lambda: self._change_ui_scale(0.1))
+        QShortcut(QKeySequence("Ctrl+Alt+-"), self,
+                  activated=lambda: self._change_ui_scale(-0.1))
+        QShortcut(QKeySequence("Ctrl+Alt+0"), self,
+                  activated=self._reset_ui_scale)
 
     def _setup_ui(self):
         central = QWidget()
@@ -404,9 +432,9 @@ class MainWindow(QMainWindow):
         outer.setSpacing(0)
 
         # ---- Top area: left panel | canvas | element palette ----
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setHandleWidth(3)
-        splitter.setChildrenCollapsible(False)
+        self._splitter = QSplitter(Qt.Orientation.Horizontal)
+        self._splitter.setHandleWidth(3)
+        self._splitter.setChildrenCollapsible(False)
 
         self._left_panel = LeftPanel()
         self._left_panel.open_image.connect(self._on_open_image)
@@ -415,24 +443,24 @@ class MainWindow(QMainWindow):
         self._left_panel.render_3d.connect(self._on_render_3d)
         self._left_panel.save_xyz.connect(self._on_save_xyz)
         self._left_panel.copy_xyz.connect(self._on_copy_xyz)
-        splitter.addWidget(self._left_panel)
+        self._splitter.addWidget(self._left_panel)
 
         self._editor = EditorWidget()
         self._editor.molecule_changed.connect(self._on_editor_changed)
         self._editor.clear_all_requested.connect(self._on_clear_all)
-        splitter.addWidget(self._editor)
+        self._splitter.addWidget(self._editor)
 
         self._palette = ElementPalette()
         self._palette.element_selected.connect(self._on_palette_element)
-        splitter.addWidget(self._palette)
+        self._splitter.addWidget(self._palette)
 
         # Centre panel stretches; side panels don't
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
-        splitter.setStretchFactor(2, 0)
-        splitter.setSizes([290, 1060, 50])
+        self._splitter.setStretchFactor(0, 0)
+        self._splitter.setStretchFactor(1, 1)
+        self._splitter.setStretchFactor(2, 0)
+        self._splitter.setSizes([290, 1060, 50])
 
-        outer.addWidget(splitter, 1)
+        outer.addWidget(self._splitter, 1)
 
         # ---- Bottom bar ----
         self._bottom_bar = BottomBar()
@@ -444,6 +472,257 @@ class MainWindow(QMainWindow):
     def _setup_statusbar(self):
         self.setStatusBar(QStatusBar())
         self.statusBar().showMessage("Ready")
+
+    def _setup_ui_scaling(self):
+        """Add per-monitor UI zoom controls and watch for screen changes."""
+        self._scale_down_btn = QPushButton("A−")
+        self._scale_down_btn.setObjectName("ui_scale_btn")
+        self._scale_down_btn.setToolTip("Make the interface smaller (Ctrl+Alt+-)")
+        self._scale_down_btn.clicked.connect(
+            lambda: self._change_ui_scale(-0.1))
+
+        self._scale_reset_btn = QPushButton("100%")
+        self._scale_reset_btn.setObjectName("ui_scale_btn")
+        self._scale_reset_btn.setToolTip("Reset interface size (Ctrl+Alt+0)")
+        self._scale_reset_btn.clicked.connect(self._reset_ui_scale)
+
+        self._scale_up_btn = QPushButton("A+")
+        self._scale_up_btn.setObjectName("ui_scale_btn")
+        self._scale_up_btn.setToolTip("Make the interface larger (Ctrl+Alt++)")
+        self._scale_up_btn.clicked.connect(
+            lambda: self._change_ui_scale(0.1))
+
+        self.statusBar().addPermanentWidget(self._scale_down_btn)
+        self.statusBar().addPermanentWidget(self._scale_reset_btn)
+        self.statusBar().addPermanentWidget(self._scale_up_btn)
+        self._fit_window_btn = QPushButton("Fit")
+        self._fit_window_btn.setObjectName("ui_scale_btn")
+        self._fit_window_btn.setToolTip(
+            "Fit the window to the recommended size for this monitor")
+        self._fit_window_btn.clicked.connect(self._request_windows_monitor_fit)
+        self.statusBar().addPermanentWidget(self._fit_window_btn)
+        self.statusBar().setSizeGripEnabled(False)
+        QTimer.singleShot(0, self._connect_screen_scaling)
+
+    def _connect_screen_scaling(self):
+        handle = self.windowHandle()
+        if handle is None:
+            QTimer.singleShot(100, self._connect_screen_scaling)
+            return
+        if is_wsl():
+            return
+        handle.screenChanged.connect(self._on_scale_screen_changed)
+        self._on_scale_screen_changed(handle.screen())
+        self._screen_poll_timer = QTimer(self)
+        self._screen_poll_timer.setInterval(300)
+        self._screen_poll_timer.timeout.connect(self._poll_window_screen)
+        self._screen_poll_timer.start()
+
+    def _poll_window_screen(self):
+        """Detect monitor moves when WSLg omits QWindow.screenChanged."""
+        window_rect = self.frameGeometry()
+        best_screen = None
+        best_area = -1
+        for screen in QApplication.screens():
+            intersection = window_rect.intersected(screen.geometry())
+            area = intersection.width() * intersection.height()
+            if area > best_area:
+                best_area = area
+                best_screen = screen
+        if (best_screen is not None and self._scale_screen is not None
+                and best_screen.name() != self._scale_screen.name()):
+            self._on_scale_screen_changed(best_screen)
+
+    def _request_windows_monitor_fit(self):
+        self._fit_window_requested = True
+        if self._windows_monitor_name:
+            self._on_windows_monitor_detected((
+                self._windows_monitor_name,
+                self._windows_monitor_width,
+                self._windows_monitor_height,
+            ))
+        else:
+            self.statusBar().showMessage(
+                "Waiting for Windows monitor detection…", 3000)
+
+    def _on_windows_monitor_detected(self, result):
+        if result is None:
+            self.statusBar().showMessage(
+                "Could not detect the Windows monitor", 3000)
+            return
+        name, width, height = result
+        changed = bool(self._windows_monitor_name
+                       and self._windows_monitor_name != name)
+        settings = QSettings()
+        if changed:
+            settings.setValue(
+                f"window_size/windows:{self._windows_monitor_name}",
+                self.size(),
+            )
+        self._windows_monitor_name = name
+        self._windows_monitor_width = width
+        self._windows_monitor_height = height
+        self._scale_screen_name = f"windows:{name}"
+        stored_scale = settings.value(f"ui_scale/windows:{name}")
+        if width >= 2500:
+            scale = float(stored_scale) if stored_scale is not None else 1.5
+        else:
+            # A 100% UI has a ~1260×760 minimum, preventing a genuinely
+            # compact window on 1080p monitors. Use 80% there so both the
+            # controls and the window can become materially smaller.
+            compact_key = f"external_compact_scale/{name}"
+            if not settings.value(compact_key, False, type=bool):
+                scale = 0.8
+                settings.setValue(f"ui_scale/windows:{name}", scale)
+                settings.setValue(compact_key, True)
+            else:
+                scale = (float(stored_scale)
+                         if stored_scale is not None else 0.8)
+        self._apply_ui_scale(scale)
+
+        if changed or self._fit_window_requested:
+            # Use a compact target, but never make the frame smaller than its
+            # contents. WSLg otherwise clips whole panels, then expands the
+            # window unpredictably on the next drag.
+            fit_fraction = 0.70 if width < 2500 else 0.80
+            maximum = QSize(
+                round(width * fit_fraction),
+                round(height * fit_fraction),
+            )
+            stored_size = settings.value(
+                f"window_size/windows:{name}", maximum)
+            if not isinstance(stored_size, QSize) or not stored_size.isValid():
+                stored_size = maximum
+            target = QSize(
+                min(stored_size.width(), maximum.width()),
+                min(stored_size.height(), maximum.height()),
+            )
+            target = target.expandedTo(self.minimumSizeHint())
+            if not self.isMaximized() and not self.isFullScreen():
+                # Only Qt may resize its WSLg surface. Resizing the outer
+                # Windows msrdc HWND directly desynchronizes the frame from
+                # Qt's content, clipping panels and sometimes freezing input.
+                self.resize(target)
+            self.statusBar().showMessage(
+                f"Window fitted to {name} ({target.width()}×{target.height()})",
+                3000,
+            )
+        self._fit_window_requested = False
+
+    @staticmethod
+    def _default_scale_for_screen(screen) -> float:
+        """Compensate when WSLg hides Windows' high-DPI scale from Qt."""
+        if screen is not None and screen.geometry().width() >= 2500:
+            return 1.5
+        return 1.0
+
+    def _on_scale_screen_changed(self, screen):
+        if screen is None:
+            return
+        previous_screen = self._scale_screen
+        changed = (previous_screen is not None
+                   and previous_screen.name() != screen.name())
+        target_size = None
+        if changed:
+            settings = QSettings()
+            settings.setValue(
+                f"window_size/{previous_screen.name()}", self.size())
+            available = screen.availableGeometry()
+            default_size = QSize(
+                round(available.width() * 0.80),
+                round(available.height() * 0.80),
+            )
+            stored_size = settings.value(
+                f"window_size/{screen.name()}", default_size)
+            if not isinstance(stored_size, QSize) or not stored_size.isValid():
+                stored_size = default_size
+            target_size = QSize(
+                min(stored_size.width(), default_size.width()),
+                min(stored_size.height(), default_size.height()),
+            )
+        self._scale_screen = screen
+        self._scale_screen_name = screen.name()
+        stored = QSettings().value(f"ui_scale/{screen.name()}")
+        scale = (float(stored) if stored is not None
+                 else self._default_scale_for_screen(screen))
+        self._apply_ui_scale(scale)
+        if (target_size is not None and not self.isMaximized()
+                and not self.isFullScreen()):
+            self.resize(target_size)
+
+    def _change_ui_scale(self, amount: float):
+        previous = self._ui_scale
+        self._apply_ui_scale(self._ui_scale + amount, save=True)
+        if amount > 0 and self._ui_scale == previous:
+            self.statusBar().showMessage(
+                "Maximum safe size for this monitor", 3000)
+        elif amount < 0 and self._ui_scale == previous:
+            self.statusBar().showMessage("Minimum interface size", 3000)
+
+    def _reset_ui_scale(self):
+        self._apply_ui_scale(1.0, save=True)
+
+    def _maximum_ui_scale(self) -> float:
+        """Keep maximized WSLg windows within the monitor's configured size."""
+        if self._windows_monitor_width:
+            width = self._windows_monitor_width
+        else:
+            handle = self.windowHandle()
+            screen = handle.screen() if handle is not None else None
+            width = (screen.availableGeometry().width()
+                     if screen is not None else 1920)
+        if width <= 2000:
+            return 1.3
+        if width <= 2560:
+            return 1.6
+        return 2.0
+
+    def _apply_ui_scale(self, scale: float, save: bool = False):
+        scale = round(max(0.8, min(self._maximum_ui_scale(), scale)), 1)
+        if scale == self._ui_scale:
+            if save and self._scale_screen_name:
+                QSettings().setValue(
+                    f"ui_scale/{self._scale_screen_name}", scale)
+            return
+        self._ui_scale = scale
+        self.setMinimumSize(0, 0)
+
+        app = QApplication.instance()
+        base_css = getattr(app, "_base_stylesheet", app.styleSheet())
+        scaled_css = re.sub(
+            r"(?<![\w.])(\d+(?:\.\d+)?)px",
+            lambda match: f"{max(1, round(float(match.group(1)) * scale))}px",
+            base_css,
+        )
+        # Do not replace QApplication's stylesheet while a maximized WSLg
+        # window is visible. Changing status-bar metrics can make Qt submit a
+        # buffer with a different height before Wayland sends a new configure,
+        # which is a fatal xdg_surface protocol error. Scale only the central
+        # content; the status bar deliberately stays at a stable height.
+        self.centralWidget().setStyleSheet(scaled_css)
+
+        base_font = getattr(app, "_base_font", app.font())
+        font = QFont(base_font)
+        font.setPointSizeF(base_font.pointSizeF() * scale)
+        self.centralWidget().setFont(font)
+
+        self._left_panel.setMinimumWidth(round(180 * scale))
+        self._left_panel.setMaximumWidth(round(350 * scale))
+        self._left_panel._preview.setFixedHeight(round(180 * scale))
+        self._left_panel._viewer_3d.setFixedHeight(round(160 * scale))
+        self._palette.setMinimumWidth(round(52 * scale))
+        self._palette.setMaximumWidth(round(80 * scale))
+        self._palette.apply_scale(scale)
+        self._editor._toolbar.setFixedHeight(round(42 * scale))
+        self._bottom_bar.setMinimumHeight(round(80 * scale))
+        self._splitter.setHandleWidth(max(3, round(3 * scale)))
+        self._scale_reset_btn.setText(f"{round(scale * 100)}%")
+
+        if save and self._scale_screen_name:
+            QSettings().setValue(
+                f"ui_scale/{self._scale_screen_name}", scale)
+        if self.centralWidget().layout() is not None:
+            self.centralWidget().layout().activate()
 
     # ------------------------------------------------------------------
     # Element palette → editor
@@ -710,6 +989,16 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def closeEvent(self, event):
+        geometry = self.normalGeometry() if self.isMaximized() else self.geometry()
+        QSettings().setValue("main_window/normal_geometry", geometry)
+        if self._scale_screen is not None and not self.isMaximized():
+            QSettings().setValue(
+                f"window_size/{self._scale_screen.name()}", self.size())
+        if self._windows_monitor_name and not self.isMaximized():
+            QSettings().setValue(
+                f"window_size/windows:{self._windows_monitor_name}",
+                self.size(),
+            )
         if self._worker is not None and self._worker.isRunning():
             self._worker.finished.disconnect()
             self._worker.quit()

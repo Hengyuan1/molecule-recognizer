@@ -119,6 +119,38 @@ def _find_powershell() -> str | None:
     return None
 
 
+def windows_monitor_under_cursor() -> tuple[str, int, int] | None:
+    """Return the Windows monitor name and physical size under the cursor."""
+    if not is_wsl():
+        return None
+    powershell = _find_powershell()
+    if not powershell:
+        return None
+    command = (
+        "Add-Type -TypeDefinition 'using System; "
+        "using System.Runtime.InteropServices; "
+        "public static class MRDpi { "
+        "[DllImport(\"user32.dll\")] public static extern bool "
+        "SetProcessDpiAwarenessContext(IntPtr value); }'; "
+        "[MRDpi]::SetProcessDpiAwarenessContext([IntPtr](-4)) | Out-Null; "
+        "Add-Type -AssemblyName System.Windows.Forms; "
+        "$p=[System.Windows.Forms.Cursor]::Position; "
+        "$s=[System.Windows.Forms.Screen]::FromPoint($p); "
+        "Write-Output ($s.DeviceName+'|'+$s.Bounds.Width+'|'+"
+        "$s.Bounds.Height)"
+    )
+    try:
+        result = subprocess.run(
+            [powershell, "-NoProfile", "-Command", command],
+            capture_output=True, timeout=8,
+        )
+        output = result.stdout.decode("utf-8", errors="replace").strip()
+        name, width, height = output.rsplit("|", 2)
+        return name, int(width), int(height)
+    except (subprocess.TimeoutExpired, OSError, ValueError):
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Global screenshot hotkey (Windows/WSL)
 # ---------------------------------------------------------------------------
@@ -130,6 +162,7 @@ Add-Type -TypeDefinition @"
 using System;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows.Forms;
 
 public sealed class MoleculeRecognizerHotkey : NativeWindow, IDisposable {
@@ -138,33 +171,130 @@ public sealed class MoleculeRecognizerHotkey : NativeWindow, IDisposable {
         IntPtr hWnd, int id, uint modifiers, uint virtualKey);
     [DllImport("user32.dll")]
     private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+    [DllImport("user32.dll")]
+    private static extern bool SetProcessDpiAwarenessContext(IntPtr value);
+    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr p);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(
+        IntPtr hWnd, StringBuilder text, int count);
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint flags);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool GetMonitorInfo(
+        IntPtr monitor, ref MONITORINFOEX info);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct MONITORINFOEX {
+        public int size;
+        public int left;
+        public int top;
+        public int right;
+        public int bottom;
+        public int workLeft;
+        public int workTop;
+        public int workRight;
+        public int workBottom;
+        public uint flags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string deviceName;
+    }
 
     private const int WM_HOTKEY = 0x0312;
-    private readonly int port;
+    private readonly TcpClient client;
+    private readonly Timer heartbeat;
+    private IntPtr appWindow = IntPtr.Zero;
+    private string lastMonitorName = "";
+    private string monitorCandidate = "";
+    private int monitorCandidateCount = 0;
 
     public MoleculeRecognizerHotkey(int portNumber) {
-        port = portNumber;
+        SetProcessDpiAwarenessContext(new IntPtr(-4));
+        client = new TcpClient("127.0.0.1", portNumber);
         CreateHandle(new CreateParams());
         // MOD_ALT = 1, virtual-key Y = 0x59
         if (!RegisterHotKey(Handle, 1, 0x0001, 0x59))
             throw new InvalidOperationException(
                 "Alt+Y is already registered by another application.");
+        heartbeat = new Timer();
+        heartbeat.Interval = 500;
+        heartbeat.Tick += delegate { SendMonitor(); };
+        heartbeat.Start();
+    }
+
+    private void Send(string value) {
+        try {
+            byte[] data = Encoding.UTF8.GetBytes(value);
+            client.GetStream().Write(data, 0, data.Length);
+        } catch {
+            // The WSL GUI exited or crashed. Release Alt+Y instead of leaving
+            // a detached Windows helper that blocks the next app instance.
+            Application.ExitThread();
+        }
+    }
+
+    private void SendMonitor() {
+        appWindow = IntPtr.Zero;
+        EnumWindows(delegate(IntPtr hWnd, IntPtr p) {
+            StringBuilder title = new StringBuilder(256);
+            GetWindowText(hWnd, title, title.Capacity);
+            if (title.ToString().StartsWith("Molecule Recognizer")) {
+                appWindow = hWnd;
+                return false;
+            }
+            return true;
+        }, IntPtr.Zero);
+        if (appWindow == IntPtr.Zero) {
+            Send("P\n");
+            return;
+        }
+        IntPtr monitor = MonitorFromWindow(appWindow, 2);
+        MONITORINFOEX info = new MONITORINFOEX();
+        info.size = Marshal.SizeOf(info);
+        if (GetMonitorInfo(monitor, ref info)) {
+            if (lastMonitorName.Length == 0) {
+                lastMonitorName = info.deviceName;
+            } else if (lastMonitorName != info.deviceName) {
+                if (monitorCandidate == info.deviceName)
+                    monitorCandidateCount++;
+                else {
+                    monitorCandidate = info.deviceName;
+                    monitorCandidateCount = 1;
+                }
+                // Require 1.5 seconds on the new majority monitor so boundary
+                // jitter cannot alternate UI scaling and sizing operations.
+                if (monitorCandidateCount < 3) {
+                    Send("P\n");
+                    return;
+                }
+                lastMonitorName = info.deviceName;
+                monitorCandidate = "";
+                monitorCandidateCount = 0;
+            } else {
+                monitorCandidate = "";
+                monitorCandidateCount = 0;
+            }
+            int width = info.right - info.left;
+            int height = info.bottom - info.top;
+            Send("M|" + info.deviceName + "|" + width + "|" + height + "\n");
+        } else {
+            Send("P\n");
+        }
     }
 
     protected override void WndProc(ref Message message) {
-        if (message.Msg == WM_HOTKEY && message.WParam.ToInt32() == 1) {
-            try {
-                using (TcpClient client = new TcpClient("127.0.0.1", port)) {
-                    client.GetStream().WriteByte(1);
-                }
-            } catch {}
-        }
+        if (message.Msg == WM_HOTKEY && message.WParam.ToInt32() == 1)
+            Send("H\n");
         base.WndProc(ref message);
     }
 
     public void Dispose() {
+        heartbeat.Stop();
+        heartbeat.Dispose();
         UnregisterHotKey(Handle, 1);
         DestroyHandle();
+        client.Dispose();
     }
 }
 "@ -ReferencedAssemblies System.Windows.Forms
@@ -182,13 +312,17 @@ class GlobalScreenshotHotkey(QObject):
     """Register Alt+Y with Windows and relay it to the WSL Qt application."""
 
     activated = Signal()
+    monitor_changed = Signal(str, int, int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._server: socket.socket | None = None
+        self._connection: socket.socket | None = None
         self._process: subprocess.Popen | None = None
         self._script_path: str | None = None
         self._timer: QTimer | None = None
+        self._receive_buffer = bytearray()
+        self._last_monitor = None
         self.error: str | None = None
 
         if not is_wsl():
@@ -235,19 +369,39 @@ class GlobalScreenshotHotkey(QObject):
     def _poll(self):
         if self._server is None:
             return
-        while True:
+        if self._connection is None:
             try:
-                connection, _ = self._server.accept()
+                self._connection, _ = self._server.accept()
+                self._connection.setblocking(False)
             except BlockingIOError:
-                break
+                return
             except OSError:
                 return
-            with connection:
+        try:
+            data = self._connection.recv(64)
+        except BlockingIOError:
+            return
+        except OSError:
+            data = b""
+        if not data:
+            self._connection.close()
+            self._connection = None
+            return
+        self._receive_buffer.extend(data)
+        while b"\n" in self._receive_buffer:
+            line, _, remainder = self._receive_buffer.partition(b"\n")
+            self._receive_buffer = bytearray(remainder)
+            if line == b"H":
+                self.activated.emit()
+            elif line.startswith(b"M|"):
                 try:
-                    connection.recv(16)
-                except OSError:
-                    pass
-            self.activated.emit()
+                    name, width, height = line.decode("utf-8").split("|")[1:]
+                    monitor = name, int(width), int(height)
+                except (UnicodeDecodeError, ValueError):
+                    continue
+                if monitor != self._last_monitor:
+                    self._last_monitor = monitor
+                    self.monitor_changed.emit(*monitor)
 
     def close(self):
         if self._timer is not None:
@@ -255,6 +409,9 @@ class GlobalScreenshotHotkey(QObject):
         if self._process is not None and self._process.poll() is None:
             self._process.terminate()
         self._process = None
+        if self._connection is not None:
+            self._connection.close()
+        self._connection = None
         if self._server is not None:
             self._server.close()
         self._server = None

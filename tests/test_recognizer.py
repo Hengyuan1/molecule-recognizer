@@ -32,6 +32,49 @@ def recognizer():
 class TestOSRARecognizer:
     @patch("molrecognizer.core.recognizer.shutil.which", return_value="/usr/bin/osra")
     @patch("molrecognizer.core.recognizer.subprocess.run")
+    def test_osra_sdf_preserves_coordinates_and_kekule_bonds(
+        self, run, _which, tmp_path
+    ):
+        from molrecognizer.core.molecule import BondType
+        from molrecognizer.core.recognizer import OSRARecognizer
+
+        rwmol = Chem.RWMol()
+        for _ in range(6):
+            rwmol.AddAtom(Chem.Atom("C"))
+        for begin, end, bond_type in (
+            (0, 1, Chem.BondType.DOUBLE),
+            (1, 2, Chem.BondType.SINGLE),
+            (2, 3, Chem.BondType.DOUBLE),
+            (3, 4, Chem.BondType.SINGLE),
+            (4, 5, Chem.BondType.DOUBLE),
+            (5, 0, Chem.BondType.SINGLE),
+        ):
+            rwmol.AddBond(begin, end, bond_type)
+        conformer = Chem.Conformer(6)
+        coordinates = [
+            (0.2, 2.4), (1.8, 2.0), (2.3, 0.5),
+            (1.1, -0.7), (-0.6, -0.2), (-1.0, 1.4),
+        ]
+        for index, (x, y) in enumerate(coordinates):
+            conformer.SetAtomPosition(index, (x, y, 0.0))
+        rwmol.AddConformer(conformer)
+        sdf = Chem.MolToMolBlock(rwmol) + "\n$$$$\n"
+
+        image_path = tmp_path / "ring.png"
+        image_path.write_bytes(b"image")
+        run.return_value = CompletedProcess([], 0, sdf.encode(), b"")
+
+        molecule = OSRARecognizer().recognize(image_path)
+
+        assert run.call_count == 1
+        assert run.call_args.args[0][1:3] == ["-f", "sdf"]
+        assert molecule.get_2d_coords() == pytest.approx(coordinates)
+        bonds = molecule.get_all_bonds()
+        assert bonds[0].bond_type == BondType.DOUBLE
+        assert bonds[1].bond_type == BondType.SINGLE
+
+    @patch("molrecognizer.core.recognizer.shutil.which", return_value="/usr/bin/osra")
+    @patch("molrecognizer.core.recognizer.subprocess.run")
     def test_osra_is_default_and_returns_molecule(self, run, _which, tmp_path):
         from molrecognizer.core.recognizer import MoleculeRecognizer
 

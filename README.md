@@ -6,8 +6,10 @@ Recognize molecular structures from images (screenshots, papers, web pages), con
 
 ## Features
 
-- **Image recognition** — Uses [OSRA](https://sourceforge.net/projects/osra/) by default to extract molecular structures from images; MolScribe remains available as an alternative
+- **Image recognition** — Uses [OSRA](https://sourceforge.net/projects/osra/) by default and preserves its recognized 2D coordinates and explicit single/double-bond placement via SDF output, making image-to-canvas comparison and manual correction easier; MolScribe remains available as an alternative
 - **Screenshot capture** — On WSL, press the system-wide Alt+Y hotkey from any Windows application to capture the monitor under the mouse cursor, then draw and adjust a selection box (drag edges/corners to resize, ✓ to accept, ✗ to cancel); works with extended monitors through the Qt/grim/scrot/PowerShell fallback chain
+- **Per-monitor UI scaling** — Automatically enlarges the interface on high-resolution laptop displays; use the `A−`, percentage, and `A+` controls in the status bar to tune and remember a separate size for each monitor
+- **Monitor-aware window sizing** — Uses stable Qt-controlled sizing without clipping controls and remembers settings per display; `Fit` and UI-scale controls replace unreliable custom WSLg edge-resize gestures
 - **Interactive editor** — Draw and edit molecular structures:
   - Click an atom to substitute its element; drag from an atom to create new bonds — works in Bond and Atom modes
   - In Bond mode, clicking an atom adds a new bonded atom with chemistry-aware geometry:
@@ -360,6 +362,9 @@ molrecognizer
 | Redo | Ctrl+Shift+Z |
 | Quit | Ctrl+Q |
 | Delete selection | Delete / Backspace |
+| Increase interface size | Ctrl+Alt++ |
+| Decrease interface size | Ctrl+Alt+- |
+| Reset interface size | Ctrl+Alt+0 |
 
 **Editing tools:**
 - **Select** — Click atom to substitute element; drag atom to move it; drag empty space to box-select; drag selection to move group; click bond to cycle type
