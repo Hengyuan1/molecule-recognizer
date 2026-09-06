@@ -1,12 +1,17 @@
 """Tests for undo/redo history."""
 
+import pytest
+from rdkit import Chem
+
 from molrecognizer.core.molecule import BondType, Molecule
 from molrecognizer.editor.history import (
     AddAtomCommand,
     AddBondCommand,
+    BulkDeleteCommand,
     ChangeBondTypeCommand,
     ChangeElementCommand,
     HistoryManager,
+    MoveAtomCommand,
     RemoveAtomCommand,
     RemoveBondCommand,
 )
@@ -130,3 +135,105 @@ def test_set_molecule_clears_history():
     hm.molecule = mol2
     assert not hm.can_undo
     assert not hm.can_redo
+
+
+def _molecular_state(mol):
+    """Compare identities, ordered bonds, stereo, labels and every coordinate.
+
+    SMILES equality alone misses changed atom indices and drawing geometry.
+    Computed property caches aren't part of an editing operation's state.
+    """
+    rd = mol._mol
+    return (
+        [(a.GetAtomicNum(), a.GetIsotope(), a.GetFormalCharge(),
+          a.GetNumExplicitHs(), a.GetNoImplicit(), a.GetChiralTag(),
+          a.GetAtomMapNum(), a.GetIsAromatic(),
+          a.GetPropsAsDict(includePrivate=False, includeComputed=False)) for a in rd.GetAtoms()],
+        [(b.GetBeginAtomIdx(), b.GetEndAtomIdx(), b.GetBondType(),
+          b.GetBondDir(), b.GetStereo(), tuple(b.GetStereoAtoms()),
+          b.GetIsAromatic(), b.GetIsConjugated(),
+          b.GetPropsAsDict(includePrivate=False, includeComputed=False)) for b in rd.GetBonds()],
+        [(conf.GetId(), conf.Is3D(), tuple(tuple(conf.GetAtomPosition(i))
+                                         for i in range(rd.GetNumAtoms())))
+         for conf in rd.GetConformers()],
+    )
+
+
+@pytest.mark.parametrize("smiles", ["CC(=O)N", "c1ccccc1", "F/C=C/[C@H]([13CH3])[NH3+]"])
+@pytest.mark.parametrize("index", [0, 1, 2, -1])
+def test_delete_atom_undo_restores_exact_connections(smiles, index):
+    mol = Molecule.from_rdkit(Chem.MolFromSmiles(smiles))
+    for atom in mol._mol.GetAtoms():
+        atom.SetProp("source_label", f"atom-{atom.GetIdx()}")
+    index %= mol.num_atoms
+    original = _molecular_state(mol)
+    history = HistoryManager(mol)
+    history.execute(RemoveAtomCommand(index))
+    deleted = _molecular_state(mol)
+    assert mol.num_atoms == len(original[0]) - 1
+    for _ in range(3):
+        assert history.undo()
+        assert _molecular_state(mol) == original
+        assert history.redo()
+        assert _molecular_state(mol) == deleted
+
+
+@pytest.mark.parametrize("bond_type", [BondType.SINGLE, BondType.DOUBLE, BondType.TRIPLE,
+                                      BondType.WEDGE, BondType.DASH])
+def test_delete_bond_preserves_direction_and_order(bond_type):
+    mol = Molecule()
+    for i, element in enumerate(["C", "N", "O"]):
+        mol.add_atom(element, i * 1.5, i * -0.5)
+    mol.add_bond(1, 0, bond_type)
+    mol.add_bond(1, 2)
+    mol._mol.GetBondWithIdx(0).SetProp("source_label", "original bond")
+    original = _molecular_state(mol)
+    history = HistoryManager(mol)
+    history.execute(RemoveBondCommand(0, 1))  # Reverse of the stored orientation.
+    deleted = _molecular_state(mol)
+    for _ in range(3):
+        history.undo()
+        assert _molecular_state(mol) == original
+        history.redo()
+        assert _molecular_state(mol) == deleted
+
+
+def test_delete_stereo_bond_restores_stereo_atoms():
+    mol = Molecule.from_rdkit(Chem.MolFromSmiles("F/C=C/F"))
+    original = _molecular_state(mol)
+    history = HistoryManager(mol)
+    history.execute(RemoveBondCommand(1, 2))
+    history.undo()
+    assert _molecular_state(mol) == original
+
+
+def test_atom_deletion_does_not_break_earlier_history_indices():
+    mol = Molecule.from_rdkit(Chem.MolFromSmiles("CC(=O)N"))
+    original = _molecular_state(mol)
+    history = HistoryManager(mol)
+    x, y = mol.get_2d_coords()[3]
+    history.execute(MoveAtomCommand(3, x, y, x + 2, y - 1))
+    moved = _molecular_state(mol)
+    history.execute(RemoveAtomCommand(1))
+    deleted = _molecular_state(mol)
+    history.undo()
+    assert _molecular_state(mol) == moved
+    history.undo()
+    assert _molecular_state(mol) == original
+    history.redo()
+    assert _molecular_state(mol) == moved
+    history.redo()
+    assert _molecular_state(mol) == deleted
+
+
+def test_bulk_delete_restores_exact_connections():
+    mol = Molecule.from_rdkit(Chem.MolFromSmiles("F/C=C/[C@H]([13CH3])[NH3+]"))
+    original = _molecular_state(mol)
+    history = HistoryManager(mol)
+    history.execute(BulkDeleteCommand([0, 2, 3]))
+    deleted = _molecular_state(mol)
+    for _ in range(3):
+        history.undo()
+        assert _molecular_state(mol) == original
+        history.redo()
+        assert _molecular_state(mol) == deleted

@@ -7,7 +7,9 @@ MolScribe remains available as an explicit alternative.
 from __future__ import annotations
 
 import io
+import logging
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -16,7 +18,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
@@ -29,6 +31,73 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 # MolScribe models are expensive to load, so cache them by device.
 _model_cache: dict[str, "MolScribeRecognizer"] = {}
+_logger = logging.getLogger(__name__)
+
+
+def _unresolved_labels(mol: Chem.Mol) -> list[int]:
+    """OCR aliases to retry, excluding intentional wildcard/R-group labels."""
+    indices = []
+    for atom in mol.GetAtoms():
+        if atom.GetAtomicNum() != 0 or not atom.HasProp("molFileAlias"):
+            continue
+        label = atom.GetProp("molFileAlias").strip()
+        if label and not re.fullmatch(r"R(?:\d+|['’]+|#)?|[XYZ*]|Ar|Het", label):
+            indices.append(atom.GetIdx())
+    return indices
+
+
+def _merge_label_retry(original: Chem.Mol, retry: Chem.Mol) -> Chem.Mol:
+    """Transfer unambiguous atom identities only; keep the original drawing.
+
+    A retry with a different graph or stereo assignment is not evidence for a
+    label correction. Check all mappings so symmetry cannot arbitrarily swap
+    different atom labels. No unknown is ever assumed to mean carbon.
+    """
+    indices = _unresolved_labels(original)
+    if (not indices or original.GetNumAtoms() != retry.GetNumAtoms()
+            or original.GetNumBonds() != retry.GetNumBonds()):
+        return original
+    query = Chem.RWMol(original)
+    for idx in indices:
+        query.ReplaceAtom(idx, Chem.AtomFromSmarts("*"))
+    matches = retry.GetSubstructMatches(query, useChirality=True, uniquify=False, maxMatches=65)
+    if not matches or len(matches) >= 65:
+        return original
+    # Ordinary atoms in an RDKit substructure query don't constrain all
+    # properties (notably formal charge). Known identities must also agree.
+    known = [a for a in original.GetAtoms() if a.GetIdx() not in indices]
+    def identity(atom):
+        return atom.GetAtomicNum(), atom.GetFormalCharge(), atom.GetIsotope()
+    matches = [match for match in matches
+               if all(identity(atom) == identity(retry.GetAtomWithIdx(match[atom.GetIdx()]))
+                      for atom in known)]
+    if not matches:
+        return original
+
+    result = Chem.RWMol(original)
+    for idx in indices:
+        identities = set()
+        for match in matches:
+            atom = retry.GetAtomWithIdx(match[idx])
+            identities.add((atom.GetAtomicNum(), atom.GetFormalCharge(), atom.GetIsotope(),
+                            atom.GetNumExplicitHs(), atom.GetNoImplicit()))
+        if len(identities) != 1:
+            continue
+        atomic_num, charge, isotope, hydrogens, no_implicit = identities.pop()
+        if atomic_num == 0:
+            continue
+        atom = result.GetAtomWithIdx(idx)
+        label = atom.GetProp("molFileAlias")
+        atom.SetAtomicNum(atomic_num)
+        atom.SetFormalCharge(charge)
+        atom.SetIsotope(isotope)
+        atom.SetNumExplicitHs(hydrogens)
+        atom.SetNoImplicit(no_implicit)
+        atom.ClearProp("molFileAlias")
+        atom.SetProp("_OSRAOriginalAlias", label)
+        _logger.info("OSRA label retry resolved atom %s: %s -> %s", idx, label, atom.GetSymbol())
+    result.UpdatePropertyCache(strict=False)
+    return result
 
 
 def _smiles_to_molecule(smiles: str, backend: str) -> Molecule:
@@ -122,14 +191,53 @@ class OSRARecognizer:
 
     def _recognize_structure_file(self, path: Path) -> Molecule:
         """Use SDF so coordinates and explicit bond placement survive."""
+        rdmol = self._read_sdf(path)
+        if rdmol is not None:
+            rdmol = self._retry_small_image_labels(path, rdmol)
+            return Molecule.from_rdkit(rdmol)
+
+        # A few OSRA builds have incomplete SDF support. Retain recognition
+        # through canonical SMILES, accepting that only this fallback redraws.
+        return _smiles_to_molecule(self._recognize_file(path), self.backend_name)
+
+    def _retry_small_image_labels(self, path: Path, mol: Chem.Mol) -> Chem.Mol:
+        """One bounded 2x OCR retry for unresolved labels in small raster crops."""
+        if not _unresolved_labels(mol):
+            return mol
+        temp_path: Optional[Path] = None
+        try:
+            with Image.open(path) as source:
+                if max(source.size) > 1200 or getattr(source, "n_frames", 1) != 1:
+                    return mol
+                rgba = source.convert("RGBA")
+                image = Image.new("RGB", source.size, "white")
+                image.paste(rgba, mask=rgba.getchannel("A"))
+                image = image.resize((image.width * 2, image.height * 2), Image.Resampling.LANCZOS)
+                image = ImageOps.expand(image, border=20, fill="white")
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp:
+                temp_path = Path(temp.name)
+            image.save(temp_path, format="PNG")
+            retry = self._read_sdf(temp_path, timeout=min(self.timeout, 15))
+            if retry is not None:
+                return _merge_label_retry(mol, retry)
+        except Exception:
+            # Optional recovery must not discard an otherwise usable result.
+            _logger.debug("OSRA label retry failed; retaining the original result", exc_info=True)
+        finally:
+            if temp_path is not None:
+                temp_path.unlink(missing_ok=True)
+        return mol
+
+    def _read_sdf(self, path: Path, timeout: Optional[int] = None) -> Optional[Chem.Mol]:
         if not path.is_file():
             raise FileNotFoundError(f"Image file not found: {path}")
+        timeout = self.timeout if timeout is None else timeout
         command = [
             self.executable,
             "-f",
             "sdf",
             "--timeout",
-            str(self.timeout),
+            str(timeout),
             "--",
             str(path),
         ]
@@ -137,12 +245,12 @@ class OSRARecognizer:
             result = subprocess.run(
                 command,
                 capture_output=True,
-                timeout=self.timeout + 10,
+                timeout=timeout + 10,
                 check=False,
             )
         except subprocess.TimeoutExpired as exc:
             raise RuntimeError(
-                f"OSRA recognition timed out after {self.timeout} seconds"
+                f"OSRA recognition timed out after {timeout} seconds"
             ) from exc
 
         raw_output = result.stdout
@@ -162,12 +270,13 @@ class OSRARecognizer:
                         rdmol.UpdatePropertyCache(strict=False)
                     except Exception:
                         pass
-                    return Molecule.from_rdkit(rdmol)
-
-        # A few OSRA builds have incomplete SDF support. Retain recognition
-        # through canonical SMILES, accepting that only this fallback redraws.
-        return _smiles_to_molecule(
-            self._recognize_file(path), self.backend_name)
+                    # The SDF reader converts wedge/dash codes into atom
+                    # chirality and clears the visible bond directions. Restore
+                    # the original markings (including their narrow endpoints),
+                    # not WedgeMolBonds' choice of a new bond for each center.
+                    Chem.ReapplyMolBlockWedging(rdmol)
+                    return rdmol
+        return None
 
     def _recognize_file(self, path: Path) -> str:
         if not path.is_file():

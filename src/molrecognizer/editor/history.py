@@ -5,6 +5,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Callable
 
+from rdkit import Chem
+
 from ..core.molecule import BondType, Molecule
 
 
@@ -19,6 +21,33 @@ class Command(ABC):
 
     @abstractmethod
     def description(self) -> str: ...
+
+
+class _SnapshotCommand(Command):
+    """Restore exact molecular state for edits that discard graph information.
+
+    RDKit renumbers atoms after deletion. Rebuilding just the removed atoms
+    and bonds would invalidate both their connections and earlier commands'
+    indices. A deep copy also preserves bond orientation, stereo, properties,
+    and conformers without regenerating the recognized layout.
+    """
+
+    def __init__(self):
+        self._saved_rwmol: Chem.RWMol | None = None
+
+    def execute(self, mol: Molecule) -> None:
+        self._saved_rwmol = Chem.RWMol(mol._mol)
+        self._apply(mol)
+
+    @abstractmethod
+    def _apply(self, mol: Molecule) -> None: ...
+
+    def undo(self, mol: Molecule) -> None:
+        if self._saved_rwmol is None:
+            raise RuntimeError("Cannot undo a command before execution")
+        # Keep the shared Molecule wrapper, but don't let later edits mutate
+        # the snapshot itself (including on repeated undo/redo).
+        mol._mol = Chem.RWMol(self._saved_rwmol)
 
 
 class CompoundCommand(Command):
@@ -60,42 +89,13 @@ class AddAtomCommand(Command):
         return f"Add {self.element} at ({self.x:.1f}, {self.y:.1f})"
 
 
-class RemoveAtomCommand(Command):
+class RemoveAtomCommand(_SnapshotCommand):
     def __init__(self, idx: int):
+        super().__init__()
         self.idx = idx
-        self._saved_element: str = ""
-        self._saved_x: float = 0
-        self._saved_y: float = 0
-        self._saved_charge: int = 0
-        self._saved_bonds: list[tuple[int, int, BondType]] = []
 
-    def execute(self, mol: Molecule) -> None:
-        # Save atom state for undo
-        info = mol.get_atom_info(self.idx)
-        self._saved_element = info.element
-        self._saved_x = info.x
-        self._saved_y = info.y
-        self._saved_charge = info.formal_charge
-        # Save bonds connected to this atom
-        self._saved_bonds = []
-        for bond in mol.get_all_bonds():
-            if bond.begin_atom_idx == self.idx or bond.end_atom_idx == self.idx:
-                self._saved_bonds.append(
-                    (bond.begin_atom_idx, bond.end_atom_idx, bond.bond_type)
-                )
+    def _apply(self, mol: Molecule) -> None:
         mol.remove_atom(self.idx)
-
-    def undo(self, mol: Molecule) -> None:
-        # Re-add atom at original index position
-        new_idx = mol.add_atom(
-            self._saved_element, self._saved_x, self._saved_y, self._saved_charge
-        )
-        # Re-add bonds (indices may have shifted — this is a best-effort restore)
-        for a1, a2, bt in self._saved_bonds:
-            try:
-                mol.add_bond(a1, a2, bt)
-            except Exception:
-                pass  # Bond restore may fail if indices shifted
 
     def description(self) -> str:
         return f"Remove atom {self.idx}"
@@ -117,20 +117,14 @@ class AddBondCommand(Command):
         return f"Add {self.bond_type.name.lower()} bond {self.a1}-{self.a2}"
 
 
-class RemoveBondCommand(Command):
+class RemoveBondCommand(_SnapshotCommand):
     def __init__(self, a1: int, a2: int):
+        super().__init__()
         self.a1 = a1
         self.a2 = a2
-        self._saved_type: BondType = BondType.SINGLE
 
-    def execute(self, mol: Molecule) -> None:
-        info = mol.get_bond_info(self.a1, self.a2)
-        if info:
-            self._saved_type = info.bond_type
+    def _apply(self, mol: Molecule) -> None:
         mol.remove_bond(self.a1, self.a2)
-
-    def undo(self, mol: Molecule) -> None:
-        mol.add_bond(self.a1, self.a2, self._saved_type)
 
     def description(self) -> str:
         return f"Remove bond {self.a1}-{self.a2}"
@@ -227,30 +221,30 @@ class MoveAtomCommand(Command):
         return f"Move atom {self.idx}"
 
 
-class BulkDeleteCommand(Command):
-    """Delete a set of atoms (and their bonds) with correct undo.
-
-    Saves a full copy of the underlying RDKit mol so that undo restores
-    all atoms, bonds, positions, and charges exactly — avoiding the
-    index-shifting problems of individual RemoveAtomCommands.
-    """
+class BulkDeleteCommand(_SnapshotCommand):
+    """Delete a set of atoms and their bonds with exact snapshot-based undo."""
 
     def __init__(self, indices: list[int]):
+        super().__init__()
         self._indices = sorted(indices, reverse=True)
-        self._saved_rwmol = None  # deep copy before deletion
 
-    def execute(self, mol: Molecule) -> None:
-        from rdkit import Chem
-        self._saved_rwmol = Chem.RWMol(mol._mol)
+    def _apply(self, mol: Molecule) -> None:
         for idx in self._indices:
             mol.remove_atom(idx)
 
-    def undo(self, mol: Molecule) -> None:
-        from rdkit import Chem
-        mol._mol = Chem.RWMol(self._saved_rwmol)
-
     def description(self) -> str:
         return f"Delete {len(self._indices)} atoms"
+
+
+class FormatLayoutCommand(_SnapshotCommand):
+    """Coordinates and their stereo markings are one atomic, undoable edit."""
+
+    def _apply(self, mol: Molecule) -> None:
+        from ..core.layout import format_2d
+        mol._mol = format_2d(mol)._mol
+
+    def description(self) -> str:
+        return "Format 2D layout"
 
 
 class HistoryManager:

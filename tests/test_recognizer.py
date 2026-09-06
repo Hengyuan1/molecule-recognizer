@@ -30,6 +30,46 @@ def recognizer():
 
 
 class TestOSRARecognizer:
+    @pytest.mark.parametrize("v3000", [False, True])
+    @pytest.mark.parametrize("smiles", [
+        "C[C@H](O)C(=O)O", "C[C@@H](O)C(=O)O",
+        "C[C@](O)(F)Cl", "C[C@H](O)[C@@H](N)C",
+        "C[C@H](O)c1ccccc1", "CC(O)C(=O)O",
+    ])
+    @patch("molrecognizer.core.recognizer.shutil.which", return_value="/usr/bin/osra")
+    @patch("molrecognizer.core.recognizer.subprocess.run")
+    def test_osra_preserves_original_stereo_bonds(
+        self, run, _which, tmp_path, smiles, v3000
+    ):
+        from molrecognizer.core.molecule import Molecule
+        from molrecognizer.core.recognizer import OSRARecognizer
+        from molrecognizer.core.smiles import molecule_to_smiles
+
+        source = Chem.MolFromSmiles(smiles)
+        AllChem.Compute2DCoords(source)
+        Chem.Kekulize(source, clearAromaticFlags=True)
+        for atom in source.GetAtoms():
+            if atom.GetChiralTag() == Chem.ChiralType.CHI_UNSPECIFIED:
+                continue
+            # Deliberately wedge a different bond from WedgeMolBonds' default.
+            # Recognition must preserve the input marking, not pick a new one.
+            bonds = [b for b in atom.GetBonds()
+                     if b.GetOtherAtom(atom).GetChiralTag() == Chem.ChiralType.CHI_UNSPECIFIED]
+            Chem.WedgeBond(bonds[-1], atom.GetIdx(), source.GetConformer())
+        expected = Molecule.from_rdkit(source)
+        sdf = Chem.MolToMolBlock(source, forceV3000=v3000) + "\n$$$$\n"
+        image_path = tmp_path / "stereo.png"
+        image_path.write_bytes(b"image")
+        run.return_value = CompletedProcess([], 0, sdf.encode(), b"")
+
+        molecule = OSRARecognizer().recognize(image_path)
+
+        assert run.call_count == 1  # No SMILES fallback or layout regeneration.
+        assert molecule.get_all_bonds() == expected.get_all_bonds()
+        for actual, original in zip(molecule.get_2d_coords(), expected.get_2d_coords()):
+            assert actual == pytest.approx(original, abs=1e-4)
+        assert molecule_to_smiles(molecule) == Chem.MolToSmiles(Chem.MolFromSmiles(smiles))
+
     @patch("molrecognizer.core.recognizer.shutil.which", return_value="/usr/bin/osra")
     @patch("molrecognizer.core.recognizer.subprocess.run")
     def test_osra_sdf_preserves_coordinates_and_kekule_bonds(

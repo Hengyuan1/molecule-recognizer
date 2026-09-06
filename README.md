@@ -8,7 +8,8 @@ Recognize molecular structures from images (screenshots, papers, web pages), con
 
 - **Desktop workbench** — IQmol-inspired menus and icon toolbar, separate source-image and 3D panels, and a blue workspace surround with a light canvas for readable chemical drawings. Menus and the bottom size controls scale with the rest of the interface. File/Edit/Build/View menus expose existing actions and shortcuts; **View → Fit structure** adjusts the view without changing molecular coordinates or bond placement (unlike Format, which regenerates the layout).
 - **Image recognition** — Uses [OSRA](https://sourceforge.net/projects/osra/) by default and preserves its recognized 2D coordinates and explicit single/double-bond placement via SDF output, making image-to-canvas comparison and manual correction easier; MolScribe remains available as an alternative
-- **Screenshot capture** — On WSL, press the system-wide Alt+Y hotkey from any Windows application to capture the monitor under the mouse cursor, then draw and adjust a selection box (drag edges/corners to resize, ✓ to accept, ✗ to cancel); works with extended monitors through the Qt/grim/scrot/PowerShell fallback chain
+- **Small-image label recovery** — If OSRA leaves unrecognized atom labels in a small raster image (up to 1200 pixels on its longest side), the editor tries one 2× enlarged, padded copy. It transfers only unambiguous atom identities when the atom/bond counts, connections, known elements/charges, and specified stereochemistry agree. Original coordinates and wedge/dash markings stay unchanged. Intentional `*`/R-group placeholders are not assumed to be carbon; unresolved labels remain available for manual correction. The temporary retry image is deleted after use.
+- **Snip-style structure capture** — On WSL, press system-wide Alt+Y to select directly over the monitor under your cursor, including extended monitors. A borderless Windows overlay preserves the screen's original size: draw a rectangle, move it or adjust its edges/corners, then click **Recognize** or press **Enter**. **Esc**, right-click, or **Cancel** discards it. Arrow keys move the box by one pixel (Shift: ten). The full-resolution crop goes directly to local recognition, without a separate preview window or web upload.
 - **Per-monitor UI scaling** — Uses a 180% interface target on high-resolution laptop displays (subject to the monitor's safe size limit). Existing WSL high-resolution profiles receive a one-time readability update to a window about 80% of the screen; extended-monitor profiles stay unchanged. Use `A−` and `A+` to remember a separate size for each monitor, or click the percentage to restore that monitor's recommended scale. `Fit` restores the recommended window size even if a smaller size was saved.
 - **Monitor-aware window sizing** — Uses stable Qt-controlled sizing without clipping controls and remembers settings per display; `Fit` and UI-scale controls replace unreliable custom WSLg edge-resize gestures
 - **WSLg menus** — File/Edit/Build/View/Help use a shared dropdown panel drawn inside the application, avoiding native-popup handoffs and cursor polling. Click a heading, then hover between headings; use arrow keys and Enter, Escape to dismiss, or Alt+letter/F10 to open a menu. Clicking outside, moving/resizing the window, or switching applications dismisses the panel. Native Windows and other platforms retain standard Qt menus. The Bond/Ring/XYZ dropdowns retain their separate WSLg popup-resource cleanup.
@@ -30,13 +31,13 @@ Recognize molecular structures from images (screenshots, papers, web pages), con
   - Pan (middle/right-mouse drag) and zoom (scroll wheel)
   - Ring tools (⌬ ⬡ ⬠ □ △) — draw benzene, 6/5/4/3-membered rings on atoms, bonds (fused), or empty canvas; dropdown selector with ghost preview on hover
   - Box selection — drag on empty space to select atoms and bonds; drag the selection to move it as a group; Delete key removes the selection
-  - Format button — recompute 2D layout via RDKit for a tidy structure after manual edits
+  - Format button — recompute 2D layout via RDKit, align it to the original orientation, and recalculate wedge/dash directions for the new coordinates so cleanup does not invert stereocenters. Coordinates and stereo markings undo/redo together in one step; if the stereochemical SMILES would change, the original drawing is retained.
   - Clean button — clear the canvas, loaded images, and 3D viewer to start fresh
-  - Full undo/redo — adding a bonded atom undoes as a single step (atom + bond together); bulk delete uses snapshot-based undo for correctness
+  - Full undo/redo — adding a bonded atom undoes as a single step (atom + bond together); atom, bond, and bulk deletions use complete snapshots to restore original connections, bond types, stereochemistry, and coordinates exactly
 - **Kekulé structure display** — Aromatic systems shown as conjugated single/double bonds (not aromatic notation) for easy valence verification. Implicit Hs displayed on heteroatoms with subscript counts and superscript charges (e.g. NH₂, OH, SH, N⁺, NH₃⁺). Isolated atoms show all Hs (e.g. CH₄, NH₃).
 - **Smart element substitution** — Changing an atom to a lower-valence element automatically downgrades bond orders (e.g. C→S in a ring converts double bonds to single). Undo fully restores original bond types.
 - **Valence checking** — Automatic validation with over-valence warnings; hydrogen counts derived via RDKit sanitization with valence-table fallback for robustness with hypervalent atoms
-- **Stereochemistry** — Wedge/dash bonds correctly encode chirality for both SMILES-loaded and manually-drawn structures; chiral tags derived from 2D bond directions; stereo preserved through SMILES export and 3D generation
+- **Stereochemistry** — OSRA's original SDF wedge/dash markings are restored on the same bonds, with their narrow ends at the original atoms; coordinates are mapped to the screen without mirroring the drawing. Stereo is also supported for SMILES-loaded and manually-drawn structures and preserved through SMILES export and 3D generation. Recognition errors or stereo markings absent from OSRA's output still need manual correction.
 - **3D structure viewer** — Generate and view 3D conformers (RDKit ETKDG + MMFF optimization) in an interactive ball-and-stick viewer; left-drag to rotate, right-drag to pan, scroll to zoom; double-click the preview to open a larger viewer window; double/triple bonds drawn explicitly
 - **XYZ export and clipboard** — After rendering, save or copy 3D coordinates in XYZ format; both controls offer Angstrom (default) or Bohr units
 - **SMILES export** — Live SMILES conversion as you edit, copy to clipboard or save to file; auto-inferred charges reflected in SMILES (e.g. `[N+]`); chirality (`@`/`@@`) and E/Z geometry preserved
@@ -323,23 +324,35 @@ artifact rather than performed by `pip` or `uv` at install time.
 
 ### Screenshot backends
 
-The screenshot feature tries several capture backends in order and uses
-the first that succeeds:
+**Windows and WSL2/WSLg:** a Windows-native selection overlay is launched through
+Windows PowerShell and .NET Windows Forms (included with Windows). No additional
+Python dependency or Snipaste installation is needed. Move the cursor onto the
+desired monitor before pressing the shortcut. The overlay freezes that monitor
+in memory while you adjust the selection, preserving physical pixels even with
+mixed display scaling. Only the confirmed crop is returned to MolRecognizer;
+the dimming, border and buttons are not included. Neither the full-screen image
+nor the crop is saved to a screenshot file. The recognizer may create its own
+temporary input file as part of local recognition.
+
+PowerShell must be allowed to compile the bundled C# helper with `Add-Type`;
+workplace application-control policies may block it. Errors restore the app
+and are reported instead of silently opening the old preview workflow.
+
+**Other desktops (or when Windows PowerShell is unavailable):** a borderless
+Qt selection overlay uses the existing capture backends:
 
 | Priority | Backend | Works on |
 |---|---|---|
-| 1 | PowerShell + Win32 (automatic) | WSL2/WSLg, including extended monitors |
-| 2 | Qt `grabWindow` (built-in) | Native Linux X11, macOS, native Windows |
-| 3 | `grim` (`sudo apt install grim`) | Native Linux Wayland |
-| 4 | `scrot` (`sudo apt install scrot`) | Native Linux X11 |
-| 5 | `gnome-screenshot` | GNOME desktops |
+| 1 | Qt `grabWindow` (built-in) | Native Linux X11, macOS, native Windows |
+| 2 | `grim` (`sudo apt install grim`) | Native Linux Wayland |
+| 3 | `scrot` (`sudo apt install scrot`) | Native Linux X11 |
+| 4 | `gnome-screenshot` | GNOME desktops |
 
 **Native Linux:** no extra packages needed on X11. On Wayland, install
 `grim`: `sudo apt install grim`.
 
-**WSL2 / WSLg:** the app uses Windows PowerShell first. Move the cursor onto
-the desired monitor and press `Alt+Y`; capture uses that monitor's native
-pixel bounds and handles different display scaling factors.
+Select one monitor per capture; to capture a different display, cancel, move
+the cursor there, and press the shortcut again.
 
 ## Usage
 

@@ -50,6 +50,16 @@ SCALE = 40.0  # pixels per unit coordinate
 HIT_RADIUS = 12.0  # click detection radius
 
 
+def molecule_to_scene(x: float, y: float) -> QPointF:
+    """Map chemistry's Y-up coordinates to Qt's Y-down scene, without mirroring."""
+    return QPointF(x * SCALE, -y * SCALE)
+
+
+def scene_to_molecule(pos: QPointF) -> tuple[float, float]:
+    """Inverse mapping for mouse positions and drag deltas."""
+    return pos.x() / SCALE, -pos.y() / SCALE
+
+
 class AtomItem(QGraphicsEllipseItem):
     """Visual representation of an atom.
 
@@ -66,7 +76,7 @@ class AtomItem(QGraphicsEllipseItem):
         self.element = element
         self.n_hs = n_hs
         self.formal_charge = formal_charge
-        self.setPos(x * SCALE, y * SCALE)
+        self.setPos(molecule_to_scene(x, y))
         self.setZValue(10)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)

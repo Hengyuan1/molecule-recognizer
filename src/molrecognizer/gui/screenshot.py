@@ -8,8 +8,8 @@ Capture strategy (tries in order, uses the first that succeeds):
 4. ``scrot`` — X11 tool (``apt install scrot``).
 5. ``gnome-screenshot`` — GNOME tool.
 
-Region selection is handled by :class:`ScreenshotDialog`, a normal
-``QDialog`` (no fullscreen overlay tricks that break on WSLg).
+Windows/WSL use the native overlay in ``native_capture``. Other desktops use
+``ScreenshotDialog`` as a borderless, monitor-sized selection overlay.
 """
 
 from __future__ import annotations
@@ -549,7 +549,7 @@ _EDGE_MARGIN = 12    # hit-test margin for edges
 
 
 class ScreenshotDialog(QDialog):
-    """Dialog showing a captured screenshot for region selection.
+    """Borderless monitor-sized overlay for non-Windows region selection.
 
     The user draws a rectangle, then adjusts it by dragging edges or
     corners.  A small ✓ / ✗ toolbar appears below the selection.
@@ -566,8 +566,9 @@ class ScreenshotDialog(QDialog):
 
     def __init__(self, screenshot: QPixmap, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Select region  (draw box, then \u2713 to accept)")
-        self.setCursor(Qt.CursorShape.ArrowCursor)
+        self.setWindowTitle("Select structure region (Enter to recognize, Esc to cancel)")
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setCursor(Qt.CursorShape.CrossCursor)
         self.setMouseTracking(True)
 
         self._screenshot = screenshot
@@ -582,21 +583,21 @@ class ScreenshotDialog(QDialog):
         self._drag_origin = QPoint()
         self._sel_origin = QRect()
 
-        # Scale to and centre on the monitor containing the cursor.
+        # Match the screen's logical geometry; retain the original physical
+        # pixels for cropping. Never show a reduced preview in a normal window.
         screen = QGuiApplication.screenAt(QCursor.pos())
         if screen is None:
             screen = QGuiApplication.primaryScreen()
         if screen:
-            avail = screen.availableGeometry()
-            max_w = int(avail.width() * 0.92)
-            max_h = int(avail.height() * 0.88)
+            avail = screen.geometry()
+            max_w = avail.width()
+            max_h = avail.height()
         else:
             max_w, max_h = 1600, 900
 
         self._scale = min(
             max_w / screenshot.width(),
             max_h / screenshot.height(),
-            1.0,
         )
         display_w = int(screenshot.width() * self._scale)
         display_h = int(screenshot.height() * self._scale)
@@ -606,6 +607,7 @@ class ScreenshotDialog(QDialog):
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
+        self._display_pixmap.setDevicePixelRatio(1.0)
         self.setFixedSize(self._display_pixmap.width(),
                           self._display_pixmap.height())
         if screen:
@@ -622,6 +624,12 @@ class ScreenshotDialog(QDialog):
         # Dim the whole image
         painter.fillRect(self.rect(), QColor(0, 0, 0, 60))
 
+        if not self._sel:
+            painter.setPen(QColor(255, 255, 255))
+            painter.drawText(QRect(20, 20, self.width() - 40, 50),
+                             Qt.AlignmentFlag.AlignCenter,
+                             "Drag to select. Adjust edges/corners, then Enter to recognize. Esc cancels.")
+
         if self._sel and self._sel.width() > 0 and self._sel.height() > 0:
             r = self._sel.normalized()
             # Draw the clear (un-dimmed) region
@@ -637,7 +645,9 @@ class ScreenshotDialog(QDialog):
                                  _HANDLE, _HANDLE)
             # ✓ / ✗ buttons drawn as text below the selection
             bar_y = r.bottom() + 8
-            bar_x = r.center().x() - 30
+            if bar_y + 28 > self.height():
+                bar_y = max(0, r.top() - 36)
+            bar_x = max(0, min(self.width() - 60, r.center().x() - 30))
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QColor(50, 50, 50, 200))
             painter.drawRoundedRect(bar_x, bar_y, 60, 28, 6, 6)
@@ -712,7 +722,7 @@ class ScreenshotDialog(QDialog):
     def mousePressEvent(self, event):
         if event.button() != Qt.MouseButton.LeftButton:
             return
-        pos = event.pos()
+        pos = self._clamp_point(event.pos())
 
         # Check ✓/✗ buttons first
         btn = self._hit_btn(pos)
@@ -741,22 +751,23 @@ class ScreenshotDialog(QDialog):
 
         # Start drawing a new box
         self._sel = QRect(pos, pos)
+        self._drag_origin = pos
         self._drawing = True
         self.update()
 
     def mouseMoveEvent(self, event):
-        pos = event.pos()
+        pos = self._clamp_point(event.pos())
 
         if self._drawing:
-            self._sel = QRect(self._drag_origin if hasattr(self, '_draw_start') else self._sel.topLeft(), pos)
-            # Keep _sel with the original top-left during drawing
-            self._sel.setBottomRight(pos)
+            self._sel = self._between(self._drag_origin, pos)
             self.update()
             return
 
         if self._dragging:
             delta = pos - self._drag_origin
             self._sel = self._sel_origin.translated(delta)
+            self._sel.moveLeft(max(0, min(self.width() - self._sel.width(), self._sel.left())))
+            self._sel.moveTop(max(0, min(self.height() - self._sel.height(), self._sel.top())))
             self.update()
             return
 
@@ -773,7 +784,7 @@ class ScreenshotDialog(QDialog):
                 r.setTop(r.top() + dy)
             if "b" in e:
                 r.setBottom(r.bottom() + dy)
-            self._sel = r
+            self._sel = self._between(r.topLeft(), r.bottomRight()).intersected(self.rect())
             self.update()
             return
 
@@ -800,6 +811,7 @@ class ScreenshotDialog(QDialog):
     def mouseReleaseEvent(self, event):
         if event.button() != Qt.MouseButton.LeftButton:
             return
+        self.mouseMoveEvent(event)
         if self._drawing:
             self._drawing = False
             if self._sel:
@@ -807,6 +819,17 @@ class ScreenshotDialog(QDialog):
             self.update()
         self._dragging = False
         self._resizing = False
+
+    def _clamp_point(self, pos):
+        return QPoint(max(0, min(self.width() - 1, pos.x())),
+                      max(0, min(self.height() - 1, pos.y())))
+
+    @staticmethod
+    def _between(first, second):
+        # Construct ordered inclusive endpoints directly. Normalizing a QRect
+        # built from reversed endpoints otherwise loses the boundary pixels.
+        return QRect(QPoint(min(first.x(), second.x()), min(first.y(), second.y())),
+                     QPoint(max(first.x(), second.x()), max(first.y(), second.y())))
 
     def _accept_selection(self):
         if self._sel:
@@ -818,7 +841,8 @@ class ScreenshotDialog(QDialog):
                     int(rect.width() * inv), int(rect.height() * inv),
                 )
                 self.result_pixmap = self._screenshot.copy(src_rect)
-        self.accept()
+                self.result_pixmap.setDevicePixelRatio(1.0)
+                self.accept()
 
     def keyPressEvent(self, event):
         key = event.key()

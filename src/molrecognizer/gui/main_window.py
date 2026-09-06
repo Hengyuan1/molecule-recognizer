@@ -57,6 +57,7 @@ from .screenshot import (
 from .viewer3d import Viewer3DWidget
 from .workbench_icons import workbench_icon
 from .inline_menu import InlineMenuBar
+from .native_capture import NativeRegionCapture, native_capture_executable
 
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
@@ -401,6 +402,7 @@ class MainWindow(QMainWindow):
         self._mol_3d = None  # RDKit Mol with 3D conformer (for xyz export)
         self._was_maximized_before_screenshot = False
         self._screenshot_pending = False
+        self._native_capture = None
 
         self._setup_ui()
         self._setup_statusbar()
@@ -923,6 +925,12 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(300, self._do_screenshot)
 
     def _do_screenshot(self):
+        executable = native_capture_executable()
+        if executable:
+            self._native_capture = NativeRegionCapture(executable, self)
+            self._native_capture.completed.connect(self._on_native_capture_completed)
+            self._native_capture.start()
+            return
         screenshot = grab_screen()
 
         if screenshot is None or screenshot.isNull():
@@ -940,17 +948,36 @@ class MainWindow(QMainWindow):
         self._restore_after_screenshot()
 
         if result == QDialog.DialogCode.Accepted and dlg.result_pixmap:
-            self._source_pixmap = dlg.result_pixmap
-            self._left_panel.set_preview(self._source_pixmap)
-            try:
-                png_data = pixmap_to_png_bytes(dlg.result_pixmap)
-                img = Image.open(io.BytesIO(png_data))
-                img.load()
-                self._recognize_image(img)
-            except Exception as e:
-                self._status_bar.showMessage(f"Screenshot error: {e}", 5000)
+            self._recognize_capture(dlg.result_pixmap)
         else:
             self._status_bar.showMessage("Screenshot cancelled", 3000)
+
+    def _on_native_capture_completed(self, png, error):
+        capture, self._native_capture = self._native_capture, None
+        if capture is not None:
+            capture.deleteLater()
+        self._restore_after_screenshot()
+        if error:
+            QMessageBox.warning(self, "Screen capture", error)
+            self._status_bar.showMessage("Screenshot failed", 5000)
+        elif not png:
+            self._status_bar.showMessage("Screenshot cancelled", 3000)
+        else:
+            pixmap = QPixmap()
+            if pixmap.loadFromData(png, "PNG"):
+                self._recognize_capture(pixmap)
+            else:
+                self._status_bar.showMessage("Invalid screenshot image", 5000)
+
+    def _recognize_capture(self, pixmap):
+        self._source_pixmap = pixmap
+        self._left_panel.set_preview(pixmap)
+        try:
+            img = Image.open(io.BytesIO(pixmap_to_png_bytes(pixmap)))
+            img.load()
+            self._recognize_image(img)
+        except Exception as error:
+            self._status_bar.showMessage(f"Screenshot error: {error}", 5000)
 
     def _restore_after_screenshot(self):
         """Restore the window without losing its pre-capture state."""
@@ -1153,6 +1180,8 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def closeEvent(self, event):
+        if self._native_capture is not None:
+            self._native_capture.abort()
         geometry = self.normalGeometry() if self.isMaximized() else self.geometry()
         QSettings().setValue("main_window/normal_geometry", geometry)
         if self._scale_screen is not None and not self.isMaximized():

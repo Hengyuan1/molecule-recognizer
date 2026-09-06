@@ -31,7 +31,10 @@ from PySide6.QtWidgets import (
 )
 
 from ..core.molecule import BondType, Molecule
-from .canvas import HIT_RADIUS, SCALE, AtomItem, BondItem, MoleculeScene
+from .canvas import (
+    HIT_RADIUS, AtomItem, BondItem, MoleculeScene,
+    molecule_to_scene, scene_to_molecule,
+)
 from .history import (
     AddAtomCommand,
     AddBondCommand,
@@ -159,8 +162,7 @@ class Tool(ABC):
                         AddBondCommand(source_idx, target_idx, self.bond_type)
                     )
             elif target_idx is None:
-                x = pos.x() / SCALE
-                y = pos.y() / SCALE
+                x, y = scene_to_molecule(pos)
                 atom_cmd = AddAtomCommand(self.element, x, y)
                 bond_cmd = AddBondCommand(source_idx, -1, self.bond_type)
                 # Execute as compound so undo removes both at once
@@ -402,15 +404,13 @@ class SelectTool(Tool):
 
         # Group drag
         if self._group_drag and self._did_drag:
-            delta_x = (pos.x() - self._press_pos.x()) / SCALE
-            delta_y = (pos.y() - self._press_pos.y()) / SCALE
+            delta_x, delta_y = scene_to_molecule(pos - self._press_pos)
             moved: set[int] = set()
             for idx in self._selected:
                 ox, oy = self._group_origins[idx]
                 atom_item = self._scene.get_atom_item(idx)
                 if atom_item:
-                    atom_item.setPos((ox + delta_x) * SCALE,
-                                     (oy + delta_y) * SCALE)
+                    atom_item.setPos(molecule_to_scene(ox + delta_x, oy + delta_y))
                 moved.add(idx)
             # Update bonds that touch any moved atom
             for bi in self._scene._bond_items.values():
@@ -448,8 +448,7 @@ class SelectTool(Tool):
         # Group drag release
         if self._group_drag:
             if self._did_drag:
-                delta_x = (pos.x() - self._press_pos.x()) / SCALE
-                delta_y = (pos.y() - self._press_pos.y()) / SCALE
+                delta_x, delta_y = scene_to_molecule(pos - self._press_pos)
                 cmds = []
                 for idx in self._selected:
                     ox, oy = self._group_origins[idx]
@@ -475,8 +474,7 @@ class SelectTool(Tool):
             self._drag_atom = None
             self._did_drag = False
             if did_drag:
-                new_x = pos.x() / SCALE
-                new_y = pos.y() / SCALE
+                new_x, new_y = scene_to_molecule(pos)
                 self._history.execute(
                     MoveAtomCommand(atom_idx, self._drag_ox, self._drag_oy,
                                     new_x, new_y)
@@ -616,8 +614,7 @@ class AtomTool(Tool):
     name = "atom"
 
     def _on_empty_press(self, pos: QPointF) -> None:
-        x = pos.x() / SCALE
-        y = pos.y() / SCALE
+        x, y = scene_to_molecule(pos)
         self._history.execute(AddAtomCommand(self.element, x, y))
 
 
@@ -801,16 +798,15 @@ class RingTool(Tool):
         for i in range(n):
             x1, y1 = verts[i]
             x2, y2 = verts[(i + 1) % n]
-            line = QGraphicsLineItem(
-                x1 * SCALE, y1 * SCALE, x2 * SCALE, y2 * SCALE
-            )
+            p1, p2 = molecule_to_scene(x1, y1), molecule_to_scene(x2, y2)
+            line = QGraphicsLineItem(QLineF(p1, p2))
             line.setPen(_GHOST_PEN)
             line.setZValue(50)
             self._scene.addItem(line)
             self._ghost_items.append(line)
             r = 3
             dot = QGraphicsEllipseItem(
-                x1 * SCALE - r, y1 * SCALE - r, 2 * r, 2 * r
+                p1.x() - r, p1.y() - r, 2 * r, 2 * r
             )
             dot.setPen(_GHOST_PEN)
             dot.setBrush(_GHOST_BRUSH)
@@ -918,8 +914,7 @@ class RingTool(Tool):
         # Empty canvas — place standalone ring
         self._anchor = None
         self._anchor_bond = None
-        x = pos.x() / SCALE
-        y = pos.y() / SCALE
+        x, y = scene_to_molecule(pos)
         verts = _ring_vertices(x, y, 0.0, self._n)
         self._clear_ghost()
         self._commit_ring_verts(verts)
@@ -933,7 +928,8 @@ class RingTool(Tool):
             ax, ay = self._anchor.pos().x(), self._anchor.pos().y()
             dx, dy = pos.x() - ax, pos.y() - ay
             if dx * dx + dy * dy > 100:
-                self._ring_angle = math.atan2(dy / SCALE, dx / SCALE)
+                mol_dx, mol_dy = scene_to_molecule(QPointF(dx, dy))
+                self._ring_angle = math.atan2(mol_dy, mol_dx)
             info = self._history.molecule.get_atom_info(
                 self._anchor.atom_idx)
             verts = _ring_vertices(info.x, info.y, self._ring_angle, self._n)

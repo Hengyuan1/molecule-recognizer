@@ -6,7 +6,7 @@ from typing import Union
 
 from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtWidgets import (
-    QDialog, QGraphicsSceneMouseEvent, QGridLayout, QHBoxLayout, QLabel,
+    QDialog, QGraphicsSceneMouseEvent, QGridLayout, QHBoxLayout, QLabel, QMessageBox,
     QVBoxLayout, QWidget,
 )
 
@@ -290,41 +290,14 @@ class EditorWidget(QWidget):
     # ------------------------------------------------------------------
 
     def _cleanup_layout(self):
-        """Recompute 2D coordinates using RDKit for a clean layout."""
-        from rdkit.Chem import AllChem
-        from ..editor.history import CompoundCommand, MoveAtomCommand
-
-        mol = self._molecule
-        if mol.num_atoms == 0:
+        """Recompute layout and its stereo markings as one reversible edit."""
+        from ..editor.history import FormatLayoutCommand
+        if self._molecule.num_atoms == 0:
             return
-
-        # Save old positions
-        old_coords = mol.get_2d_coords()
-
-        # Use RDKit to compute optimal 2D layout
-        rdmol = mol.to_rdkit()
-        AllChem.Compute2DCoords(rdmol)
-        conf = rdmol.GetConformer(0)
-
-        # Build compound MoveAtomCommand for full undo
-        cmds = []
-        for i in range(mol.num_atoms):
-            pos = conf.GetAtomPosition(i)
-            ox, oy = old_coords[i]
-            # RDKit coords are in Angstrom-like units; match our scale
-            if ox != pos.x or oy != pos.y:
-                cmds.append(MoveAtomCommand(i, ox, oy, pos.x, pos.y))
-
-        if cmds:
-            # Execute all moves
-            for cmd in cmds:
-                cmd.execute(mol)
-            compound = CompoundCommand(cmds)
-            self._history._undo_stack.append(compound)
-            self._history._redo_stack.clear()
-            self._hover_item = None
-            self._refresh_canvas()
-            self.molecule_changed.emit()
+        try:
+            self._history.execute(FormatLayoutCommand())
+        except Exception as exc:
+            QMessageBox.warning(self, "Layout cleanup", str(exc))
 
     def _undo(self):
         if self._history.undo():

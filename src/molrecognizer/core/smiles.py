@@ -6,6 +6,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 
 from .molecule import Molecule
+from .stereo import with_drawing_stereo
 
 
 def molecule_to_smiles(mol: Molecule) -> str:
@@ -39,34 +40,7 @@ def molecule_to_smiles(mol: Molecule) -> str:
         inferred[i] = infer_formal_charge(info.element, bos,
                                           info.formal_charge)
 
-    src = Chem.RWMol(mol.to_rdkit())
-    # Clear NoImplicit so RDKit sees implicit Hs when determining chirality
-    # for atoms with fewer than 4 explicit bonds (the common drawing case).
-    for _a in src.GetAtoms():
-        _a.SetNoImplicit(False)
-    try:
-        src.UpdatePropertyCache(strict=False)
-    except Exception:
-        pass
-    # RDKit's AssignChiralTypesFromBondDirs rejects atoms that carry both
-    # a wedge and a dash when an implicit H is present ("rule 1a").  One
-    # stereo indicator is sufficient, so drop the dash when a wedge exists.
-    for _a in src.GetAtoms():
-        has_wedge = False
-        dash_bonds = []
-        for _b in _a.GetBonds():
-            if _b.GetBeginAtomIdx() == _a.GetIdx():
-                _bd = _b.GetBondDir()
-                if _bd == Chem.rdchem.BondDir.BEGINWEDGE:
-                    has_wedge = True
-                elif _bd == Chem.rdchem.BondDir.BEGINDASH:
-                    dash_bonds.append(_b)
-        if has_wedge and dash_bonds:
-            for _b in dash_bonds:
-                _b.SetBondDir(Chem.rdchem.BondDir.NONE)
-    # Derive chiral tags from wedge/dash bond directions + 2D coords
-    # so that manually-drawn stereo bonds produce correct SMILES.
-    Chem.AssignChiralTypesFromBondDirs(src)
+    src = with_drawing_stereo(mol.to_rdkit())
     fresh = Chem.RWMol()
     for i in range(src.GetNumAtoms()):
         a = src.GetAtomWithIdx(i)
