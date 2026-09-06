@@ -1,8 +1,11 @@
-"""Main application window — StoneMIND-inspired layout.
+"""Main application window — IQmol-inspired chemistry workbench.
 
 Layout:
     +---------+---------------------------+------+
-    |  Left   |  Toolbar                  | Elem |
+    | File / Edit / Build / View / Help          |
+    | Drawing tools                  Undo/Redo  |
+    +---------+---------------------------+------+
+    |  Left   |                           | Elem |
     |  Panel  |  Canvas (draw / edit)     | Pal- |
     |  image  |                           | ette |
     |  preview|                           |      |
@@ -21,17 +24,19 @@ import re
 
 from PIL import Image
 from PySide6.QtCore import QSettings, QSize, Qt, QThread, QTimer, Signal
-from PySide6.QtGui import QFont, QKeySequence, QPixmap
+from PySide6.QtGui import QAction, QFont, QKeySequence, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
     QFileDialog,
+    QFrame,
     QHBoxLayout,
     QInputDialog,
     QLabel,
     QLineEdit,
     QMainWindow,
     QMenu,
+    QMenuBar,
     QMessageBox,
     QPushButton,
     QSplitter,
@@ -50,6 +55,8 @@ from .screenshot import (
     pixmap_to_png_bytes,
 )
 from .viewer3d import Viewer3DWidget
+from .workbench_icons import workbench_icon
+from .inline_menu import InlineMenuBar
 
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
@@ -137,17 +144,19 @@ class ElementPalette(QWidget):
             button.setFixedSize(size, size)
             button.setStyleSheet(
                 "QPushButton#element_btn {"
-                f"  background-color: {colour};"
-                "  color: white;"
+                "  background-color: #ffffff;"
+                f"  color: {colour};"
+                "  padding: 0px;"
+                f"  min-height: {size - 4}px; max-height: {size - 4}px;"
+                f"  min-width: {size - 4}px; max-width: {size - 4}px;"
                 f"  border-radius: {round(20 * scale)}px;"
                 f"  font-size: {round(13 * scale)}px;"
                 "  font-weight: 700;"
-                f"  border: {max(2, round(2 * scale))}px solid transparent;"
+                "  border: 2px solid #dce5ef;"
                 "}"
                 "QPushButton#element_btn:hover { border-color: #4A90D9; }"
                 "QPushButton#element_btn:checked {"
-                "  border-color: #ffffff;"
-                f"  outline: {max(2, round(2 * scale))}px solid #4A90D9;"
+                "  background-color: #dceafb; border: 2px solid #4A90D9;"
                 "}"
             )
 
@@ -177,38 +186,45 @@ class LeftPanel(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(10)
+        layout.setSpacing(8)
+        outer = layout
+        brand = QLabel("Molecule Recognizer")
+        brand.setObjectName("sidebar_brand")
+        outer.addWidget(brand)
+        caption = QLabel("IMAGE  /  STRUCTURE  /  COORDINATES")
+        caption.setObjectName("sidebar_caption")
+        outer.addWidget(caption)
+        source_card = QFrame()
+        source_card.setObjectName("source_card")
+        outer.addWidget(source_card)
+        layout = QVBoxLayout(source_card)
+        layout.setContentsMargins(12, 6, 12, 12)
+        layout.setSpacing(8)
 
         # Title
-        title = QLabel("Source Image")
+        title = QLabel("01   SOURCE IMAGE")
         title.setObjectName("panel_title")
         layout.addWidget(title)
 
         # Image preview
         self._preview = QLabel()
         self._preview.setObjectName("image_preview")
-        self._preview.setFixedHeight(180)
+        self._preview.setFixedHeight(150)
         self._preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._preview.setText("No image")
-        self._preview.setStyleSheet(
-            "QLabel#image_preview {"
-            "  background: #ffffff;"
-            "  border: 1px solid #dde1e6;"
-            "  border-radius: 8px;"
-            "  color: #8899aa;"
-            "  font-size: 12px;"
-            "}"
-        )
+        self._preview.setText("Open an image or capture a structure")
+        self._preview.setWordWrap(True)
         layout.addWidget(self._preview)
 
         # Action buttons
         btn_open = QPushButton("Open Image")
-        btn_open.setObjectName("action_btn")
+        btn_open.setObjectName("action_btn_secondary")
+        btn_open.setIcon(workbench_icon("open"))
         btn_open.clicked.connect(self.open_image.emit)
         layout.addWidget(btn_open)
 
         btn_screen = QPushButton("Screenshot")
         btn_screen.setObjectName("action_btn")
+        btn_screen.setToolTip("Capture a structure from your screen (Alt+Y)")
         btn_screen.clicked.connect(self.screenshot.emit)
         layout.addWidget(btn_screen)
 
@@ -218,12 +234,19 @@ class LeftPanel(QWidget):
         layout.addWidget(btn_smiles)
 
         # ---- 3D Structure section ----
-        title_3d = QLabel("3D Structure")
+        viewer_card = QFrame()
+        viewer_card.setObjectName("viewer_card")
+        outer.addWidget(viewer_card)
+        layout = QVBoxLayout(viewer_card)
+        layout.setContentsMargins(12, 6, 12, 12)
+        layout.setSpacing(8)
+        title_3d = QLabel("02   3D STRUCTURE")
         title_3d.setObjectName("panel_title")
         layout.addWidget(title_3d)
 
         self._viewer_3d = Viewer3DWidget()
-        self._viewer_3d.setFixedHeight(160)
+        self._viewer_3d.setMinimumHeight(100)
+        self._viewer_3d.setFixedHeight(120)
         layout.addWidget(self._viewer_3d)
 
         # Render + XYZ actions
@@ -231,7 +254,8 @@ class LeftPanel(QWidget):
         row_3d.setSpacing(6)
 
         btn_render = QPushButton("Render")
-        btn_render.setObjectName("action_btn")
+        btn_render.setObjectName("action_btn_secondary")
+        btn_render.setIcon(workbench_icon("molecule"))
         btn_render.clicked.connect(self.render_3d.emit)
         row_3d.addWidget(btn_render)
 
@@ -271,7 +295,7 @@ class LeftPanel(QWidget):
 
         layout.addLayout(row_3d)
 
-        layout.addStretch()
+        outer.addStretch()
 
     def set_preview(self, pixmap: QPixmap):
         scaled = pixmap.scaled(
@@ -283,7 +307,7 @@ class LeftPanel(QWidget):
 
     def clear_preview(self):
         self._preview.clear()
-        self._preview.setText("No image")
+        self._preview.setText("Open an image or capture a structure")
 
 
 # ======================================================================
@@ -368,6 +392,7 @@ class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Molecule Recognizer")
+        self.setWindowIcon(workbench_icon("molecule"))
         self.resize(1400, 880)
 
         self._molecule: Molecule | None = None
@@ -380,6 +405,7 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         self._setup_statusbar()
         self._setup_shortcuts()
+        self._setup_menu_dismissal()
         self._global_hotkey = GlobalScreenshotHotkey(self)
         self._global_hotkey.activated.connect(self._on_screenshot)
         self._ui_scale = 1.0
@@ -399,30 +425,135 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _setup_shortcuts(self):
-        """Register keyboard shortcuts (no menu bar)."""
-        from PySide6.QtGui import QShortcut
-        QShortcut(QKeySequence.StandardKey.Open, self,
-                  activated=self._on_open_image)
-        QShortcut(QKeySequence("Ctrl+Shift+S"), self,
-                  activated=self._on_screenshot)
-        QShortcut(QKeySequence("Alt+Y"), self,
-                  activated=self._on_screenshot)
-        QShortcut(QKeySequence("Ctrl+E"), self,
-                  activated=self._on_export_smiles)
-        QShortcut(QKeySequence.StandardKey.Undo, self,
-                  activated=self._editor._undo)
-        QShortcut(QKeySequence("Ctrl+Shift+Z"), self,
-                  activated=self._editor._redo)
-        QShortcut(QKeySequence.StandardKey.Quit, self,
-                  activated=self.close)
-        QShortcut(QKeySequence("Ctrl+Alt++"), self,
-                  activated=lambda: self._change_ui_scale(0.1))
-        QShortcut(QKeySequence("Ctrl+Alt+="), self,
-                  activated=lambda: self._change_ui_scale(0.1))
-        QShortcut(QKeySequence("Ctrl+Alt+-"), self,
-                  activated=lambda: self._change_ui_scale(-0.1))
-        QShortcut(QKeySequence("Ctrl+Alt+0"), self,
-                  activated=self._reset_ui_scale)
+        """Menus and shortcuts share one action, avoiding duplicate bindings."""
+        bar = self._menu_bar
+        if isinstance(bar, QMenuBar):
+            bar.setNativeMenuBar(False)
+        self._menu_actions = {}
+
+        def action(menu, text, callback, shortcut=None, icon=None):
+            item = QAction(text, self)
+            if icon:
+                item.setIcon(workbench_icon(icon))
+            if shortcut:
+                item.setShortcut(QKeySequence(shortcut))
+            item.triggered.connect(lambda checked=False: callback())
+            self.addAction(item)  # Shortcuts also work without native QMenus.
+            menu.addAction(item)
+            self._menu_actions[text] = item
+            return item
+
+        file_menu = bar.addMenu("&File")
+        action(file_menu, "Open image…", self._on_open_image, "Ctrl+O", "open")
+        screenshot = action(file_menu, "Capture screenshot", self._on_screenshot,
+                            "Alt+Y", "capture")
+        screenshot.setShortcuts([QKeySequence("Alt+Y"),
+                                QKeySequence("Ctrl+Shift+S")])
+        action(file_menu, "Load SMILES…", self._on_load_smiles)
+        file_menu.addSeparator()
+        action(file_menu, "Export SMILES…", self._on_export_smiles, "Ctrl+E")
+        action(file_menu, "Save XYZ…", lambda: self._on_save_xyz("angstrom"))
+        file_menu.addSeparator()
+        action(file_menu, "Quit", self.close, "Ctrl+Q")
+
+        edit_menu = bar.addMenu("&Edit")
+        action(edit_menu, "Undo", self._editor._undo, "Ctrl+Z", "undo")
+        action(edit_menu, "Redo", self._editor._redo, "Ctrl+Shift+Z", "redo")
+        edit_menu.addSeparator()
+        action(edit_menu, "Copy SMILES", self._copy_smiles)
+        action(edit_menu, "Copy XYZ", lambda: self._on_copy_xyz("angstrom"))
+        edit_menu.addSeparator()
+        action(edit_menu, "Clear workspace", self._on_clear_all, icon="clear")
+
+        build_menu = bar.addMenu("&Build")
+        for label, key in (("Select", "select"), ("Draw bonds", "bond"),
+                           ("Place atoms", "atom"), ("Erase", "eraser")):
+            action(build_menu, label,
+                   lambda k=key: self._editor._toolbar._activate_tool(k))
+        build_menu.addSeparator()
+        action(build_menu, "Periodic table…", self._editor._on_periodic_table)
+        action(build_menu, "Format 2D layout", self._editor._cleanup_layout,
+               icon="format")
+        action(build_menu, "Render 3D structure", self._on_render_3d,
+               icon="molecule")
+
+        view_menu = bar.addMenu("&View")
+        action(view_menu, "Fit structure", self._fit_structure)
+        action(view_menu, "Fit window to monitor", self._request_windows_monitor_fit)
+        view_menu.addSeparator()
+        larger = action(view_menu, "Larger interface",
+                        lambda: self._change_ui_scale(0.1), "Ctrl+Alt++")
+        larger.setShortcuts([QKeySequence("Ctrl+Alt++"), QKeySequence("Ctrl+Alt+=")])
+        action(view_menu, "Smaller interface", lambda: self._change_ui_scale(-0.1),
+               "Ctrl+Alt+-")
+        action(view_menu, "Reset interface size", self._reset_ui_scale, "Ctrl+Alt+0")
+
+        help_menu = bar.addMenu("&Help")
+        action(help_menu, "Getting started", lambda: QMessageBox.information(
+            self, "Getting started",
+            "1. Open an image or press Alt+Y to capture a structure.\n"
+            "2. Compare the recognition with the source and edit the drawing.\n"
+            "3. Copy or export SMILES, or Render 3D to save/copy XYZ.\n\n"
+            "Scroll to zoom; right-drag to pan. Format generates a new 2D layout."))
+        action(help_menu, "About Molecule Recognizer", lambda: QMessageBox.about(
+            self, "Molecule Recognizer",
+            "Molecule Recognizer\n\n"
+            "Image recognition, interactive structure editing and XYZ export.\n"
+            "Powered by OSRA, RDKit and Qt."))
+
+    def _fit_structure(self):
+        canvas = self._editor.canvas
+        bounds = canvas.mol_scene.itemsBoundingRect()
+        if not bounds.isEmpty():
+            canvas.fitInView(bounds.adjusted(-40, -40, 40, 40),
+                             Qt.AspectRatioMode.KeepAspectRatio)
+
+    def _setup_menu_dismissal(self):
+        # Use one deferred refresh for the entire menu tree. In WSLg the
+        # underlying surface can otherwise retain a popup's last pixels.
+        self._menu_refresh_timer = QTimer(self)
+        self._menu_refresh_timer.setSingleShot(True)
+        self._menu_refresh_timer.setInterval(150)
+        self._menu_refresh_timer.timeout.connect(self._refresh_after_menu)
+        if is_wsl():
+            QApplication.setEffectEnabled(Qt.UIEffect.UI_AnimateMenu, False)
+            QApplication.setEffectEnabled(Qt.UIEffect.UI_FadeMenu, False)
+        self._popup_menus = self.findChildren(QMenu)
+        for menu in self._popup_menus:
+            menu.aboutToShow.connect(self._menu_refresh_timer.stop)
+            menu.aboutToHide.connect(self._queue_menu_refresh)
+
+    def _queue_menu_refresh(self):
+        # Moving across menu headings briefly hides one popup before showing
+        # the next. Let that handoff finish; aboutToShow cancels this cleanup.
+        self._menu_refresh_timer.start()
+
+    def _refresh_after_menu(self):
+        # Wait until the entire popup chain is closed. Destroying a parent
+        # menu's surface while a submenu is active can disrupt its input grab.
+        if (QApplication.activePopupWidget() is not None
+                or any(menu.isVisible() for menu in self._popup_menus)):
+            return
+        if QApplication.mouseButtons() != Qt.MouseButton.NoButton:
+            self._menu_refresh_timer.start()
+            return
+        if is_wsl():
+            for menu in self._popup_menus:
+                if (not menu.isVisible()
+                        and menu.testAttribute(Qt.WidgetAttribute.WA_WState_Created)):
+                    # A hidden native popup may leave a cached WSLg/RDP surface
+                    # behind, even outside this window. Repainting our canvas
+                    # cannot erase it. Release only that popup's window-system
+                    # resources; the QMenu and QActions remain alive and Qt
+                    # recreates the surface on the next popup().
+                    menu.destroy(True, False)
+        if not self.isVisible():
+            return
+        # Qt owns the active menu heading. Clearing it here can interrupt a
+        # hover/keyboard transition even when no popup is momentarily active.
+        self.centralWidget().update()
+        self._editor.canvas.viewport().update()
+        self.update()
 
     def _setup_ui(self):
         central = QWidget()
@@ -430,6 +561,12 @@ class MainWindow(QMainWindow):
         outer = QVBoxLayout(central)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
+
+        # Keep the bars inside the scaled content layout. Changing native
+        # QMainWindow chrome metrics while maximized has caused WSLg surface
+        # configure/buffer mismatches; these are ordinary child widgets instead.
+        self._menu_bar = InlineMenuBar(central) if is_wsl() else QMenuBar(central)
+        outer.addWidget(self._menu_bar)
 
         # ---- Top area: left panel | canvas | element palette ----
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -446,6 +583,10 @@ class MainWindow(QMainWindow):
         self._splitter.addWidget(self._left_panel)
 
         self._editor = EditorWidget()
+        # Place the command toolbar above all three panels, like a desktop
+        # chemistry workbench, while retaining its existing signal wiring.
+        self._editor.layout().removeWidget(self._editor._toolbar)
+        outer.addWidget(self._editor._toolbar)
         self._editor.molecule_changed.connect(self._on_editor_changed)
         self._editor.clear_all_requested.connect(self._on_clear_all)
         self._splitter.addWidget(self._editor)
@@ -470,8 +611,9 @@ class MainWindow(QMainWindow):
 
 
     def _setup_statusbar(self):
-        self.setStatusBar(QStatusBar())
-        self.statusBar().showMessage("Ready")
+        self._status_bar = QStatusBar(self.centralWidget())
+        self.centralWidget().layout().addWidget(self._status_bar)
+        self._status_bar.showMessage("Ready")
 
     def _setup_ui_scaling(self):
         """Add per-monitor UI zoom controls and watch for screen changes."""
@@ -492,16 +634,16 @@ class MainWindow(QMainWindow):
         self._scale_up_btn.clicked.connect(
             lambda: self._change_ui_scale(0.1))
 
-        self.statusBar().addPermanentWidget(self._scale_down_btn)
-        self.statusBar().addPermanentWidget(self._scale_reset_btn)
-        self.statusBar().addPermanentWidget(self._scale_up_btn)
+        self._status_bar.addPermanentWidget(self._scale_down_btn)
+        self._status_bar.addPermanentWidget(self._scale_reset_btn)
+        self._status_bar.addPermanentWidget(self._scale_up_btn)
         self._fit_window_btn = QPushButton("Fit")
         self._fit_window_btn.setObjectName("ui_scale_btn")
         self._fit_window_btn.setToolTip(
             "Fit the window to the recommended size for this monitor")
         self._fit_window_btn.clicked.connect(self._request_windows_monitor_fit)
-        self.statusBar().addPermanentWidget(self._fit_window_btn)
-        self.statusBar().setSizeGripEnabled(False)
+        self._status_bar.addPermanentWidget(self._fit_window_btn)
+        self._status_bar.setSizeGripEnabled(False)
         QTimer.singleShot(0, self._connect_screen_scaling)
 
     def _connect_screen_scaling(self):
@@ -542,15 +684,16 @@ class MainWindow(QMainWindow):
                 self._windows_monitor_height,
             ))
         else:
-            self.statusBar().showMessage(
+            self._status_bar.showMessage(
                 "Waiting for Windows monitor detection…", 3000)
 
     def _on_windows_monitor_detected(self, result):
         if result is None:
-            self.statusBar().showMessage(
+            self._status_bar.showMessage(
                 "Could not detect the Windows monitor", 3000)
             return
         name, width, height = result
+        first_detection = not self._windows_monitor_name
         changed = bool(self._windows_monitor_name
                        and self._windows_monitor_name != name)
         settings = QSettings()
@@ -564,8 +707,20 @@ class MainWindow(QMainWindow):
         self._windows_monitor_height = height
         self._scale_screen_name = f"windows:{name}"
         stored_scale = settings.value(f"ui_scale/windows:{name}")
+        readability_upgrade = False
         if width >= 2500:
-            scale = float(stored_scale) if stored_scale is not None else 1.5
+            scale = float(stored_scale) if stored_scale is not None else 1.8
+            # Older versions could save an external monitor's narrow window
+            # on the laptop. Upgrade that profile once, then respect subsequent
+            # manual adjustments instead of growing the window on every move.
+            readable_key = f"high_resolution_readability_v1/{name}"
+            if not settings.value(readable_key, False, type=bool):
+                scale = max(scale, 1.8)
+                settings.setValue(f"ui_scale/windows:{name}", scale)
+                settings.setValue(f"window_size/windows:{name}", QSize(
+                    round(width * 0.80), round(height * 0.80)))
+                settings.setValue(readable_key, True)
+                readability_upgrade = True
         else:
             # A 100% UI has a ~1260×760 minimum, preventing a genuinely
             # compact window on 1080p monitors. Use 80% there so both the
@@ -580,7 +735,8 @@ class MainWindow(QMainWindow):
                          if stored_scale is not None else 0.8)
         self._apply_ui_scale(scale)
 
-        if changed or self._fit_window_requested:
+        if (changed or self._fit_window_requested or readability_upgrade
+                or (first_detection and width >= 2500)):
             # Use a compact target, but never make the frame smaller than its
             # contents. WSLg otherwise clips whole panels, then expands the
             # window unpredictably on the next drag.
@@ -591,6 +747,8 @@ class MainWindow(QMainWindow):
             )
             stored_size = settings.value(
                 f"window_size/windows:{name}", maximum)
+            if self._fit_window_requested:
+                stored_size = maximum
             if not isinstance(stored_size, QSize) or not stored_size.isValid():
                 stored_size = maximum
             target = QSize(
@@ -603,7 +761,7 @@ class MainWindow(QMainWindow):
                 # Windows msrdc HWND directly desynchronizes the frame from
                 # Qt's content, clipping panels and sometimes freezing input.
                 self.resize(target)
-            self.statusBar().showMessage(
+            self._status_bar.showMessage(
                 f"Window fitted to {name} ({target.width()}×{target.height()})",
                 3000,
             )
@@ -613,7 +771,7 @@ class MainWindow(QMainWindow):
     def _default_scale_for_screen(screen) -> float:
         """Compensate when WSLg hides Windows' high-DPI scale from Qt."""
         if screen is not None and screen.geometry().width() >= 2500:
-            return 1.5
+            return 1.8
         return 1.0
 
     def _on_scale_screen_changed(self, screen):
@@ -654,13 +812,17 @@ class MainWindow(QMainWindow):
         previous = self._ui_scale
         self._apply_ui_scale(self._ui_scale + amount, save=True)
         if amount > 0 and self._ui_scale == previous:
-            self.statusBar().showMessage(
+            self._status_bar.showMessage(
                 "Maximum safe size for this monitor", 3000)
         elif amount < 0 and self._ui_scale == previous:
-            self.statusBar().showMessage("Minimum interface size", 3000)
+            self._status_bar.showMessage("Minimum interface size", 3000)
 
     def _reset_ui_scale(self):
-        self._apply_ui_scale(1.0, save=True)
+        if self._windows_monitor_width:
+            scale = 1.8 if self._windows_monitor_width >= 2500 else 0.8
+        else:
+            scale = self._default_scale_for_screen(self._scale_screen)
+        self._apply_ui_scale(scale, save=True)
 
     def _maximum_ui_scale(self) -> float:
         """Keep maximized WSLg windows within the monitor's configured size."""
@@ -698,7 +860,7 @@ class MainWindow(QMainWindow):
         # window is visible. Changing status-bar metrics can make Qt submit a
         # buffer with a different height before Wayland sends a new configure,
         # which is a fatal xdg_surface protocol error. Scale only the central
-        # content; the status bar deliberately stays at a stable height.
+        # content, which now also contains the menu and status bars.
         self.centralWidget().setStyleSheet(scaled_css)
 
         base_font = getattr(app, "_base_font", app.font())
@@ -706,14 +868,16 @@ class MainWindow(QMainWindow):
         font.setPointSizeF(base_font.pointSizeF() * scale)
         self.centralWidget().setFont(font)
 
-        self._left_panel.setMinimumWidth(round(180 * scale))
+        self._left_panel.setMinimumWidth(round(280 * scale))
         self._left_panel.setMaximumWidth(round(350 * scale))
-        self._left_panel._preview.setFixedHeight(round(180 * scale))
-        self._left_panel._viewer_3d.setFixedHeight(round(160 * scale))
+        self._left_panel._preview.setFixedHeight(round(150 * scale))
+        self._left_panel._viewer_3d.setFixedHeight(round(120 * scale))
         self._palette.setMinimumWidth(round(52 * scale))
         self._palette.setMaximumWidth(round(80 * scale))
         self._palette.apply_scale(scale)
-        self._editor._toolbar.setFixedHeight(round(42 * scale))
+        self._editor._toolbar.setMinimumHeight(round(46 * scale))
+        for button in self._editor._toolbar.findChildren(QToolButton):
+            button.setIconSize(QSize(round(20 * scale), round(20 * scale)))
         self._bottom_bar.setMinimumHeight(round(80 * scale))
         self._splitter.setHandleWidth(max(3, round(3 * scale)))
         self._scale_reset_btn.setText(f"{round(scale * 100)}%")
@@ -752,7 +916,7 @@ class MainWindow(QMainWindow):
         if self._screenshot_pending:
             return
         self._screenshot_pending = True
-        self.statusBar().showMessage("Capturing screen…")
+        self._status_bar.showMessage("Capturing screen…")
         self._was_maximized_before_screenshot = self.isMaximized()
         self.hide()
         QApplication.processEvents()
@@ -763,7 +927,7 @@ class MainWindow(QMainWindow):
 
         if screenshot is None or screenshot.isNull():
             self._restore_after_screenshot()
-            self.statusBar().showMessage("Screenshot failed", 5000)
+            self._status_bar.showMessage("Screenshot failed", 5000)
             return
 
         # Show the dialog BEFORE restoring the main window so the dialog
@@ -784,9 +948,9 @@ class MainWindow(QMainWindow):
                 img.load()
                 self._recognize_image(img)
             except Exception as e:
-                self.statusBar().showMessage(f"Screenshot error: {e}", 5000)
+                self._status_bar.showMessage(f"Screenshot error: {e}", 5000)
         else:
-            self.statusBar().showMessage("Screenshot cancelled", 3000)
+            self._status_bar.showMessage("Screenshot cancelled", 3000)
 
     def _restore_after_screenshot(self):
         """Restore the window without losing its pre-capture state."""
@@ -810,13 +974,13 @@ class MainWindow(QMainWindow):
             try:
                 mol = smiles_to_molecule(smiles.strip())
                 self._set_molecule(mol)
-                self.statusBar().showMessage("Loaded from SMILES", 3000)
+                self._status_bar.showMessage("Loaded from SMILES", 3000)
             except ValueError as e:
                 QMessageBox.warning(self, "Invalid SMILES", str(e))
 
     def _on_export_smiles(self):
         if self._molecule is None:
-            self.statusBar().showMessage("No molecule to export", 3000)
+            self._status_bar.showMessage("No molecule to export", 3000)
             return
         smiles = self._bottom_bar.smiles_text
         path, _ = QFileDialog.getSaveFileName(
@@ -826,13 +990,13 @@ class MainWindow(QMainWindow):
         if path:
             with open(path, "w") as f:
                 f.write(smiles + "\n")
-            self.statusBar().showMessage(f"Exported to {path}", 3000)
+            self._status_bar.showMessage(f"Exported to {path}", 3000)
 
     def _copy_smiles(self):
         text = self._bottom_bar.smiles_text
         if text:
             QApplication.clipboard().setText(text)
-            self.statusBar().showMessage("SMILES copied to clipboard", 3000)
+            self._status_bar.showMessage("SMILES copied to clipboard", 3000)
 
     # ------------------------------------------------------------------
     # Recognition
@@ -840,12 +1004,12 @@ class MainWindow(QMainWindow):
 
     def _recognize_image(self, img: Image.Image):
         if self._worker is not None and self._worker.isRunning():
-            self.statusBar().showMessage("Recognition already in progress…")
+            self._status_bar.showMessage("Recognition already in progress…")
             return
-        self.statusBar().showMessage("Starting recognition…")
+        self._status_bar.showMessage("Starting recognition…")
         self._worker = RecognitionWorker(img, parent=self)
         self._worker.status.connect(
-            lambda msg: self.statusBar().showMessage(msg)
+            lambda msg: self._status_bar.showMessage(msg)
         )
         self._worker.result_ready.connect(self._on_recognition_done)
         self._worker.finished.connect(self._on_worker_finished)
@@ -853,14 +1017,14 @@ class MainWindow(QMainWindow):
 
     def _on_recognition_done(self, result):
         if isinstance(result, Exception):
-            self.statusBar().showMessage("Recognition failed", 5000)
+            self._status_bar.showMessage("Recognition failed", 5000)
             QMessageBox.critical(
                 self, "Recognition Error",
                 f"Failed to recognize structure:\n{result}",
             )
             return
         self._set_molecule(result)
-        self.statusBar().showMessage("Structure recognized", 3000)
+        self._status_bar.showMessage("Structure recognized", 3000)
 
     def _on_worker_finished(self):
         """Release the completed worker after its result has been delivered."""
@@ -908,7 +1072,7 @@ class MainWindow(QMainWindow):
         self._left_panel.clear_preview()
         self._left_panel._viewer_3d.clear()
         self._bottom_bar.clear()
-        self.statusBar().showMessage("Canvas cleared", 3000)
+        self._status_bar.showMessage("Canvas cleared", 3000)
 
     def _update_info(self):
         if self._molecule is None:
@@ -933,25 +1097,25 @@ class MainWindow(QMainWindow):
 
     def _on_render_3d(self):
         if self._molecule is None or self._molecule.num_atoms == 0:
-            self.statusBar().showMessage("No molecule to render", 3000)
+            self._status_bar.showMessage("No molecule to render", 3000)
             return
         try:
             smiles = molecule_to_smiles(self._molecule)
         except Exception:
-            self.statusBar().showMessage("Cannot generate SMILES for 3D", 3000)
+            self._status_bar.showMessage("Cannot generate SMILES for 3D", 3000)
             return
         try:
             from ..core.xyz import generate_3d, mol_to_atoms_bonds
             self._mol_3d = generate_3d(smiles)
             atoms, bonds = mol_to_atoms_bonds(self._mol_3d)
             self._left_panel._viewer_3d.set_molecule(atoms, bonds)
-            self.statusBar().showMessage("3D structure rendered", 3000)
+            self._status_bar.showMessage("3D structure rendered", 3000)
         except Exception as e:
-            self.statusBar().showMessage(f"3D generation failed: {e}", 5000)
+            self._status_bar.showMessage(f"3D generation failed: {e}", 5000)
 
     def _on_save_xyz(self, unit: str):
         if self._mol_3d is None:
-            self.statusBar().showMessage(
+            self._status_bar.showMessage(
                 "Render 3D first before saving xyz", 3000)
             return
         default_name = "molecule.xyz"
@@ -965,24 +1129,24 @@ class MainWindow(QMainWindow):
                 xyz_str = mol_to_xyz_string(self._mol_3d, unit=unit)
                 with open(path, "w") as f:
                     f.write(xyz_str)
-                self.statusBar().showMessage(
+                self._status_bar.showMessage(
                     f"Saved xyz ({unit}) to {path}", 3000)
             except Exception as e:
-                self.statusBar().showMessage(f"Save failed: {e}", 5000)
+                self._status_bar.showMessage(f"Save failed: {e}", 5000)
 
     def _on_copy_xyz(self, unit: str):
         if self._mol_3d is None:
-            self.statusBar().showMessage(
+            self._status_bar.showMessage(
                 "Render 3D first before copying xyz", 3000)
             return
         try:
             from ..core.xyz import mol_to_xyz_string
             xyz_text = mol_to_xyz_string(self._mol_3d, unit=unit)
             QApplication.clipboard().setText(xyz_text)
-            self.statusBar().showMessage(
+            self._status_bar.showMessage(
                 f"XYZ structure copied ({unit})", 3000)
         except Exception as e:
-            self.statusBar().showMessage(f"Copy failed: {e}", 5000)
+            self._status_bar.showMessage(f"Copy failed: {e}", 5000)
 
     # ------------------------------------------------------------------
     # Window close

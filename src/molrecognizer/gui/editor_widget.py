@@ -5,7 +5,10 @@ from __future__ import annotations
 from typing import Union
 
 from PySide6.QtCore import QEvent, Qt, Signal
-from PySide6.QtWidgets import QDialog, QGraphicsSceneMouseEvent, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QDialog, QGraphicsSceneMouseEvent, QGridLayout, QHBoxLayout, QLabel,
+    QVBoxLayout, QWidget,
+)
 
 from ..core.molecule import BondType, Molecule
 from ..editor.canvas import AtomItem, BondItem, MoleculeCanvas, MoleculeScene
@@ -34,13 +37,38 @@ class EditorWidget(QWidget):
         self._history.set_on_change(self._on_history_change)
 
         # UI
+        self.setObjectName("editor_workspace")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self._toolbar = EditorToolbar()
         self._canvas = MoleculeCanvas()
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(12, 8, 12, 12)
+        layout.setSpacing(8)
         layout.addWidget(self._toolbar)
-        layout.addWidget(self._canvas)
+        heading = QHBoxLayout()
+        title = QLabel("Structure editor")
+        title.setObjectName("workspace_title")
+        heading.addWidget(title)
+        heading.addStretch()
+        self._structure_summary = QLabel("Scroll to zoom · Right-drag to pan")
+        self._structure_summary.setObjectName("workspace_hint")
+        heading.addWidget(self._structure_summary)
+        layout.addLayout(heading)
+        canvas_area = QGridLayout()
+        canvas_area.setContentsMargins(0, 0, 0, 0)
+        canvas_area.addWidget(self._canvas, 0, 0)
+        self._empty_hint = QLabel(
+            "Your next structure starts here\n\n"
+            "Open an image, capture with Alt+Y, or draw using the tools above.")
+        self._empty_hint.setObjectName("canvas_empty_hint")
+        self._empty_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_hint.setWordWrap(True)
+        self._empty_hint.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        canvas_area.addWidget(self._empty_hint, 0, 0)
+        layout.addLayout(canvas_area, 1)
+        self.molecule_changed.connect(
+            lambda: self._empty_hint.setVisible(self._molecule.num_atoms == 0))
 
         # Tools
         self._tools: dict[str, Tool] = {}

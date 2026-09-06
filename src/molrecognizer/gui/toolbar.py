@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QActionGroup, QIcon
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..core.molecule import BondType
+from .workbench_icons import workbench_icon
 
 ELEMENTS = ["C", "N", "O", "S", "P", "F", "Cl", "Br", "I", "H", "B", "Si", "Se"]
 
@@ -63,7 +64,7 @@ class EditorToolbar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("toolbar_container")
-        self.setFixedHeight(42)
+        self.setMinimumHeight(46)
 
         row = QHBoxLayout(self)
         row.setContentsMargins(10, 6, 10, 6)
@@ -79,8 +80,9 @@ class EditorToolbar(QWidget):
         # Bond button with dropdown arrow for bond-type selection
         bond_btn = QToolButton()
         bond_btn.setText("Bond")
+        bond_btn.setIcon(workbench_icon("bond"))
         bond_btn.setCheckable(True)
-        bond_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        bond_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         bond_btn.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
         bond_btn.clicked.connect(lambda: self._on_tool_click("bond"))
 
@@ -185,6 +187,16 @@ class EditorToolbar(QWidget):
         self._redo_btn.clicked.connect(self.redo_requested.emit)
         row.addWidget(self._redo_btn)
 
+        for button, name in ((self._format_btn, "format"),
+                             (self._clear_btn, "clear"),
+                             (self._undo_btn, "undo"),
+                             (self._redo_btn, "redo")):
+            button.setIcon(workbench_icon(name))
+            button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+        for button in self.findChildren(QToolButton):
+            button.setIconSize(QSize(20, 20))
+            button.setAccessibleName(button.text())
+
     # -- helpers -----------------------------------------------------------
 
     @staticmethod
@@ -203,6 +215,9 @@ class EditorToolbar(QWidget):
         btn.setCheckable(True)
         btn.setChecked(checked)
         btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        if name in ("select", "atom", "eraser"):
+            btn.setIcon(workbench_icon(name))
+            btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         btn.clicked.connect(lambda: self._on_tool_click(name))
         self._button_group.addButton(btn)
         self._tool_buttons[name] = btn
