@@ -195,7 +195,8 @@ def test_format_button_preserves_stereo_and_is_one_undo_step(tmp_path):
         editor._toolbar._redo_btn.click()
         assert _molecular_state(mol) == formatted
         assert updates == [smiles, smiles, smiles]
-        assert len(editor.canvas.mol_scene._bond_items) == mol.num_bonds
+        scene = editor.canvas.mol_scene
+        assert len(scene._bond_items) == mol.num_bonds - len(scene._collapsed_hydrogens)
 
         with patch('molrecognizer.core.layout.format_2d', side_effect=ValueError('failed')), \\
              patch('molrecognizer.gui.editor_widget.QMessageBox.warning') as warning:

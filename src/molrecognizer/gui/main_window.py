@@ -19,11 +19,12 @@ Layout:
 from __future__ import annotations
 
 import io
+import logging
 import os
 import re
 
 from PIL import Image
-from PySide6.QtCore import QSettings, QSize, Qt, QThread, QTimer, Signal
+from PySide6.QtCore import QSettings, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QFont, QKeySequence, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -58,6 +59,9 @@ from .viewer3d import Viewer3DWidget
 from .workbench_icons import workbench_icon
 from .inline_menu import InlineMenuBar
 from .native_capture import NativeRegionCapture, native_capture_executable
+from .workers import RecognitionWorker, Render3DWorker
+
+_logger = logging.getLogger(__name__)
 
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
@@ -76,29 +80,6 @@ ELEMENT_PALETTE = [
     ("I",  "#772299"),
     ("B",  "#DD8899"),
 ]
-
-
-# ======================================================================
-# Recognition worker (background thread)
-# ======================================================================
-
-class RecognitionWorker(QThread):
-    result_ready = Signal(object)
-    status = Signal(str)
-
-    def __init__(self, image: Image.Image, parent=None):
-        super().__init__(parent)
-        self._image = image
-
-    def run(self):
-        try:
-            from ..core.recognizer import MoleculeRecognizer
-            self.status.emit("Recognizing structure with OSRA…")
-            recognizer = MoleculeRecognizer()
-            mol = recognizer.recognize(self._image)
-            self.result_ready.emit(mol)
-        except Exception as e:
-            self.result_ready.emit(e)
 
 
 # ======================================================================
@@ -398,11 +379,19 @@ class MainWindow(QMainWindow):
 
         self._molecule: Molecule | None = None
         self._worker: RecognitionWorker | None = None
+        self._render_worker: Render3DWorker | None = None
+        self._render_smiles = ""
+        self._closing = False
         self._source_pixmap: QPixmap | None = None
         self._mol_3d = None  # RDKit Mol with 3D conformer (for xyz export)
         self._was_maximized_before_screenshot = False
         self._screenshot_pending = False
         self._native_capture = None
+        self._capture_dialog = None
+        self._capture_timer = QTimer(self)
+        self._capture_timer.setSingleShot(True)
+        self._capture_timer.setInterval(300)
+        self._capture_timer.timeout.connect(self._do_screenshot)
 
         self._setup_ui()
         self._setup_statusbar()
@@ -528,9 +517,12 @@ class MainWindow(QMainWindow):
     def _queue_menu_refresh(self):
         # Moving across menu headings briefly hides one popup before showing
         # the next. Let that handoff finish; aboutToShow cancels this cleanup.
-        self._menu_refresh_timer.start()
+        if not self._closing:
+            self._menu_refresh_timer.start()
 
     def _refresh_after_menu(self):
+        if self._closing:
+            return
         # Wait until the entire popup chain is closed. Destroying a parent
         # menu's surface while a submenu is active can disrupt its input grab.
         if (QApplication.activePopupWidget() is not None
@@ -649,6 +641,8 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(0, self._connect_screen_scaling)
 
     def _connect_screen_scaling(self):
+        if self._closing:
+            return
         handle = self.windowHandle()
         if handle is None:
             QTimer.singleShot(100, self._connect_screen_scaling)
@@ -664,6 +658,8 @@ class MainWindow(QMainWindow):
 
     def _poll_window_screen(self):
         """Detect monitor moves when WSLg omits QWindow.screenChanged."""
+        if self._closing:
+            return
         window_rect = self.frameGeometry()
         best_screen = None
         best_area = -1
@@ -690,6 +686,8 @@ class MainWindow(QMainWindow):
                 "Waiting for Windows monitor detection…", 3000)
 
     def _on_windows_monitor_detected(self, result):
+        if self._closing:
+            return
         if result is None:
             self._status_bar.showMessage(
                 "Could not detect the Windows monitor", 3000)
@@ -777,6 +775,8 @@ class MainWindow(QMainWindow):
         return 1.0
 
     def _on_scale_screen_changed(self, screen):
+        if self._closing:
+            return
         if screen is None:
             return
         previous_screen = self._scale_screen
@@ -915,20 +915,25 @@ class MainWindow(QMainWindow):
     def _on_screenshot(self):
         # A focused WSL window can receive both Qt's shortcut and Windows'
         # registered hotkey for the same keypress.
-        if self._screenshot_pending:
+        if self._closing or self._screenshot_pending:
             return
         self._screenshot_pending = True
         self._status_bar.showMessage("Capturing screen…")
         self._was_maximized_before_screenshot = self.isMaximized()
         self.hide()
         QApplication.processEvents()
-        QTimer.singleShot(300, self._do_screenshot)
+        if not self._closing:
+            self._capture_timer.start()
 
     def _do_screenshot(self):
+        if self._closing:
+            return
         executable = native_capture_executable()
         if executable:
             self._native_capture = NativeRegionCapture(executable, self)
-            self._native_capture.completed.connect(self._on_native_capture_completed)
+            self._native_capture.completed.connect(
+                self._on_native_capture_completed, Qt.ConnectionType.QueuedConnection)
+            self._native_capture.stopped.connect(self._finish_shutdown)
             self._native_capture.start()
             return
         screenshot = grab_screen()
@@ -942,13 +947,21 @@ class MainWindow(QMainWindow):
         # is the focused window.  Restore the main window only AFTER the
         # dialog closes to avoid WSLg hide/show ordering issues.
         dlg = ScreenshotDialog(screenshot)  # no parent — independent window
+        self._capture_dialog = dlg
         result = dlg.exec()
+        crop = dlg.result_pixmap
+        self._capture_dialog = None
+        dlg.deleteLater()
+        if self._closing:
+            return
 
         # Always restore main window after dialog closes
         self._restore_after_screenshot()
+        if self._closing:
+            return
 
-        if result == QDialog.DialogCode.Accepted and dlg.result_pixmap:
-            self._recognize_capture(dlg.result_pixmap)
+        if result == QDialog.DialogCode.Accepted and crop:
+            self._recognize_capture(crop)
         else:
             self._status_bar.showMessage("Screenshot cancelled", 3000)
 
@@ -956,7 +969,12 @@ class MainWindow(QMainWindow):
         capture, self._native_capture = self._native_capture, None
         if capture is not None:
             capture.deleteLater()
+        if self._closing:
+            self._finish_shutdown()
+            return
         self._restore_after_screenshot()
+        if self._closing:
+            return
         if error:
             QMessageBox.warning(self, "Screen capture", error)
             self._status_bar.showMessage("Screenshot failed", 5000)
@@ -970,6 +988,8 @@ class MainWindow(QMainWindow):
                 self._status_bar.showMessage("Invalid screenshot image", 5000)
 
     def _recognize_capture(self, pixmap):
+        if self._closing:
+            return
         self._source_pixmap = pixmap
         self._left_panel.set_preview(pixmap)
         try:
@@ -981,6 +1001,8 @@ class MainWindow(QMainWindow):
 
     def _restore_after_screenshot(self):
         """Restore the window without losing its pre-capture state."""
+        if self._closing:
+            return
         if self._was_maximized_before_screenshot:
             self.showMaximized()
         else:
@@ -989,6 +1011,8 @@ class MainWindow(QMainWindow):
         self.activateWindow()
         self.unsetCursor()
         QApplication.processEvents()
+        if self._closing:
+            return
         self._screenshot_pending = False
         QTimer.singleShot(0, self._refresh_display)
         QTimer.singleShot(150, self._refresh_display)
@@ -1030,19 +1054,21 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _recognize_image(self, img: Image.Image):
-        if self._worker is not None and self._worker.isRunning():
+        if self._closing:
+            return
+        if self._worker is not None:
             self._status_bar.showMessage("Recognition already in progress…")
             return
         self._status_bar.showMessage("Starting recognition…")
         self._worker = RecognitionWorker(img, parent=self)
-        self._worker.status.connect(
-            lambda msg: self._status_bar.showMessage(msg)
-        )
+        self._worker.status.connect(self._on_worker_status)
         self._worker.result_ready.connect(self._on_recognition_done)
         self._worker.finished.connect(self._on_worker_finished)
         self._worker.start()
 
     def _on_recognition_done(self, result):
+        if self._closing:
+            return
         if isinstance(result, Exception):
             self._status_bar.showMessage("Recognition failed", 5000)
             QMessageBox.critical(
@@ -1055,9 +1081,16 @@ class MainWindow(QMainWindow):
 
     def _on_worker_finished(self):
         """Release the completed worker after its result has been delivered."""
-        if self._worker is not None:
-            self._worker.deleteLater()
+        worker = self.sender()
+        if worker is self._worker:
             self._worker = None
+        if worker is not None:
+            worker.deleteLater()
+        self._finish_shutdown()
+
+    def _on_worker_status(self, message):
+        if not self._closing:
+            self._status_bar.showMessage(message)
 
     # ------------------------------------------------------------------
     # Molecule state
@@ -1075,6 +1108,8 @@ class MainWindow(QMainWindow):
 
     def _refresh_display(self):
         """Force WSLg/Qt to paint newly loaded recognition results."""
+        if self._closing:
+            return
         central = self.centralWidget()
         if central is not None and central.layout() is not None:
             central.layout().activate()
@@ -1092,6 +1127,8 @@ class MainWindow(QMainWindow):
 
     def _on_clear_all(self):
         """Clear the canvas, loaded images, 3D viewer, and SMILES."""
+        if self._render_worker is not None:
+            self._render_worker.cancel()
         self._molecule = None
         self._mol_3d = None
         self._source_pixmap = None
@@ -1123,6 +1160,11 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _on_render_3d(self):
+        if self._closing:
+            return
+        if self._render_worker is not None:
+            self._status_bar.showMessage("3D generation already in progress…", 3000)
+            return
         if self._molecule is None or self._molecule.num_atoms == 0:
             self._status_bar.showMessage("No molecule to render", 3000)
             return
@@ -1131,14 +1173,38 @@ class MainWindow(QMainWindow):
         except Exception:
             self._status_bar.showMessage("Cannot generate SMILES for 3D", 3000)
             return
+        self._render_smiles = smiles
+        self._render_worker = Render3DWorker(smiles, self)
+        self._render_worker.result_ready.connect(self._on_render_done)
+        self._render_worker.finished.connect(self._on_render_worker_finished)
+        self._status_bar.showMessage("Generating 3D structure…")
+        self._render_worker.start()
+
+    def _on_render_done(self, result):
+        if self._closing:
+            return
         try:
-            from ..core.xyz import generate_3d, mol_to_atoms_bonds
-            self._mol_3d = generate_3d(smiles)
+            if (self._molecule is None
+                    or molecule_to_smiles(self._molecule) != self._render_smiles):
+                self._status_bar.showMessage("Structure changed; render 3D again", 3000)
+                return
+            if isinstance(result, Exception):
+                raise result
+            from ..core.xyz import mol_to_atoms_bonds
+            self._mol_3d = result
             atoms, bonds = mol_to_atoms_bonds(self._mol_3d)
             self._left_panel._viewer_3d.set_molecule(atoms, bonds)
             self._status_bar.showMessage("3D structure rendered", 3000)
         except Exception as e:
             self._status_bar.showMessage(f"3D generation failed: {e}", 5000)
+
+    def _on_render_worker_finished(self):
+        worker = self.sender()
+        if worker is self._render_worker:
+            self._render_worker = None
+        if worker is not None:
+            worker.deleteLater()
+        self._finish_shutdown()
 
     def _on_save_xyz(self, unit: str):
         if self._mol_3d is None:
@@ -1180,20 +1246,59 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def closeEvent(self, event):
-        if self._native_capture is not None:
-            self._native_capture.abort()
-        geometry = self.normalGeometry() if self.isMaximized() else self.geometry()
-        QSettings().setValue("main_window/normal_geometry", geometry)
-        if self._scale_screen is not None and not self.isMaximized():
-            QSettings().setValue(
-                f"window_size/{self._scale_screen.name()}", self.size())
-        if self._windows_monitor_name and not self.isMaximized():
-            QSettings().setValue(
-                f"window_size/windows:{self._windows_monitor_name}",
-                self.size(),
-            )
-        if self._worker is not None and self._worker.isRunning():
-            self._worker.finished.disconnect()
-            self._worker.quit()
-            self._worker.wait(5000)
-        event.accept()
+        if not self._closing:
+            _logger.info("Window close requested (recognition=%s, render=%s, capture=%s)",
+                         self._worker is not None, self._render_worker is not None,
+                         self._native_capture is not None)
+            self._closing = True
+            self._capture_timer.stop()
+            self._menu_refresh_timer.stop()
+            if hasattr(self, "_screen_poll_timer"):
+                self._screen_poll_timer.stop()
+            # A cached QScreen may already be deleted after a monitor change.
+            # Saving preferences must never prevent an otherwise idle close.
+            try:
+                settings = QSettings()
+                geometry = self.normalGeometry() if self.isMaximized() else self.geometry()
+                settings.setValue("main_window/normal_geometry", geometry)
+                name = (f"windows:{self._windows_monitor_name}"
+                        if self._windows_monitor_name else self._scale_screen_name)
+                if name and not self.isMaximized():
+                    settings.setValue(f"window_size/{name}", self.size())
+            except Exception:
+                _logger.exception("Could not save window settings during shutdown")
+            self._global_hotkey.close()
+            if isinstance(self._menu_bar, InlineMenuBar):
+                self._menu_bar.close_menu(restore_focus=False)
+            for menu in self._popup_menus:
+                menu.close()
+            if self._capture_dialog is not None:
+                self._capture_dialog.reject()
+            for dialog in self.findChildren(QDialog):
+                dialog.reject()
+            if self._worker is not None:
+                self._worker.cancel()
+            if self._render_worker is not None:
+                self._render_worker.cancel()
+            if self._native_capture is not None:
+                self._native_capture.abort()
+        if self._has_running_jobs():
+            # Keep the event loop and job owners alive until cancellation has
+            # finished, without a blocking wait or an unresponsive window.
+            event.ignore()
+            self.hide()
+        else:
+            event.accept()
+            # Closing a window already hidden for capture/cancellation does
+            # not emit lastWindowClosed. Explicitly finish application exit.
+            app = QApplication.instance()
+            if app.quitOnLastWindowClosed():
+                QTimer.singleShot(0, app.quit)
+
+    def _has_running_jobs(self):
+        return any(job is not None and job.isRunning() for job in (
+            self._worker, self._render_worker, self._native_capture))
+
+    def _finish_shutdown(self):
+        if self._closing and not self._has_running_jobs():
+            QTimer.singleShot(0, self.close)

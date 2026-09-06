@@ -143,6 +143,7 @@ class InlineMenuBar(QWidget):
         self._focus_row(0)
 
     def close_menu(self, restore_focus=True):
+        self._eat_release = False
         self._panel.hide()
         self._current = None
         for button in self._headings:
@@ -166,6 +167,12 @@ class InlineMenuBar(QWidget):
 
     def eventFilter(self, watched, event):
         kind = event.type()
+        if (kind in (QEvent.Type.Close, QEvent.Type.NonClientAreaMouseButtonPress)
+                and watched in (self.window(), self.window().windowHandle())):
+            # Never consume title-bar input, even if an outside-click release
+            # was lost when focus moved to the native window decorations.
+            self.close_menu(restore_focus=False)
+            return False
         if kind == QEvent.Type.MouseButtonRelease and self._eat_release:
             self._eat_release = False
             return True

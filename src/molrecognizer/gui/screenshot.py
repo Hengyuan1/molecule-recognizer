@@ -407,7 +407,10 @@ class GlobalScreenshotHotkey(QObject):
         if self._timer is not None:
             self._timer.stop()
         if self._process is not None and self._process.poll() is None:
-            self._process.terminate()
+            try:
+                self._process.terminate()
+            except OSError:
+                pass  # The helper may have exited between poll and terminate.
         self._process = None
         if self._connection is not None:
             self._connection.close()

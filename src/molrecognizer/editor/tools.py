@@ -266,6 +266,7 @@ class SelectTool(Tool):
         self._drag_atom: Optional[AtomItem] = None
         self._drag_ox: float = 0.0
         self._drag_oy: float = 0.0
+        self._drag_hidden_origins: dict[int, tuple[float, float]] = {}
         # Selection box
         self._sel_rect: Optional[QGraphicsRectItem] = None
         # Current selection
@@ -333,7 +334,7 @@ class SelectTool(Tool):
                    if i < self._history.molecule.num_atoms]
         if not indices:
             return
-        cmd = BulkDeleteCommand(indices)
+        cmd = BulkDeleteCommand(list(self._scene.expand_atom_group(indices)))
         cmd.execute(self._history.molecule)
         self._history._undo_stack.append(cmd)
         self._history._redo_stack.clear()
@@ -355,7 +356,7 @@ class SelectTool(Tool):
         if self._selected and self._is_on_selection(pos):
             self._group_drag = True
             self._group_origins.clear()
-            for idx in self._selected:
+            for idx in self._scene.expand_atom_group(self._selected):
                 info = self._history.molecule.get_atom_info(idx)
                 self._group_origins[idx] = (info.x, info.y)
             return
@@ -394,6 +395,10 @@ class SelectTool(Tool):
         info = self._history.molecule.get_atom_info(atom.atom_idx)
         self._drag_ox = info.x
         self._drag_oy = info.y
+        self._drag_hidden_origins.clear()
+        for idx in self._scene.expand_atom_group([atom.atom_idx]) - {atom.atom_idx}:
+            hidden = self._history.molecule.get_atom_info(idx)
+            self._drag_hidden_origins[idx] = (hidden.x, hidden.y)
 
     def mouse_move(self, event: QGraphicsSceneMouseEvent) -> None:
         pos = event.scenePos()
@@ -450,8 +455,7 @@ class SelectTool(Tool):
             if self._did_drag:
                 delta_x, delta_y = scene_to_molecule(pos - self._press_pos)
                 cmds = []
-                for idx in self._selected:
-                    ox, oy = self._group_origins[idx]
+                for idx, (ox, oy) in self._group_origins.items():
                     cmds.append(MoveAtomCommand(idx, ox, oy,
                                                 ox + delta_x, oy + delta_y))
                 for cmd in cmds:
@@ -475,12 +479,16 @@ class SelectTool(Tool):
             self._did_drag = False
             if did_drag:
                 new_x, new_y = scene_to_molecule(pos)
-                self._history.execute(
-                    MoveAtomCommand(atom_idx, self._drag_ox, self._drag_oy,
-                                    new_x, new_y)
-                )
+                cmds = [MoveAtomCommand(atom_idx, self._drag_ox, self._drag_oy,
+                                        new_x, new_y)]
+                for idx, (ox, oy) in self._drag_hidden_origins.items():
+                    cmds.append(MoveAtomCommand(idx, ox, oy,
+                                                ox + new_x - self._drag_ox,
+                                                oy + new_y - self._drag_oy))
+                self._history.execute(CompoundCommand(cmds) if len(cmds) > 1 else cmds[0])
             else:
                 self._on_atom_click(atom_idx)
+            self._drag_hidden_origins.clear()
             return
 
         # Selection box release
@@ -640,7 +648,9 @@ class EraseTool(Tool):
 
         atom = self._scene.atom_at_pos(pos)
         if atom:
-            self._history.execute(RemoveAtomCommand(atom.atom_idx))
+            indices = self._scene.expand_atom_group([atom.atom_idx])
+            self._history.execute(BulkDeleteCommand(list(indices)) if len(indices) > 1
+                                  else RemoveAtomCommand(atom.atom_idx))
             return
         bond = self._scene.bond_at_pos(pos)
         if bond:
@@ -685,7 +695,7 @@ class EraseTool(Tool):
                      if rect.contains(item.pos())]
         if not to_delete:
             return
-        cmd = BulkDeleteCommand(to_delete)
+        cmd = BulkDeleteCommand(list(self._scene.expand_atom_group(to_delete)))
         cmd.execute(self._history.molecule)
         self._history._undo_stack.append(cmd)
         self._history._redo_stack.clear()

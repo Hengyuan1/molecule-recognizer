@@ -9,6 +9,7 @@ structure diagram style used in papers.
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from typing import Optional
 
 from PySide6.QtCore import QLineF, QPointF, QRectF, Qt, Signal
@@ -374,12 +375,14 @@ class MoleculeScene(QGraphicsScene):
         super().__init__(parent)
         self._atom_items: dict[int, AtomItem] = {}
         self._bond_items: dict[tuple[int, int], BondItem] = {}
+        self._collapsed_hydrogens: dict[int, int] = {}  # H index -> O index
 
     def load_molecule(self, mol: Molecule):
         """Clear scene and render the given molecule."""
         self.clear()
         self._atom_items.clear()
         self._bond_items.clear()
+        self._collapsed_hydrogens = self._hydroxyl_hydrogens(mol)
 
         coords = mol.get_2d_coords()
         all_bonds = mol.get_all_bonds()
@@ -389,9 +392,15 @@ class MoleculeScene(QGraphicsScene):
         # Build a clean RDKit mol to get accurate H counts,
         # using inferred charges so sanitization succeeds.
         display_hs = self._compute_display_hs(mol, display_charges)
+        # GetTotalNumHs excludes separate H atoms. Include the ones represented
+        # in an OH label, while keeping their atoms/bonds in the molecular model.
+        for oxygen_idx in self._collapsed_hydrogens.values():
+            display_hs[oxygen_idx] = display_hs.get(oxygen_idx, 0) + 1
 
         # Add atoms with H-count and (possibly inferred) charge
         for i in range(mol.num_atoms):
+            if i in self._collapsed_hydrogens:
+                continue
             info = mol.get_atom_info(i)
             x, y = coords[i]
             n_hs = display_hs.get(i, 0)
@@ -403,6 +412,8 @@ class MoleculeScene(QGraphicsScene):
         # Add bonds — shorten near labelled atoms proportional to label width
         for bond in all_bonds:
             a1, a2 = bond.begin_atom_idx, bond.end_atom_idx
+            if a1 in self._collapsed_hydrogens or a2 in self._collapsed_hydrogens:
+                continue
             ai1, ai2 = self._atom_items[a1], self._atom_items[a2]
             item = BondItem(a1, a2, bond.bond_type,
                             ai1.pos(), ai2.pos(),
@@ -411,6 +422,35 @@ class MoleculeScene(QGraphicsScene):
             self.addItem(item)
             key = (min(a1, a2), max(a1, a2))
             self._bond_items[key] = item
+
+    @staticmethod
+    def _hydroxyl_hydrogens(mol: Molecule) -> dict[int, int]:
+        """Fold ordinary R-O-H into OH, not isotope/charged/stereo-marked Hs."""
+        result = {}
+        for hydrogen in mol.to_rdkit().GetAtoms():
+            if (hydrogen.GetAtomicNum() != 1 or hydrogen.GetDegree() != 1
+                    or hydrogen.GetIsotope() or hydrogen.GetAtomMapNum()
+                    or hydrogen.GetFormalCharge() or hydrogen.GetNumRadicalElectrons()
+                    or hydrogen.HasQuery() or hydrogen.HasProp("molFileAlias")
+                    or hydrogen.HasProp("atomLabel")):
+                continue
+            bond = hydrogen.GetBonds()[0]
+            oxygen = bond.GetOtherAtom(hydrogen)
+            if (oxygen.GetAtomicNum() != 8 or oxygen.GetDegree() != 2
+                    or oxygen.GetFormalCharge() or oxygen.GetNumRadicalElectrons()
+                    or oxygen.GetNumExplicitHs() or oxygen.HasQuery()
+                    or bond.GetBondDir() != Chem.BondDir.NONE
+                    or any(b.GetBondType() != Chem.BondType.SINGLE for b in oxygen.GetBonds())
+                    or not any(a.GetAtomicNum() > 1 for a in oxygen.GetNeighbors())):
+                continue
+            result[hydrogen.GetIdx()] = oxygen.GetIdx()
+        return result
+
+    def expand_atom_group(self, indices: Iterable[int]) -> set[int]:
+        """Include the underlying H when moving/deleting a visible OH group."""
+        result = set(indices)
+        result.update(h for h, o in self._collapsed_hydrogens.items() if o in result)
+        return result
 
     @staticmethod
     def _compute_display_charges(mol: Molecule) -> dict[int, int]:

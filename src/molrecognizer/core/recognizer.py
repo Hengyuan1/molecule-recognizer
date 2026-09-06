@@ -13,8 +13,10 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 import warnings
 from pathlib import Path
+from threading import Event
 from typing import Optional, Union
 
 import numpy as np
@@ -32,6 +34,10 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 # MolScribe models are expensive to load, so cache them by device.
 _model_cache: dict[str, "MolScribeRecognizer"] = {}
 _logger = logging.getLogger(__name__)
+
+
+class RecognitionCancelled(Exception):
+    """The caller cancelled a recognition job."""
 
 
 def _unresolved_labels(mol: Chem.Mol) -> list[int]:
@@ -123,6 +129,7 @@ class OSRARecognizer:
         self,
         executable: Optional[Union[str, Path]] = None,
         timeout: int = 120,
+        cancel_event: Optional[Event] = None,
     ) -> None:
         configured = executable or os.environ.get("OSRA_EXECUTABLE")
         resolved = shutil.which(str(configured)) if configured else shutil.which("osra")
@@ -150,6 +157,38 @@ class OSRARecognizer:
             )
         self.executable = resolved
         self.timeout = timeout
+        self._cancel_event = cancel_event
+
+    def _check_cancelled(self):
+        if self._cancel_event is not None and self._cancel_event.is_set():
+            raise RecognitionCancelled("Recognition cancelled")
+
+    def _run_osra(self, command, *, timeout, text=False):
+        if self._cancel_event is None:
+            return subprocess.run(command, capture_output=True, timeout=timeout,
+                                  text=text, check=False)
+        self._check_cancelled()
+        # communicate() drains both pipes while waiting. Short time slices let
+        # GUI shutdown cancel this process, without waiting on the GUI thread.
+        process = subprocess.Popen(command, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, text=text)
+        deadline = time.monotonic() + timeout
+        try:
+            while True:
+                self._check_cancelled()
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise subprocess.TimeoutExpired(command, timeout)
+                try:
+                    stdout, stderr = process.communicate(timeout=min(0.1, remaining))
+                    self._check_cancelled()
+                    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+                except subprocess.TimeoutExpired:
+                    continue
+        finally:
+            if process.poll() is None:
+                process.kill()
+            process.communicate()  # Reap only this job's process, in the worker.
 
     def recognize(self, image: ImageInput) -> Molecule:
         if isinstance(image, np.ndarray):
@@ -194,6 +233,7 @@ class OSRARecognizer:
         rdmol = self._read_sdf(path)
         if rdmol is not None:
             rdmol = self._retry_small_image_labels(path, rdmol)
+            self._check_cancelled()
             return Molecule.from_rdkit(rdmol)
 
         # A few OSRA builds have incomplete SDF support. Retain recognition
@@ -202,6 +242,7 @@ class OSRARecognizer:
 
     def _retry_small_image_labels(self, path: Path, mol: Chem.Mol) -> Chem.Mol:
         """One bounded 2x OCR retry for unresolved labels in small raster crops."""
+        self._check_cancelled()
         if not _unresolved_labels(mol):
             return mol
         temp_path: Optional[Path] = None
@@ -220,6 +261,8 @@ class OSRARecognizer:
             retry = self._read_sdf(temp_path, timeout=min(self.timeout, 15))
             if retry is not None:
                 return _merge_label_retry(mol, retry)
+        except RecognitionCancelled:
+            raise
         except Exception:
             # Optional recovery must not discard an otherwise usable result.
             _logger.debug("OSRA label retry failed; retaining the original result", exc_info=True)
@@ -242,12 +285,7 @@ class OSRARecognizer:
             str(path),
         ]
         try:
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                timeout=timeout + 10,
-                check=False,
-            )
+            result = self._run_osra(command, timeout=timeout + 10)
         except subprocess.TimeoutExpired as exc:
             raise RuntimeError(
                 f"OSRA recognition timed out after {timeout} seconds"
@@ -291,13 +329,7 @@ class OSRARecognizer:
             str(path),
         ]
         try:
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                timeout=self.timeout + 10,
-                check=False,
-            )
+            result = self._run_osra(command, text=True, timeout=self.timeout + 10)
         except subprocess.TimeoutExpired as exc:
             raise RuntimeError(
                 f"OSRA recognition timed out after {self.timeout} seconds"
@@ -433,10 +465,11 @@ class MoleculeRecognizer:
         backend: str = "osra",
         osra_executable: Optional[Union[str, Path]] = None,
         timeout: int = 120,
+        cancel_event: Optional[Event] = None,
     ) -> None:
         selected = backend.lower()
         if selected == "osra":
-            self._backend = OSRARecognizer(osra_executable, timeout)
+            self._backend = OSRARecognizer(osra_executable, timeout, cancel_event)
         elif selected == "molscribe":
             self._backend = MolScribeRecognizer(device)
         else:

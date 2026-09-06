@@ -1,5 +1,6 @@
 """Application entry point."""
 
+import logging
 import os
 import sys
 
@@ -23,6 +24,8 @@ def _setup_logging():
         log_path = os.path.join(log_dir, "molrecognizer.log")
         _log_file = open(log_path, "w")  # noqa: SIM115
         sys.stderr = _log_file
+        logging.basicConfig(level=logging.INFO, stream=_log_file,
+                            format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     except OSError:
         pass
 

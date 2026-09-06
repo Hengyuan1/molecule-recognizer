@@ -39,6 +39,7 @@ def native_capture_executable():
 class NativeRegionCapture(QObject):
     completed = Signal(bytes, str)  # PNG bytes, error; empty/empty means cancelled
     ready = Signal()
+    stopped = Signal()  # Always emitted when the helper exits, including abort.
 
     def __init__(self, executable, parent=None):
         super().__init__(parent)
@@ -50,6 +51,7 @@ class NativeRegionCapture(QObject):
         self._process.started.connect(self._send_source)
         self._process.readyReadStandardOutput.connect(self._read_output)
         self._process.finished.connect(self._finished)
+        self._process.finished.connect(lambda *_: self.stopped.emit())
         self._process.errorOccurred.connect(self._process_error)
         self._startup = QTimer(self)
         self._startup.setSingleShot(True)
@@ -64,6 +66,9 @@ class NativeRegionCapture(QObject):
                              "-EncodedCommand", command])
 
     def _send_source(self):
+        if self._done:
+            self._process.kill()
+            return
         try:
             source = Path(__file__).with_name("capture_overlay.cs").read_bytes()
         except OSError as error:
@@ -88,6 +93,7 @@ class NativeRegionCapture(QObject):
         if error == QProcess.ProcessError.FailedToStart:
             self._complete(b"", "Could not start the Windows capture overlay: "
                            + self._process.errorString())
+            self.stopped.emit()
 
     def _startup_timeout(self):
         self._error = "Windows capture overlay did not start within 30 seconds."
@@ -125,4 +131,6 @@ class NativeRegionCapture(QObject):
         self._startup.stop()
         if self._process.state() != QProcess.ProcessState.NotRunning:
             self._process.kill()
-            self._process.waitForFinished(1000)
+
+    def isRunning(self):
+        return self._process.state() != QProcess.ProcessState.NotRunning
