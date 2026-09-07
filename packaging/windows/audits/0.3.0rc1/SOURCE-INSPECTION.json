@@ -1,0 +1,1245 @@
+{
+  "license_review_complete": false,
+  "components": [
+    {
+      "component": "mingw-w64-brotli",
+      "version": "1.2.0-1",
+      "archive": "mingw-w64-brotli-1.2.0-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:MIT"
+      ],
+      "source_inputs": [
+        "https://github.com/google/brotli/archive/v1.2.0/brotli-1.2.0.tar.gz"
+      ],
+      "files": [
+        "mingw-w64-brotli/.SRCINFO",
+        "mingw-w64-brotli/brotli-1.2.0.tar.gz",
+        "mingw-w64-brotli/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-bzip2",
+      "version": "1.0.8-4",
+      "archive": "mingw-w64-bzip2-1.0.8-4.src.tar.zst",
+      "declared_licenses": [
+        "custom"
+      ],
+      "source_inputs": [
+        "https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz",
+        "bzip2-cygming-1.0.6.src.all.patch",
+        "bzip2-buildsystem.all.patch",
+        "bzip2-1.0.6-progress.all.patch"
+      ],
+      "files": [
+        "mingw-w64-bzip2/.SRCINFO",
+        "mingw-w64-bzip2/bzip2-1.0.6-progress.all.patch",
+        "mingw-w64-bzip2/bzip2-1.0.8.tar.gz",
+        "mingw-w64-bzip2/bzip2-buildsystem.all.patch",
+        "mingw-w64-bzip2/bzip2-cygming-1.0.6.src.all.patch",
+        "mingw-w64-bzip2/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-curl",
+      "version": "8.22.0-1",
+      "archive": "mingw-w64-curl-8.22.0-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:MIT"
+      ],
+      "source_inputs": [
+        "https://github.com/curl/curl/releases/download/curl-8_22_0/curl-8.22.0.tar.xz",
+        "https://github.com/curl/curl/releases/download/curl-8_22_0/curl-8.22.0.tar.xz.asc",
+        "pathtools.c",
+        "pathtools.h",
+        "0001-Make-cURL-relocatable.patch"
+      ],
+      "files": [
+        "mingw-w64-curl/.SRCINFO",
+        "mingw-w64-curl/0001-Make-cURL-relocatable.patch",
+        "mingw-w64-curl/curl-8.22.0.tar.xz",
+        "mingw-w64-curl/curl-8.22.0.tar.xz.asc",
+        "mingw-w64-curl/pathtools.c",
+        "mingw-w64-curl/pathtools.h",
+        "mingw-w64-curl/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-freetype",
+      "version": "2.14.3-1",
+      "archive": "mingw-w64-freetype-2.14.3-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:GPL-2.0-or-later OR FTL"
+      ],
+      "source_inputs": [
+        "https://download-mirror.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.xz",
+        "https://download-mirror.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.xz.sig",
+        "freetype-2.10.0-enable-valid.patch",
+        "freetype-2.10.0-enable-spr.patch"
+      ],
+      "files": [
+        "mingw-w64-freetype/.SRCINFO",
+        "mingw-w64-freetype/freetype-2.10.0-enable-spr.patch",
+        "mingw-w64-freetype/freetype-2.10.0-enable-valid.patch",
+        "mingw-w64-freetype/freetype-2.14.3.tar.xz",
+        "mingw-w64-freetype/freetype-2.14.3.tar.xz.sig",
+        "mingw-w64-freetype/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-gcc",
+      "version": "16.2.0-3",
+      "archive": "mingw-w64-gcc-16.2.0-3.src.tar.zst",
+      "declared_licenses": [
+        "spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later WITH GCC-exception-3.1 AND LGPL-2.1-or-later"
+      ],
+      "source_inputs": [
+        "https://ftp.gnu.org/gnu/gcc/gcc-16.2.0/gcc-16.2.0.tar.xz",
+        "https://ftp.gnu.org/gnu/gcc/gcc-16.2.0/gcc-16.2.0.tar.xz.sig",
+        "gdbinit",
+        "0002-i386-Keep-SEH-enabled-for-Win64-sysv_abi-functions.patch",
+        "0003-Windows-Follow-Posix-dir-exists-semantics-more-close.patch",
+        "0007-Build-EXTRA_GNATTOOLS-for-Ada.patch",
+        "0008-Prettify-linking-no-undefined.patch",
+        "0011-Enable-shared-gnat-implib.patch",
+        "0012-Handle-spaces-in-path-for-default-manifest.patch",
+        "0014-gcc-9-branch-clone_function_name_1-Retain-any-stdcall-suffix.patch",
+        "0020-libgomp-Don-t-hard-code-MS-printf-attributes.patch",
+        "0021-bootstrap-gnattools-Pass-target-sysroot-flags-to-boo.patch",
+        "0022-mingw-Remove-outdated-mingw-stuff.patch",
+        "0023-Ada-Don-t-export-gnat1-s-symbols-on-PE-hosts.patch",
+        "0024-libgfortran-Guard-locale-restoration-for-formatted-I0.patch",
+        "0025-libgfortran-Copy-LC_NUMERIC-string-for-formatted-IO.patch",
+        "0140-gcc-diagnostic-color.patch",
+        "0200-add-m-no-align-vector-insn-option-for-i386.patch",
+        "2001-fix-building-rust-on-mingw-w64.patch",
+        "3001-fix-codeview-crashes.patch"
+      ],
+      "files": [
+        "mingw-w64-gcc/.SRCINFO",
+        "mingw-w64-gcc/0002-i386-Keep-SEH-enabled-for-Win64-sysv_abi-functions.patch",
+        "mingw-w64-gcc/0003-Windows-Follow-Posix-dir-exists-semantics-more-close.patch",
+        "mingw-w64-gcc/0007-Build-EXTRA_GNATTOOLS-for-Ada.patch",
+        "mingw-w64-gcc/0008-Prettify-linking-no-undefined.patch",
+        "mingw-w64-gcc/0011-Enable-shared-gnat-implib.patch",
+        "mingw-w64-gcc/0012-Handle-spaces-in-path-for-default-manifest.patch",
+        "mingw-w64-gcc/0014-gcc-9-branch-clone_function_name_1-Retain-any-stdcall-suffix.patch",
+        "mingw-w64-gcc/0020-libgomp-Don-t-hard-code-MS-printf-attributes.patch",
+        "mingw-w64-gcc/0021-bootstrap-gnattools-Pass-target-sysroot-flags-to-boo.patch",
+        "mingw-w64-gcc/0022-mingw-Remove-outdated-mingw-stuff.patch",
+        "mingw-w64-gcc/0023-Ada-Don-t-export-gnat1-s-symbols-on-PE-hosts.patch",
+        "mingw-w64-gcc/0024-libgfortran-Guard-locale-restoration-for-formatted-I0.patch",
+        "mingw-w64-gcc/0025-libgfortran-Copy-LC_NUMERIC-string-for-formatted-IO.patch",
+        "mingw-w64-gcc/0140-gcc-diagnostic-color.patch",
+        "mingw-w64-gcc/0200-add-m-no-align-vector-insn-option-for-i386.patch",
+        "mingw-w64-gcc/2001-fix-building-rust-on-mingw-w64.patch",
+        "mingw-w64-gcc/3001-fix-codeview-crashes.patch",
+        "mingw-w64-gcc/gcc-16.2.0.tar.xz",
+        "mingw-w64-gcc/gcc-16.2.0.tar.xz.sig",
+        "mingw-w64-gcc/gdbinit",
+        "mingw-w64-gcc/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-gettext",
+      "version": "1.0-1",
+      "archive": "mingw-w64-gettext-1.0-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:GPL-3.0-or-later AND LGPL-2.1-or-later",
+        "spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later"
+      ],
+      "source_inputs": [
+        "https://ftp.gnu.org/pub/gnu/gettext/gettext-1.0.tar.lz",
+        "https://ftp.gnu.org/pub/gnu/gettext/gettext-1.0.tar.lz.sig",
+        "0005-Fix-compilation-of-pthread_sigmask.c.patch",
+        "122-Use-LF-as-newline-in-envsubst.patch",
+        "0021-replace-fsync.patch",
+        "0022-libasprintf.patch",
+        "0024-disable-gnu-format.patch",
+        "0030-fix-build-with-mingw-w64-clang.patch"
+      ],
+      "files": [
+        "mingw-w64-gettext/.SRCINFO",
+        "mingw-w64-gettext/0005-Fix-compilation-of-pthread_sigmask.c.patch",
+        "mingw-w64-gettext/0021-replace-fsync.patch",
+        "mingw-w64-gettext/0022-libasprintf.patch",
+        "mingw-w64-gettext/0024-disable-gnu-format.patch",
+        "mingw-w64-gettext/0030-fix-build-with-mingw-w64-clang.patch",
+        "mingw-w64-gettext/122-Use-LF-as-newline-in-envsubst.patch",
+        "mingw-w64-gettext/gettext-1.0.tar.lz",
+        "mingw-w64-gettext/gettext-1.0.tar.lz.sig",
+        "mingw-w64-gettext/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-glib2",
+      "version": "2.88.3-1",
+      "archive": "mingw-w64-glib2-2.88.3-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:LGPL-2.1-or-later"
+      ],
+      "source_inputs": [
+        "https://download.gnome.org/sources/glib/2.88/glib-2.88.3.tar.xz",
+        "https://gitlab.gnome.org/GNOME/glib/-/commit/7e69f88480a4bf8d9653efd0310c4c25390a0c8b.patch",
+        "0002-disable_glib_compile_schemas_warning.patch",
+        "0004-disable-explicit-ms-bitfields.patch",
+        "glib-compile-schemas.hook.in",
+        "gio-querymodules.hook.in",
+        "pyscript2exe.py"
+      ],
+      "files": [
+        "mingw-w64-glib2/.SRCINFO",
+        "mingw-w64-glib2/0002-disable_glib_compile_schemas_warning.patch",
+        "mingw-w64-glib2/0004-disable-explicit-ms-bitfields.patch",
+        "mingw-w64-glib2/7e69f88480a4bf8d9653efd0310c4c25390a0c8b.patch",
+        "mingw-w64-glib2/gio-querymodules.hook.in",
+        "mingw-w64-glib2/glib-2.88.3.tar.xz",
+        "mingw-w64-glib2/glib-compile-schemas.hook.in",
+        "mingw-w64-glib2/PKGBUILD",
+        "mingw-w64-glib2/pyscript2exe.py"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-graphicsmagick",
+      "version": "1.3.48-1",
+      "archive": "mingw-w64-graphicsmagick-1.3.48-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:MIT"
+      ],
+      "source_inputs": [
+        "https://sourceforge.net/projects/graphicsmagick/files/graphicsmagick/1.3.48/GraphicsMagick-1.3.48.tar.xz",
+        "pathtools.c",
+        "pathtools.h",
+        "001-relocate.patch"
+      ],
+      "files": [
+        "mingw-w64-graphicsmagick/.SRCINFO",
+        "mingw-w64-graphicsmagick/001-relocate.patch",
+        "mingw-w64-graphicsmagick/GraphicsMagick-1.3.48.tar.xz",
+        "mingw-w64-graphicsmagick/pathtools.c",
+        "mingw-w64-graphicsmagick/pathtools.h",
+        "mingw-w64-graphicsmagick/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-graphite2",
+      "version": "1.3.15-1",
+      "archive": "mingw-w64-graphite2-1.3.15-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:LGPL-2.1-or-later"
+      ],
+      "source_inputs": [
+        "https://github.com/silnrsi/graphite/releases/download/1.3.15/graphite2-1.3.15.tgz",
+        "001-graphite2-1.3.12-win64.patch",
+        "002-graphite2-1.2.1-pkgconfig.patch",
+        "003-graphite2-1.3.12-staticbuild.patch",
+        "004-graphite2-1.3.12-dllimport-fix.patch",
+        "005-remove-unknown-dep.patch"
+      ],
+      "files": [
+        "mingw-w64-graphite2/.SRCINFO",
+        "mingw-w64-graphite2/001-graphite2-1.3.12-win64.patch",
+        "mingw-w64-graphite2/002-graphite2-1.2.1-pkgconfig.patch",
+        "mingw-w64-graphite2/003-graphite2-1.3.12-staticbuild.patch",
+        "mingw-w64-graphite2/004-graphite2-1.3.12-dllimport-fix.patch",
+        "mingw-w64-graphite2/005-remove-unknown-dep.patch",
+        "mingw-w64-graphite2/graphite2-1.3.15.tgz",
+        "mingw-w64-graphite2/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-harfbuzz",
+      "version": "14.4.0-1",
+      "archive": "mingw-w64-harfbuzz-14.4.0-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:MIT"
+      ],
+      "source_inputs": [
+        "https://github.com/harfbuzz/harfbuzz/releases/download/14.4.0/harfbuzz-14.4.0.tar.xz",
+        "001-fix-build-with-chafa.patch",
+        "002-make-library-type-in-cmake-config-unknown.patch"
+      ],
+      "files": [
+        "mingw-w64-harfbuzz/.SRCINFO",
+        "mingw-w64-harfbuzz/001-fix-build-with-chafa.patch",
+        "mingw-w64-harfbuzz/002-make-library-type-in-cmake-config-unknown.patch",
+        "mingw-w64-harfbuzz/harfbuzz-14.4.0.tar.xz",
+        "mingw-w64-harfbuzz/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-jbigkit",
+      "version": "2.1-6",
+      "archive": "mingw-w64-jbigkit-2.1-6.src.tar.zst",
+      "declared_licenses": [
+        "spdx:GPL-2.0"
+      ],
+      "source_inputs": [
+        "https://www.cl.cam.ac.uk/~mgk25/download/jbigkit-2.1.tar.gz",
+        "allNewMainMakefile.all.patch",
+        "manfiles.all.patch",
+        "pbmtoolsMakefile.all.patch",
+        "useLibtool.all.patch",
+        "zzz_debug.mingw.patch"
+      ],
+      "files": [
+        "mingw-w64-jbigkit/.SRCINFO",
+        "mingw-w64-jbigkit/allNewMainMakefile.all.patch",
+        "mingw-w64-jbigkit/jbigkit-2.1.tar.gz",
+        "mingw-w64-jbigkit/manfiles.all.patch",
+        "mingw-w64-jbigkit/pbmtoolsMakefile.all.patch",
+        "mingw-w64-jbigkit/PKGBUILD",
+        "mingw-w64-jbigkit/useLibtool.all.patch",
+        "mingw-w64-jbigkit/zzz_debug.mingw.patch"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-lcms2",
+      "version": "2.19.1-1",
+      "archive": "mingw-w64-lcms2-2.19.1-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:MIT AND GPL-3.0-or-later"
+      ],
+      "source_inputs": [
+        "https://github.com/mm2/Little-CMS/releases/download/lcms2.19.1/lcms2-2.19.1.tar.gz"
+      ],
+      "files": [
+        "mingw-w64-lcms2/.SRCINFO",
+        "mingw-w64-lcms2/lcms2-2.19.1.tar.gz",
+        "mingw-w64-lcms2/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-lerc",
+      "version": "4.1.1-1",
+      "archive": "mingw-w64-lerc-4.1.1-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:Apache-2.0"
+      ],
+      "source_inputs": [
+        "https://github.com/Esri/lerc/archive/v4.1.1/lerc-4.1.1.tar.gz"
+      ],
+      "files": [
+        "mingw-w64-lerc/.SRCINFO",
+        "mingw-w64-lerc/lerc-4.1.1.tar.gz",
+        "mingw-w64-lerc/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-libdeflate",
+      "version": "1.26-1",
+      "archive": "mingw-w64-libdeflate-1.26-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:MIT"
+      ],
+      "source_inputs": [
+        "https://github.com/ebiggers/libdeflate/archive/v1.26/libdeflate-1.26.tar.gz",
+        "002-pkg-config.patch"
+      ],
+      "files": [
+        "mingw-w64-libdeflate/.SRCINFO",
+        "mingw-w64-libdeflate/002-pkg-config.patch",
+        "mingw-w64-libdeflate/libdeflate-1.26.tar.gz",
+        "mingw-w64-libdeflate/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-libiconv",
+      "version": "1.19-1",
+      "archive": "mingw-w64-libiconv-1.19-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:GPL-3.0-or-later",
+        "spdx:LGPL-2.1-or-later",
+        "documentation:spdx:GPL-3.0-or-later",
+        "spdx:GPL-3.0-or-later"
+      ],
+      "source_inputs": [
+        "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.19.tar.gz",
+        "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.19.tar.gz.sig",
+        "0003-add-cp65001-as-utf8-alias.patch",
+        "0002-fix-cr-for-awk-in-configure.all.patch",
+        "fix-pointer-buf.patch",
+        "iconv.pc"
+      ],
+      "files": [
+        "mingw-w64-libiconv/.SRCINFO",
+        "mingw-w64-libiconv/0002-fix-cr-for-awk-in-configure.all.patch",
+        "mingw-w64-libiconv/0003-add-cp65001-as-utf8-alias.patch",
+        "mingw-w64-libiconv/fix-pointer-buf.patch",
+        "mingw-w64-libiconv/iconv.pc",
+        "mingw-w64-libiconv/libiconv-1.19.tar.gz",
+        "mingw-w64-libiconv/libiconv-1.19.tar.gz.sig",
+        "mingw-w64-libiconv/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-libidn2",
+      "version": "2.3.8-4",
+      "archive": "mingw-w64-libidn2-2.3.8-4.src.tar.zst",
+      "declared_licenses": [
+        "spdx:GPL-2.0-or-later",
+        "spdx:LGPL-3.0-or-later"
+      ],
+      "source_inputs": [
+        "https://ftp.gnu.org/gnu/libidn/libidn2-2.3.8.tar.gz",
+        "https://ftp.gnu.org/gnu/libidn/libidn2-2.3.8.tar.gz.sig"
+      ],
+      "files": [
+        "mingw-w64-libidn2/.SRCINFO",
+        "mingw-w64-libidn2/libidn2-2.3.8.tar.gz",
+        "mingw-w64-libidn2/libidn2-2.3.8.tar.gz.sig",
+        "mingw-w64-libidn2/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-libjpeg-turbo",
+      "version": "3.2.0-1",
+      "archive": "mingw-w64-libjpeg-turbo-3.2.0-1.src.tar.zst",
+      "declared_licenses": [
+        "custom:BSD-like"
+      ],
+      "source_inputs": [
+        "https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.2.0/libjpeg-turbo-3.2.0.tar.gz",
+        "https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.2.0/libjpeg-turbo-3.2.0.tar.gz.sig",
+        "0001-header-compat.mingw.patch",
+        "libjpeg-turbo-1.3.1-libmng-compatibility.patch"
+      ],
+      "files": [
+        "mingw-w64-libjpeg-turbo/.SRCINFO",
+        "mingw-w64-libjpeg-turbo/0001-header-compat.mingw.patch",
+        "mingw-w64-libjpeg-turbo/libjpeg-turbo-1.3.1-libmng-compatibility.patch",
+        "mingw-w64-libjpeg-turbo/libjpeg-turbo-3.2.0.tar.gz",
+        "mingw-w64-libjpeg-turbo/libjpeg-turbo-3.2.0.tar.gz.sig",
+        "mingw-w64-libjpeg-turbo/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-libpng",
+      "version": "1.6.58-1",
+      "archive": "mingw-w64-libpng-1.6.58-1.src.tar.zst",
+      "declared_licenses": [
+        "custom"
+      ],
+      "source_inputs": [
+        "https://downloads.sourceforge.net/sourceforge/libpng/libpng-1.6.58.tar.xz",
+        "apng.patch"
+      ],
+      "files": [
+        "mingw-w64-libpng/.SRCINFO",
+        "mingw-w64-libpng/apng.patch",
+        "mingw-w64-libpng/libpng-1.6.58.tar.xz",
+        "mingw-w64-libpng/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-libpsl",
+      "version": "0.21.5-3",
+      "archive": "mingw-w64-libpsl-0.21.5-3.src.tar.zst",
+      "declared_licenses": [
+        "spdx:MIT"
+      ],
+      "source_inputs": [
+        "https://github.com/rockdaboot/libpsl/releases/download/0.21.5/libpsl-0.21.5.tar.gz"
+      ],
+      "files": [
+        "mingw-w64-libpsl/.SRCINFO",
+        "mingw-w64-libpsl/libpsl-0.21.5.tar.gz",
+        "mingw-w64-libpsl/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-libssh2",
+      "version": "1.11.1-2",
+      "archive": "mingw-w64-libssh2-1.11.1-2.src.tar.zst",
+      "declared_licenses": [
+        "spdx:BSD-3-Clause"
+      ],
+      "source_inputs": [
+        "https://libssh2.org/download/libssh2-1.11.1.tar.gz",
+        "https://libssh2.org/download/libssh2-1.11.1.tar.gz.asc"
+      ],
+      "files": [
+        "mingw-w64-libssh2/.SRCINFO",
+        "mingw-w64-libssh2/libssh2-1.11.1.tar.gz",
+        "mingw-w64-libssh2/libssh2-1.11.1.tar.gz.asc",
+        "mingw-w64-libssh2/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-libtiff",
+      "version": "4.7.2-1",
+      "archive": "mingw-w64-libtiff-4.7.2-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:MIT"
+      ],
+      "source_inputs": [
+        "https://download.osgeo.org/libtiff/tiff-4.7.2.tar.gz",
+        "0002-libtiff-install-headers.patch"
+      ],
+      "files": [
+        "mingw-w64-libtiff/.SRCINFO",
+        "mingw-w64-libtiff/0002-libtiff-install-headers.patch",
+        "mingw-w64-libtiff/PKGBUILD",
+        "mingw-w64-libtiff/tiff-4.7.2.tar.gz"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-libtool",
+      "version": "2.6.2-1",
+      "archive": "mingw-w64-libtool-2.6.2-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:LGPL-2.0-or-later WITH Libtool-exception"
+      ],
+      "source_inputs": [
+        "https://ftp.gnu.org/gnu/libtool/libtool-2.6.2.tar.xz",
+        "https://ftp.gnu.org/gnu/libtool/libtool-2.6.2.tar.xz.sig",
+        "0001-cygwin-mingw-Create-UAC-manifest-files.patch",
+        "0002-Fix-seems-to-be-moved.patch",
+        "0003-Fix-STRICT_ANSI-vs-POSIX.patch",
+        "0004-Allow-statically-linking-Flang-support-libraries-whe.patch",
+        "0005-libtool-include-process.h.patch",
+        "0006-Pass-various-flags-to-GCC.patch",
+        "0007-msysize.patch",
+        "0014-Support-llvm-objdump-f-output.patch"
+      ],
+      "files": [
+        "mingw-w64-libtool/.SRCINFO",
+        "mingw-w64-libtool/0001-cygwin-mingw-Create-UAC-manifest-files.patch",
+        "mingw-w64-libtool/0002-Fix-seems-to-be-moved.patch",
+        "mingw-w64-libtool/0003-Fix-STRICT_ANSI-vs-POSIX.patch",
+        "mingw-w64-libtool/0004-Allow-statically-linking-Flang-support-libraries-whe.patch",
+        "mingw-w64-libtool/0005-libtool-include-process.h.patch",
+        "mingw-w64-libtool/0006-Pass-various-flags-to-GCC.patch",
+        "mingw-w64-libtool/0007-msysize.patch",
+        "mingw-w64-libtool/0014-Support-llvm-objdump-f-output.patch",
+        "mingw-w64-libtool/libtool-2.6.2.tar.xz",
+        "mingw-w64-libtool/libtool-2.6.2.tar.xz.sig",
+        "mingw-w64-libtool/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-libunistring",
+      "version": "1.4.2-1",
+      "archive": "mingw-w64-libunistring-1.4.2-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:LGPL-3.0-or-later OR GPL-3.0-or-later"
+      ],
+      "source_inputs": [
+        "https://ftp.gnu.org/gnu/libunistring/libunistring-1.4.2.tar.gz",
+        "https://ftp.gnu.org/gnu/libunistring/libunistring-1.4.2.tar.gz.sig"
+      ],
+      "files": [
+        "mingw-w64-libunistring/.SRCINFO",
+        "mingw-w64-libunistring/libunistring-1.4.2.tar.gz",
+        "mingw-w64-libunistring/libunistring-1.4.2.tar.gz.sig",
+        "mingw-w64-libunistring/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-libwebp",
+      "version": "1.6.0-1",
+      "archive": "mingw-w64-libwebp-1.6.0-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:BSD-3-Clause"
+      ],
+      "source_inputs": [
+        "https://github.com/webmproject/libwebp/archive/v1.6.0/libwebp-1.6.0.tar.gz",
+        "0001-mingw-cmake-output.patch"
+      ],
+      "files": [
+        "mingw-w64-libwebp/.SRCINFO",
+        "mingw-w64-libwebp/0001-mingw-cmake-output.patch",
+        "mingw-w64-libwebp/libwebp-1.6.0.tar.gz",
+        "mingw-w64-libwebp/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-libxml2",
+      "version": "2.15.4-1",
+      "archive": "mingw-w64-libxml2-2.15.4-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:MIT"
+      ],
+      "source_inputs": [
+        "https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.4.tar.xz",
+        "https://www.w3.org/XML/Test/xmlts20130923.tar.gz",
+        "0001-do-not-export-DllMain.patch",
+        "0029-xml2-config-win-paths.patch",
+        "0031-apply-msvc-relocation.patch",
+        "0032-cmake-relocation.patch"
+      ],
+      "files": [
+        "mingw-w64-libxml2/.SRCINFO",
+        "mingw-w64-libxml2/0001-do-not-export-DllMain.patch",
+        "mingw-w64-libxml2/0029-xml2-config-win-paths.patch",
+        "mingw-w64-libxml2/0031-apply-msvc-relocation.patch",
+        "mingw-w64-libxml2/0032-cmake-relocation.patch",
+        "mingw-w64-libxml2/libxml2-2.15.4.tar.xz",
+        "mingw-w64-libxml2/libxml2-UCRT64.install",
+        "mingw-w64-libxml2/PKGBUILD",
+        "mingw-w64-libxml2/xmlts20130923.tar.gz"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-nghttp2",
+      "version": "1.70.0-1",
+      "archive": "mingw-w64-nghttp2-1.70.0-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:MIT"
+      ],
+      "source_inputs": [
+        "https://github.com/nghttp2/nghttp2/releases/download/v1.70.0/nghttp2-1.70.0.tar.xz",
+        "001-fix-pc-prefix.patch",
+        "002-nghttp2-pkgconfig-add-cflags-private.patch"
+      ],
+      "files": [
+        "mingw-w64-nghttp2/.SRCINFO",
+        "mingw-w64-nghttp2/001-fix-pc-prefix.patch",
+        "mingw-w64-nghttp2/002-nghttp2-pkgconfig-add-cflags-private.patch",
+        "mingw-w64-nghttp2/nghttp2-1.70.0.tar.xz",
+        "mingw-w64-nghttp2/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-nghttp3",
+      "version": "1.18.0-1",
+      "archive": "mingw-w64-nghttp3-1.18.0-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:MIT"
+      ],
+      "source_inputs": [
+        "https://github.com/ngtcp2/nghttp3/releases/download/v1.18.0/nghttp3-1.18.0.tar.xz",
+        "https://github.com/ngtcp2/nghttp3/releases/download/v1.18.0/nghttp3-1.18.0.tar.xz.asc",
+        "001-fix-pc-prefix.patch",
+        "002-nghttp3-pkgconfig-add-cflags-private.patch"
+      ],
+      "files": [
+        "mingw-w64-nghttp3/.SRCINFO",
+        "mingw-w64-nghttp3/001-fix-pc-prefix.patch",
+        "mingw-w64-nghttp3/002-nghttp3-pkgconfig-add-cflags-private.patch",
+        "mingw-w64-nghttp3/nghttp3-1.18.0.tar.xz",
+        "mingw-w64-nghttp3/nghttp3-1.18.0.tar.xz.asc",
+        "mingw-w64-nghttp3/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-ngtcp2",
+      "version": "1.25.0-1",
+      "archive": "mingw-w64-ngtcp2-1.25.0-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:MIT"
+      ],
+      "source_inputs": [
+        "https://github.com/ngtcp2/ngtcp2/releases/download/v1.25.0/ngtcp2-1.25.0.tar.xz",
+        "https://github.com/ngtcp2/ngtcp2/releases/download/v1.25.0/ngtcp2-1.25.0.tar.xz.asc",
+        "001-fix-pc-prefix.patch",
+        "002-ngtcp2-pkgconfig-add-cflags-private.patch"
+      ],
+      "files": [
+        "mingw-w64-ngtcp2/.SRCINFO",
+        "mingw-w64-ngtcp2/001-fix-pc-prefix.patch",
+        "mingw-w64-ngtcp2/002-ngtcp2-pkgconfig-add-cflags-private.patch",
+        "mingw-w64-ngtcp2/ngtcp2-1.25.0.tar.xz",
+        "mingw-w64-ngtcp2/ngtcp2-1.25.0.tar.xz.asc",
+        "mingw-w64-ngtcp2/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-nspr",
+      "version": "4.40-1",
+      "archive": "mingw-w64-nspr-4.40-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:MPL-2.0"
+      ],
+      "source_inputs": [
+        "https://ftp.mozilla.org/pub/mozilla.org/nspr/releases/v4.40/src/nspr-4.40.tar.gz",
+        "0001-fix-integer-casting.patch",
+        "0002-fix-autotools.patch",
+        "0003-mingw.patch",
+        "0004-static-build.patch",
+        "0005-fix-x64.patch",
+        "0006-aarch64.patch"
+      ],
+      "files": [
+        "mingw-w64-nspr/.SRCINFO",
+        "mingw-w64-nspr/0001-fix-integer-casting.patch",
+        "mingw-w64-nspr/0002-fix-autotools.patch",
+        "mingw-w64-nspr/0003-mingw.patch",
+        "mingw-w64-nspr/0004-static-build.patch",
+        "mingw-w64-nspr/0005-fix-x64.patch",
+        "mingw-w64-nspr/0006-aarch64.patch",
+        "mingw-w64-nspr/nspr-4.40.tar.gz",
+        "mingw-w64-nspr/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-nss",
+      "version": "3.128-2",
+      "archive": "mingw-w64-nss-3.128-2.src.tar.zst",
+      "declared_licenses": [
+        "spdx:MPL-2.0"
+      ],
+      "source_inputs": [
+        "https://ftp.mozilla.org/pub/security/nss/releases/NSS_3_128_RTM/src/nss-3.128.tar.gz",
+        "nss-build.patch",
+        "blank-cert8.db",
+        "blank-key3.db",
+        "blank-secmod.db",
+        "nss-3.20.1-headers.patch",
+        "nss-3.81-aarch64.patch"
+      ],
+      "files": [
+        "mingw-w64-nss/.SRCINFO",
+        "mingw-w64-nss/blank-cert8.db",
+        "mingw-w64-nss/blank-key3.db",
+        "mingw-w64-nss/blank-secmod.db",
+        "mingw-w64-nss/nss-3.128.tar.gz",
+        "mingw-w64-nss/nss-3.20.1-headers.patch",
+        "mingw-w64-nss/nss-3.81-aarch64.patch",
+        "mingw-w64-nss/nss-build.patch",
+        "mingw-w64-nss/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-openjpeg2",
+      "version": "2.5.4-2",
+      "archive": "mingw-w64-openjpeg2-2.5.4-2.src.tar.zst",
+      "declared_licenses": [
+        "spdx:BSD-2-Clause"
+      ],
+      "source_inputs": [
+        "https://github.com/uclouvain/openjpeg/archive/v2.5.4/openjpeg-2.5.4.tar.gz",
+        "0004-mingw-disable-java.patch",
+        "0006-openjpeg-2.1.0-stdcall-for-all-win.patch",
+        "https://github.com/uclouvain/openjpeg/commit/1ad9bec2c12ee445ce23e660f5e4fe870b9d5e09.patch"
+      ],
+      "files": [
+        "mingw-w64-openjpeg2/.SRCINFO",
+        "mingw-w64-openjpeg2/0004-mingw-disable-java.patch",
+        "mingw-w64-openjpeg2/0006-openjpeg-2.1.0-stdcall-for-all-win.patch",
+        "mingw-w64-openjpeg2/1ad9bec2c12ee445ce23e660f5e4fe870b9d5e09.patch",
+        "mingw-w64-openjpeg2/openjpeg-2.5.4.tar.gz",
+        "mingw-w64-openjpeg2/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-openssl",
+      "version": "3.6.4-1",
+      "archive": "mingw-w64-openssl-3.6.4-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:Apache-2.0"
+      ],
+      "source_inputs": [
+        "https://github.com/openssl/openssl/releases/download/openssl-3.6.4/openssl-3.6.4.tar.gz",
+        "https://github.com/openssl/openssl/releases/download/openssl-3.6.4/openssl-3.6.4.tar.gz.asc",
+        "002-relocation.patch",
+        "004-arch-suffix.patch",
+        "pathtools.c",
+        "pathtools.h"
+      ],
+      "files": [
+        "mingw-w64-openssl/.SRCINFO",
+        "mingw-w64-openssl/002-relocation.patch",
+        "mingw-w64-openssl/004-arch-suffix.patch",
+        "mingw-w64-openssl/openssl-3.6.4.tar.gz",
+        "mingw-w64-openssl/openssl-3.6.4.tar.gz.asc",
+        "mingw-w64-openssl/pathtools.c",
+        "mingw-w64-openssl/pathtools.h",
+        "mingw-w64-openssl/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-pcre2",
+      "version": "10.48-3",
+      "archive": "mingw-w64-pcre2-10.48-3.src.tar.zst",
+      "declared_licenses": [
+        "spdx:BSD-3-Clause"
+      ],
+      "source_inputs": [
+        "https://github.com/PhilipHazel/pcre2/releases/download/pcre2-10.48/pcre2-10.48.tar.bz2",
+        "https://github.com/PhilipHazel/pcre2/releases/download/pcre2-10.48/pcre2-10.48.tar.bz2.sig",
+        "0001-pcre2test-wineditline.patch"
+      ],
+      "files": [
+        "mingw-w64-pcre2/.SRCINFO",
+        "mingw-w64-pcre2/0001-pcre2test-wineditline.patch",
+        "mingw-w64-pcre2/pcre2-10.48.tar.bz2",
+        "mingw-w64-pcre2/pcre2-10.48.tar.bz2.sig",
+        "mingw-w64-pcre2/PKGBUILD"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-poppler",
+      "version": "26.08.0-1",
+      "archive": "mingw-w64-poppler-26.08.0-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:GPL-2.0-or-later"
+      ],
+      "source_inputs": [
+        "https://poppler.freedesktop.org/poppler-26.08.0.tar.xz",
+        "https://poppler.freedesktop.org/poppler-26.08.0.tar.xz.sig",
+        "test::git+https://gitlab.freedesktop.org/poppler/test.git#commit=46785c9a414d8918d8d4c55d3498258c7eac86c3",
+        "0001-nopython-generate-enums.patch"
+      ],
+      "files": [
+        "mingw-w64-poppler/.SRCINFO",
+        "mingw-w64-poppler/0001-nopython-generate-enums.patch",
+        "mingw-w64-poppler/PKGBUILD",
+        "mingw-w64-poppler/poppler-26.08.0.tar.xz",
+        "mingw-w64-poppler/poppler-26.08.0.tar.xz.sig",
+        "mingw-w64-poppler/test/config",
+        "mingw-w64-poppler/test/description",
+        "mingw-w64-poppler/test/HEAD",
+        "mingw-w64-poppler/test/packed-refs",
+        "mingw-w64-poppler/test/objects/pack/pack-87c73cbc56edf499e49121bf037655a003ed276b.idx",
+        "mingw-w64-poppler/test/objects/pack/pack-87c73cbc56edf499e49121bf037655a003ed276b.pack",
+        "mingw-w64-poppler/test/objects/pack/pack-87c73cbc56edf499e49121bf037655a003ed276b.rev",
+        "mingw-w64-poppler/test/info/exclude",
+        "mingw-w64-poppler/test/hooks/applypatch-msg.sample",
+        "mingw-w64-poppler/test/hooks/commit-msg.sample",
+        "mingw-w64-poppler/test/hooks/fsmonitor-watchman.sample",
+        "mingw-w64-poppler/test/hooks/post-update.sample",
+        "mingw-w64-poppler/test/hooks/pre-applypatch.sample",
+        "mingw-w64-poppler/test/hooks/pre-commit.sample",
+        "mingw-w64-poppler/test/hooks/pre-merge-commit.sample",
+        "mingw-w64-poppler/test/hooks/pre-push.sample",
+        "mingw-w64-poppler/test/hooks/pre-rebase.sample",
+        "mingw-w64-poppler/test/hooks/pre-receive.sample",
+        "mingw-w64-poppler/test/hooks/prepare-commit-msg.sample",
+        "mingw-w64-poppler/test/hooks/push-to-checkout.sample",
+        "mingw-w64-poppler/test/hooks/sendemail-validate.sample",
+        "mingw-w64-poppler/test/hooks/update.sample"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-potrace",
+      "version": "1.16-3",
+      "archive": "mingw-w64-potrace-1.16-3.src.tar.zst",
+      "declared_licenses": [
+        "spdx:GPL-2.0-or-later"
+      ],
+      "source_inputs": [
+        "https://potrace.sourceforge.io/download/1.16/potrace-1.16.tar.gz",
+        "001-reaarange-compiler-detect.patch"
+      ],
+      "files": [
+        "mingw-w64-potrace/.SRCINFO",
+        "mingw-w64-potrace/001-reaarange-compiler-detect.patch",
+        "mingw-w64-potrace/PKGBUILD",
+        "mingw-w64-potrace/potrace-1.16.tar.gz"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-winpthreads",
+      "version": "14.0.0.r353.g6df76fa52-2",
+      "archive": "mingw-w64-winpthreads-14.0.0.r353.g6df76fa52-2.src.tar.zst",
+      "declared_licenses": [
+        "spdx:MIT AND BSD-3-Clause-Clear"
+      ],
+      "source_inputs": [
+        "mingw-w64::git+https://git.code.sf.net/p/mingw-w64/mingw-w64#commit=6df76fa527c36e770217ddd763adaaf37bd2887f",
+        "0001-Define-__-de-register_frame_info-in-fake-libgcc_s.patch"
+      ],
+      "files": [
+        "mingw-w64-winpthreads/.SRCINFO",
+        "mingw-w64-winpthreads/0001-Define-__-de-register_frame_info-in-fake-libgcc_s.patch",
+        "mingw-w64-winpthreads/PKGBUILD",
+        "mingw-w64-winpthreads/mingw-w64/config",
+        "mingw-w64-winpthreads/mingw-w64/description",
+        "mingw-w64-winpthreads/mingw-w64/HEAD",
+        "mingw-w64-winpthreads/mingw-w64/packed-refs",
+        "mingw-w64-winpthreads/mingw-w64/objects/pack/pack-93317ee4b84d43f339d632b0257602a96ba19721.idx",
+        "mingw-w64-winpthreads/mingw-w64/objects/pack/pack-93317ee4b84d43f339d632b0257602a96ba19721.pack",
+        "mingw-w64-winpthreads/mingw-w64/objects/pack/pack-93317ee4b84d43f339d632b0257602a96ba19721.rev",
+        "mingw-w64-winpthreads/mingw-w64/info/exclude",
+        "mingw-w64-winpthreads/mingw-w64/hooks/applypatch-msg.sample",
+        "mingw-w64-winpthreads/mingw-w64/hooks/commit-msg.sample",
+        "mingw-w64-winpthreads/mingw-w64/hooks/fsmonitor-watchman.sample",
+        "mingw-w64-winpthreads/mingw-w64/hooks/post-update.sample",
+        "mingw-w64-winpthreads/mingw-w64/hooks/pre-applypatch.sample",
+        "mingw-w64-winpthreads/mingw-w64/hooks/pre-commit.sample",
+        "mingw-w64-winpthreads/mingw-w64/hooks/pre-merge-commit.sample",
+        "mingw-w64-winpthreads/mingw-w64/hooks/pre-push.sample",
+        "mingw-w64-winpthreads/mingw-w64/hooks/pre-rebase.sample",
+        "mingw-w64-winpthreads/mingw-w64/hooks/pre-receive.sample",
+        "mingw-w64-winpthreads/mingw-w64/hooks/prepare-commit-msg.sample",
+        "mingw-w64-winpthreads/mingw-w64/hooks/push-to-checkout.sample",
+        "mingw-w64-winpthreads/mingw-w64/hooks/sendemail-validate.sample",
+        "mingw-w64-winpthreads/mingw-w64/hooks/update.sample"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-xz",
+      "version": "5.8.3-1",
+      "archive": "mingw-w64-xz-5.8.3-1.src.tar.zst",
+      "declared_licenses": [
+        "spdx:0BSD AND LGPL-2.1-or-later AND GPL-2.0-or-later"
+      ],
+      "source_inputs": [
+        "https://github.com/tukaani-project/xz/releases/download/v5.8.3/xz-5.8.3.tar.xz",
+        "https://github.com/tukaani-project/xz/releases/download/v5.8.3/xz-5.8.3.tar.xz.sig"
+      ],
+      "files": [
+        "mingw-w64-xz/.SRCINFO",
+        "mingw-w64-xz/PKGBUILD",
+        "mingw-w64-xz/xz-5.8.3.tar.xz",
+        "mingw-w64-xz/xz-5.8.3.tar.xz.sig"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-zlib",
+      "version": "1.3.2-2",
+      "archive": "mingw-w64-zlib-1.3.2-2.src.tar.zst",
+      "declared_licenses": [
+        "spdx:Zlib"
+      ],
+      "source_inputs": [
+        "https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.xz",
+        "https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.xz.asc",
+        "01-zlib-1.2.11-1-buildsys.mingw.patch",
+        "03-dont-put-sodir-into-L.mingw.patch",
+        "04-fix-largefile-support.patch",
+        "07-Add-no-undefined-to-link-to-enable-build-shared-vers.patch",
+        "08-Add-bzip2-library-to-pkg-config-file.patch",
+        "https://patch-diff.githubusercontent.com/raw/madler/zlib/pull/1165.patch"
+      ],
+      "files": [
+        "mingw-w64-zlib/.SRCINFO",
+        "mingw-w64-zlib/01-zlib-1.2.11-1-buildsys.mingw.patch",
+        "mingw-w64-zlib/03-dont-put-sodir-into-L.mingw.patch",
+        "mingw-w64-zlib/04-fix-largefile-support.patch",
+        "mingw-w64-zlib/07-Add-no-undefined-to-link-to-enable-build-shared-vers.patch",
+        "mingw-w64-zlib/08-Add-bzip2-library-to-pkg-config-file.patch",
+        "mingw-w64-zlib/1165.patch",
+        "mingw-w64-zlib/PKGBUILD",
+        "mingw-w64-zlib/zlib-1.3.2.tar.xz",
+        "mingw-w64-zlib/zlib-1.3.2.tar.xz.asc"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "mingw-w64-zstd",
+      "version": "1.5.7-2",
+      "archive": "mingw-w64-zstd-1.5.7-2.src.tar.zst",
+      "declared_licenses": [
+        "spdx:BSD-3-Clause OR GPL-2.0-or-later"
+      ],
+      "source_inputs": [
+        "https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz",
+        "https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz.sig",
+        "zstd-1.4.0-fileio-mingw.patch"
+      ],
+      "files": [
+        "mingw-w64-zstd/.SRCINFO",
+        "mingw-w64-zstd/PKGBUILD",
+        "mingw-w64-zstd/zstd-1.4.0-fileio-mingw.patch",
+        "mingw-w64-zstd/zstd-1.5.7.tar.gz",
+        "mingw-w64-zstd/zstd-1.5.7.tar.gz.sig"
+      ],
+      "status": "identity-and-container-checked"
+    },
+    {
+      "component": "pyside-setup",
+      "archive": "pyside-setup-everywhere-src-6.11.0.tar.xz",
+      "notices": [
+        "pyside-setup/LICENSES/Apache-2.0.txt",
+        "pyside-setup/LICENSES/BSD-3-Clause.txt",
+        "pyside-setup/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "pyside-setup/LICENSES/GPL-2.0-only.txt",
+        "pyside-setup/LICENSES/GPL-3.0-only.txt",
+        "pyside-setup/LICENSES/LGPL-3.0-only.txt",
+        "pyside-setup/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "pyside-setup/LICENSES/Qt-GPL-exception-1.0.txt",
+        "pyside-setup/examples/datavisualization/graphgallery/data/license.txt",
+        "pyside-setup/examples/demos/colorpaletteclient/icons/qt_attribution.json",
+        "pyside-setup/examples/graphs/3d/widgetgraphgallery/data/license.txt",
+        "pyside-setup/examples/webenginequick/nanobrowser/icons/3rdparty/COPYING",
+        "pyside-setup/examples/webenginewidgets/markdowneditor/resources/3rdparty/qt_attribution.json",
+        "pyside-setup/examples/webenginewidgets/simplebrowser/data/3rdparty/COPYING",
+        "pyside-setup/examples/webenginewidgets/simplebrowser/data/3rdparty/qt_attribution.json",
+        "pyside-setup/examples/widgets/dialogs/licensewizard/doc/licensewizard.png",
+        "pyside-setup/examples/widgets/dialogs/licensewizard/doc/licensewizard.rst",
+        "pyside-setup/examples/widgets/dialogs/licensewizard/licensewizard.py",
+        "pyside-setup/examples/widgets/dialogs/licensewizard/licensewizard.pyproject",
+        "pyside-setup/sources/pyside6/COPYING",
+        "pyside-setup/sources/pyside6/PySide6/licensecomment.txt",
+        "pyside-setup/sources/shiboken6/COPYING",
+        "pyside-setup/sources/shiboken6/COPYING.libsample",
+        "pyside-setup/sources/shiboken6/COPYING.libshiboken",
+        "pyside-setup/sources/shiboken6/libshiboken/bufferprocs_py37.h",
+        "pyside-setup/sources/shiboken6/libshiboken/qt_attribution.json",
+        "pyside-setup/sources/shiboken6/shibokenmodule/files.dir/shibokensupport/signature/PSF-3.7.0.txt",
+        "pyside-setup/sources/shiboken6/shibokenmodule/files.dir/shibokensupport/signature/qt_attribution.json",
+        "pyside-setup/sources/shiboken6_generator/ApiExtractor/COPYING",
+        "pyside-setup/tools/license_check.py"
+      ],
+      "status": "archive-readable-and-original-notices-collected"
+    },
+    {
+      "component": "qtbase",
+      "archive": "qtbase-everywhere-src-6.11.0.tar.xz",
+      "notices": [
+        "qtbase/LICENSES/AFL-2.1.txt",
+        "qtbase/LICENSES/Apache-2.0.txt",
+        "qtbase/LICENSES/BSD-2-Clause.txt",
+        "qtbase/LICENSES/BSD-3-Clause.txt",
+        "qtbase/LICENSES/BSD-4-Clause.txt",
+        "qtbase/LICENSES/BSL-1.0.txt",
+        "qtbase/LICENSES/Bitstream-Vera.txt",
+        "qtbase/LICENSES/CC0-1.0.txt",
+        "qtbase/LICENSES/FTL.txt",
+        "qtbase/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qtbase/LICENSES/GPL-2.0-only.txt",
+        "qtbase/LICENSES/GPL-2.0-or-later.txt",
+        "qtbase/LICENSES/GPL-3.0-only.txt",
+        "qtbase/LICENSES/HPND.txt",
+        "qtbase/LICENSES/IJG.txt",
+        "qtbase/LICENSES/IPL-1.0.txt",
+        "qtbase/LICENSES/Imlib2.txt",
+        "qtbase/LICENSES/LGPL-2.1-or-later.txt",
+        "qtbase/LICENSES/LGPL-3.0-only.txt",
+        "qtbase/LICENSES/Libpng.txt",
+        "qtbase/LICENSES/LicenseRef-BSD-3-Clause-with-PCRE2-Binary-Like-Packages-Exception.txt",
+        "qtbase/LICENSES/LicenseRef-ICC-License.txt",
+        "qtbase/LICENSES/LicenseRef-Lcs-Telegraphics.txt",
+        "qtbase/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qtbase/LICENSES/LicenseRef-SHA1-Public-Domain.txt",
+        "qtbase/LICENSES/Linux-syscall-note.txt",
+        "qtbase/LICENSES/MIT-Khronos-old.txt",
+        "qtbase/LICENSES/MIT-open-group.txt",
+        "qtbase/LICENSES/MIT.txt",
+        "qtbase/LICENSES/MPL-2.0.txt",
+        "qtbase/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qtbase/LICENSES/SPL-1.0.txt",
+        "qtbase/LICENSES/Unicode-3.0.txt",
+        "qtbase/LICENSES/X11.txt",
+        "qtbase/LICENSES/Xerox.txt",
+        "qtbase/LICENSES/Zlib.txt",
+        "qtbase/LICENSES/blessing.txt",
+        "qtbase/LICENSES/libpng-2.0.txt",
+        "qtbase/cmake/3rdparty/extra-cmake-modules/COPYING-CMAKE-SCRIPTS",
+        "qtbase/cmake/3rdparty/extra-cmake-modules/qt_attribution.json",
+        "qtbase/cmake/3rdparty/kwin/COPYING-CMAKE-SCRIPTS",
+        "qtbase/cmake/3rdparty/kwin/qt_attribution.json",
+        "qtbase/doc/src/images/licensewizard-example.png",
+        "qtbase/examples/widgets/dialogs/licensewizard/licensewizard.cpp",
+        "qtbase/examples/widgets/dialogs/licensewizard/licensewizard.h",
+        "qtbase/examples/widgets/dialogs/licensewizard/licensewizard.pro",
+        "qtbase/examples/widgets/dialogs/licensewizard/licensewizard.qrc",
+        "qtbase/examples/widgets/doc/src/licensewizard.qdoc",
+        "qtbase/licenseRule.json",
+        "qtbase/src/3rdparty/D3D12MemoryAllocator/LICENSE.txt",
+        "qtbase/src/3rdparty/D3D12MemoryAllocator/qt_attribution.json",
+        "qtbase/src/3rdparty/VulkanMemoryAllocator/LICENSE.txt",
+        "qtbase/src/3rdparty/VulkanMemoryAllocator/qt_attribution.json",
+        "qtbase/src/3rdparty/android/LICENSE",
+        "qtbase/src/3rdparty/android/qt_attribution.json",
+        "qtbase/src/3rdparty/blake2/COPYING",
+        "qtbase/src/3rdparty/blake2/qt_attribution.json",
+        "qtbase/src/3rdparty/double-conversion/LICENSE",
+        "qtbase/src/3rdparty/double-conversion/qt_attribution.json",
+        "qtbase/src/3rdparty/easing/LICENSE",
+        "qtbase/src/3rdparty/easing/qt_attribution.json",
+        "qtbase/src/3rdparty/emoji-segmenter/qt_attribution.json",
+        "qtbase/src/3rdparty/forkfd/LICENSE",
+        "qtbase/src/3rdparty/forkfd/qt_attribution.json",
+        "qtbase/src/3rdparty/freetype/BDF-LICENSE.txt",
+        "qtbase/src/3rdparty/freetype/LICENSE.txt",
+        "qtbase/src/3rdparty/freetype/PCF-LICENSE.txt",
+        "qtbase/src/3rdparty/freetype/ZLIB-LICENSE.txt",
+        "qtbase/src/3rdparty/freetype/qt_attribution.json",
+        "qtbase/src/3rdparty/gradle/LICENSE",
+        "qtbase/src/3rdparty/gradle/qt_attribution.json",
+        "qtbase/src/3rdparty/harfbuzz-ng/COPYING",
+        "qtbase/src/3rdparty/harfbuzz-ng/qt_attribution.json",
+        "qtbase/src/3rdparty/icc/LICENSE.txt",
+        "qtbase/src/3rdparty/icc/qt_attribution.json",
+        "qtbase/src/3rdparty/libjpeg/COPYRIGHT.txt",
+        "qtbase/src/3rdparty/libjpeg/LICENSE",
+        "qtbase/src/3rdparty/libjpeg/qt_attribution.json",
+        "qtbase/src/3rdparty/libpng/LICENSE",
+        "qtbase/src/3rdparty/libpng/qt_attribution.json",
+        "qtbase/src/3rdparty/libpsl/PSL-LICENSE.txt",
+        "qtbase/src/3rdparty/libpsl/qt_attribution.json",
+        "qtbase/src/3rdparty/libpsl/src/LICENSE.chromium",
+        "qtbase/src/3rdparty/md4/qt_attribution.json",
+        "qtbase/src/3rdparty/md4c/LICENSE.md",
+        "qtbase/src/3rdparty/md4c/qt_attribution.json",
+        "qtbase/src/3rdparty/md5/qt_attribution.json",
+        "qtbase/src/3rdparty/pcre2/LICENCE.md",
+        "qtbase/src/3rdparty/pcre2/LICENSE-SLJIT",
+        "qtbase/src/3rdparty/pcre2/qt_attribution.json",
+        "qtbase/src/3rdparty/pixman/LICENSE",
+        "qtbase/src/3rdparty/pixman/qt_attribution.json",
+        "qtbase/src/3rdparty/rfc6234/LICENSE",
+        "qtbase/src/3rdparty/rfc6234/qt_attribution.json",
+        "qtbase/src/3rdparty/sha1/qt_attribution.json",
+        "qtbase/src/3rdparty/sha3/BRG_ENDIAN_LICENSE",
+        "qtbase/src/3rdparty/sha3/CC0_LICENSE",
+        "qtbase/src/3rdparty/sha3/qt_attribution.json",
+        "qtbase/src/3rdparty/siphash/qt_attribution.json",
+        "qtbase/src/3rdparty/sqlite/qt_attribution.json",
+        "qtbase/src/3rdparty/tinycbor/LICENSE",
+        "qtbase/src/3rdparty/tinycbor/qt_attribution.json",
+        "qtbase/src/3rdparty/wasm/DEJAVU-LICENSE",
+        "qtbase/src/3rdparty/wasm/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+        "qtbase/src/3rdparty/wayland/protocols/appmenu/LGPL-2.1-or-later.txt",
+        "qtbase/src/3rdparty/wayland/protocols/appmenu/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/color-management/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/fractional-scale/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/fullscreen-shell/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/linux-dmabuf/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/pointer-gestures/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/pointer-warp/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/presentation-time/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/scaler/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/session-management/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/tablet/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/text-input/v1/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/text-input/v2/HPND_LICENSE.txt",
+        "qtbase/src/3rdparty/wayland/protocols/text-input/v2/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/text-input/v3/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/viewporter/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/wayland/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/wl-eglstream/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/wlr-data-control/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/wp-primary-selection/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/xdg-activation/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/xdg-decoration/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/xdg-dialog/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/xdg-foreign/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/xdg-output/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/xdg-shell/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/xdg-system-bell/qt_attribution.json",
+        "qtbase/src/3rdparty/wayland/protocols/xdg-toplevel-icon/qt_attribution.json",
+        "qtbase/src/3rdparty/wintab/qt_attribution.json",
+        "qtbase/src/3rdparty/xcb/LICENSE",
+        "qtbase/src/3rdparty/xcb/qt_attribution.json",
+        "qtbase/src/3rdparty/zlib/LICENSE",
+        "qtbase/src/3rdparty/zlib/qt_attribution.json",
+        "qtbase/src/corelib/global/qt_attribution.json",
+        "qtbase/src/corelib/kernel/LICENSE.QEVENTDISPATCHER_CF.txt",
+        "qtbase/src/corelib/kernel/qt_attribution.json",
+        "qtbase/src/corelib/mimetypes/3rdparty/qt_attribution.json",
+        "qtbase/src/corelib/text/qt_attribution.json",
+        "qtbase/src/dbus/LICENSE.LIBDBUS-1.txt",
+        "qtbase/src/dbus/qt_attribution.json",
+        "qtbase/src/gui/opengl/LICENSE.KHRONOS.txt",
+        "qtbase/src/gui/opengl/qt_attribution.json",
+        "qtbase/src/gui/painting/LICENSE.QIMAGETRANSFORM.txt",
+        "qtbase/src/gui/painting/LICENSE.XCONSORTIUM.txt",
+        "qtbase/src/gui/painting/qt_attribution.json",
+        "qtbase/src/gui/rhi/LICENSE.MiniEngine.txt",
+        "qtbase/src/gui/rhi/qt_attribution.json",
+        "qtbase/src/gui/text/LICENSE.AGLFN.txt",
+        "qtbase/src/gui/text/qt_attribution.json",
+        "qtbase/src/gui/vulkan/LICENSE.txt",
+        "qtbase/src/gui/vulkan/licenseheader.h.in",
+        "qtbase/src/gui/vulkan/qt_attribution.json",
+        "qtbase/src/plugins/platforms/cocoa/LICENSE.COCOA.txt",
+        "qtbase/src/plugins/platforms/cocoa/qt_attribution.json",
+        "qtbase/src/testinternal/3rdparty/cmake/Copyright.txt",
+        "qtbase/src/testinternal/3rdparty/cmake/qt_attribution.json",
+        "qtbase/src/testlib/3rdparty/catch2/LICENSE.txt",
+        "qtbase/src/testlib/3rdparty/catch2/qt_attribution.json",
+        "qtbase/src/testlib/3rdparty/cycle/LICENSE.txt",
+        "qtbase/src/testlib/3rdparty/cycle/qt_attribution.json",
+        "qtbase/src/testlib/3rdparty/linux/LICENSE.txt",
+        "qtbase/src/testlib/3rdparty/linux/qt_attribution.json",
+        "qtbase/src/testlib/3rdparty/valgrind/LICENSE.txt",
+        "qtbase/src/testlib/3rdparty/valgrind/qt_attribution.json",
+        "qtbase/src/tools/moc/util/licenseheader.cpp.in",
+        "qtbase/src/widgets/doc/images/licensewizard-flow.png",
+        "qtbase/tests/auto/cmake/RunCMake/Sbom/custom_licenses/LicenseRef-TestLicense.txt",
+        "qtbase/tests/auto/corelib/serialization/qxmlstream/LICENSE.XML-Test-Suite.txt",
+        "qtbase/tests/manual/examples/widgets/tools/settingseditor/inifiles/licensepage.ini",
+        "qtbase/tests/manual/rhi/shared/imgui/fonts/LICENSE.txt",
+        "qtbase/tests/manual/rhi/shared/imgui/imgui/LICENSE.txt",
+        "qtbase/util/gradientgen/LICENSE.WEBGRADIENTS.txt",
+        "qtbase/util/gradientgen/qt_attribution.json"
+      ],
+      "status": "archive-readable-and-original-notices-collected"
+    },
+    {
+      "component": "qtimageformats",
+      "archive": "qtimageformats-everywhere-src-6.11.0.tar.xz",
+      "notices": [
+        "qtimageformats/LICENSES/BSD-3-Clause.txt",
+        "qtimageformats/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qtimageformats/LICENSES/GPL-2.0-only.txt",
+        "qtimageformats/LICENSES/GPL-3.0-only.txt",
+        "qtimageformats/LICENSES/LGPL-3.0-only.txt",
+        "qtimageformats/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qtimageformats/LICENSES/libtiff.txt",
+        "qtimageformats/licenseRule.json",
+        "qtimageformats/src/3rdparty/libtiff/COPYRIGHT",
+        "qtimageformats/src/3rdparty/libtiff/qt_attribution.json",
+        "qtimageformats/src/3rdparty/libwebp/COPYING",
+        "qtimageformats/src/3rdparty/libwebp/qt_attribution.json"
+      ],
+      "status": "archive-readable-and-original-notices-collected"
+    },
+    {
+      "component": "qtsvg",
+      "archive": "qtsvg-everywhere-src-6.11.0.tar.xz",
+      "notices": [
+        "qtsvg/LICENSES/BSD-3-Clause.txt",
+        "qtsvg/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qtsvg/LICENSES/GPL-2.0-only.txt",
+        "qtsvg/LICENSES/GPL-3.0-only.txt",
+        "qtsvg/LICENSES/HPND-sell-variant.txt",
+        "qtsvg/LICENSES/LGPL-3.0-only.txt",
+        "qtsvg/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qtsvg/licenseRule.json",
+        "qtsvg/src/svg/LICENSE.XSVG.txt",
+        "qtsvg/src/svg/qt_attribution.json",
+        "qtsvg/tests/baseline/data/svg_12_testsuite/LICENSE.txt"
+      ],
+      "status": "archive-readable-and-original-notices-collected"
+    }
+  ],
+  "limitations": [
+    "No downloaded recipes were executed.",
+    "Identity checks do not validate every nested input hash or VCS checkout.",
+    "This is not a complete SBOM or legal compliance certification."
+  ]
+}

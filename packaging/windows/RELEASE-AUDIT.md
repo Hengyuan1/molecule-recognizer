@@ -1,6 +1,6 @@
 # Windows release audit — 0.3.0rc1
 
-Status: **preparation in progress; not cleared for public distribution**.
+Status: **0.3.0rc1 built and tested locally; not cleared for public distribution**.
 This is an engineering inventory and release checklist, not legal advice or
 a certification that every bundled license obligation has been satisfied.
 
@@ -17,7 +17,7 @@ a certification that every bundled license obligation has been satisfied.
   Qt/PySide source archives must accompany the candidate.
 - PyInstaller pulled in the unused GPL-only Qt Virtual Keyboard plugin, QML/
   Quick dependencies, PDF plugin and optional software OpenGL renderer. These
-  are excluded from the next build; the existing user installation is untouched.
+  are excluded from 0.3.0rc1; the existing user installation is untouched.
 - MSYS2 labels JBIG-KIT 2.1 `GPL-2.0` without a later-version suffix. The actual
   `libjbig/jbig.c` header in the 2.1 source says version 2 **or any later version**.
   Record the upstream grant rather than treating the shorthand as GPLv2-only.
@@ -33,23 +33,46 @@ a certification that every bundled license obligation has been satisfied.
 
 ## Blocking gates
 
-- [ ] Finish component-level license selection, notices and corresponding-source
-  coverage, including NumPy/OpenBLAS/GCC 10.3, RDKit's embedded dependencies,
-  Qt third-party code and MSVC runtime provenance/redistribution notices.
+- [ ] Finish component-level license selection, notices and any required
+  corresponding-source coverage, including NumPy/OpenBLAS/GCC 10.3, RDKit's
+  embedded dependencies, Qt/Pillow third-party code and MSVC runtime
+  provenance/redistribution notices. Permissive dependencies do not all require
+  source redistribution; review their actual notice and other conditions.
 - [ ] Verify nested source inputs/VCS revisions/build recipes; HTTPS downloads
   and local hashes alone do not establish complete corresponding source.
-- [ ] Rebuild from the recorded release commit, include the missing notices,
+- [x] Rebuild from the recorded release commit, include recovered Qt notices,
   and verify DLL import closure after removing optional Qt components.
-- [ ] Pass native Windows and WSL regression tests plus relocated candidate
+- [x] Pass native Windows and WSL regression tests plus relocated candidate
   smoke checks; record final antivirus scan results without suppressing alerts.
 - [ ] Record clean-machine interactive testing for the final candidate (capture,
   mixed-DPI screens, editing/undo, recognition, 3D/XYZ, closing/cancellation).
 - [ ] Package source materials, final hashes and release notes together; verify
   the actual downloaded assets before publishing/marking the release stable.
 
-Core program functionality already passed 247 automated tests on both native
-Windows and WSL before this preparation, plus portable smoke checks and the
-owner's interactive Windows test. That is not an antivirus or legal clearance.
+The current candidate passed **265 tests on each of native Windows and WSL**
+(five optional MolScribe tests deselected), plus relocated portable smoke
+checks. See the [candidate validation record](audits/0.3.0rc1/VALIDATION.md)
+for the exact build revision, ZIP hash, checks and their limitations.
+The owner's earlier interactive Windows test covered the preceding build,
+not this reduced Qt payload. It does not close the clean-machine gate above.
+
+## Remaining wheel provenance gaps
+
+The RDKit 2026.3.4 version-bump revision
+`cf74fc396a01ebb5915610033d57a7778a31f042` uses the runner's `vcpkg` with no
+`builtin-baseline` or dependency version pins in its manifest. Its recipe is
+useful evidence, but it does not alone establish the wheel's Cairo/FreeType/
+Pixman/Fontconfig input revisions. The candidate's DLL version resources show
+FreeType 2.14.3, Expat 2.8.2, zlib 1.3.2 and MSVCP 14.40.33810.0; not all DLLs
+provide version resources. Resolve the matching wheel build records and
+original notices before claiming complete coverage.
+
+NumPy 1.26.4's helper pins OpenBLAS `v0.3.23-293-gc2f4bdbb`; the upstream
+commit resolves to `c2f4bdbbb43a1d20a7342f40122e18e573ce436a`. The runtime notice
+identifies statically linked GCC runtime components, including libquadmath.
+The exact GCC 10.3 toolchain patches and corresponding build/relink materials
+are not yet established. A later OpenBLAS build recipe or the OSRA GCC 16.2
+source package must not be substituted as proof of those inputs.
 
 ## Source inventory
 
@@ -58,6 +81,12 @@ owner's interactive Windows test. That is not an antivirus or legal clearance.
 container, and extracts original Qt notices without running downloaded code.
 Both deliberately keep `license_review_complete: false`. Store raw archives
 outside Git; publish required source materials as a separate Release asset.
+The current [collection manifest](audits/0.3.0rc1/SOURCES.json) and
+[container inspection report](audits/0.3.0rc1/SOURCE-INSPECTION.json) are saved
+in Git. The roughly 527 MiB of local source materials under
+`.tools/release-sources/` are an incomplete audit collection, **not** an already
+cleared corresponding-source release asset. Keep them for completion of the
+review; downloading them again is unnecessary.
 
 Do not upload the old Downloads ZIP as v0.3.0-rc1. The old archive still contains
 the pre-audit Qt payload and identifies itself as a private testing version.
@@ -71,3 +100,6 @@ The existing GitHub workflow builds a **no-OSRA** preview, not this full bundle.
 - [JBIG-KIT author/source](https://www.cl.cam.ac.uk/~mgk25/jbigkit/)
 - [MSYS2 source archive](https://repo.msys2.org/mingw/sources/)
 - [PySide 6.11.0 source](https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.11.0-src/)
+- [RDKit wheel build workflow at the 2026.3.4 version bump](https://github.com/kuelumbus/rdkit-pypi/blob/cf74fc396a01ebb5915610033d57a7778a31f042/.github/workflows/wheels.yml)
+- [Matching RDKit vcpkg manifest](https://github.com/kuelumbus/rdkit-pypi/blob/cf74fc396a01ebb5915610033d57a7778a31f042/vcpkg.json)
+- [NumPy 1.26.4 OpenBLAS build helper](https://github.com/numpy/numpy/blob/v1.26.4/tools/openblas_support.py)

@@ -9,6 +9,12 @@
 - Added safe source collection/inspection, PE import-closure audit tools,
   release-preparation regression tests, draft release notes and a blocking
   publication checklist. No public release or signature is implied.
+- Built the reduced-Qt 0.3.0rc1 candidate from `cd5bf78`: 265 tests passed on
+  each of native Windows and WSL (five optional tests deselected), relocated
+  OSRA/editor/3D/XYZ/capture-helper smoke checks passed, and all 330 PE files
+  passed the static DLL import-presence audit. Saved source collection and
+  validation records; clean-machine interactive testing and the remaining
+  third-party redistribution review are still pending.
 
 - Added the approved blue molecular-ring/recognition-frame app icon as a
   vector master, transparent PNG and ten-size Windows ICO. Applied it to

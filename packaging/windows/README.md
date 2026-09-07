@@ -185,6 +185,9 @@ The source version is now `0.3.0rc1`; the proposed Git tag is `v0.3.0-rc1`.
 This does not replace the existing v0.2.0 release. No public binary release
 is created by changing the version. See [RELEASE-AUDIT.md](RELEASE-AUDIT.md)
 and [draft release notes](RELEASE-NOTES-0.3.0-rc1.md) for the remaining gates.
+The local candidate was built from `cd5bf78` and passed 265 regression tests
+on each platform. Its [validation record](audits/0.3.0rc1/VALIDATION.md) identifies
+the exact ZIP and distinguishes completed checks from outstanding review.
 
 `fetch_release_sources.py` collects matching MSYS2 source packages, the six
 locally compiled OSRA source archives/patches, and Qt/PySide source archives.

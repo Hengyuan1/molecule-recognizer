@@ -76,8 +76,10 @@ for the build script, OSRA runtime layout and GitHub Actions preview workflow.
 The [native OSRA build recipe](packaging/windows/OSRA-BUILD.md) includes pinned
 source archives, Windows compatibility patches, portable runtime collection
 and the recognition-test results (including a known failed stereo test).
-The OSRA-inclusive local ZIP passed relocated and copied-executable checks;
-247 regression tests passed on both native Windows and WSL.
+The 0.3.0rc1 OSRA-inclusive local ZIP passed relocated-executable checks;
+265 regression tests passed on each of native Windows and WSL (five optional
+tests deselected). See the [candidate validation record](packaging/windows/audits/0.3.0rc1/VALIDATION.md)
+for its checksum, local antivirus results and outstanding release checks.
 The portable build compiles the screenshot selector ahead of time, so capture
 does not require running PowerShell scripts on the end user's machine.
 The new molecular-ring/scan-frame icon is included in the EXE and application
