@@ -1,5 +1,7 @@
 """Desktop chemistry workbench palette and widget styles."""
 
+from pathlib import Path
+
 STYLESHEET = """
 QMainWindow { background: #e9eef4; }
 QLabel { color: #32465b; font-size: 12px; }
@@ -32,7 +34,14 @@ QToolButton { background: transparent; color: #354b62; border: 1px solid transpa
 QToolButton:hover { background: #e8eff8; border-color: #c0d3e8; }
 QToolButton:checked { background: #dceafb; border-color: #7da6d3; color: #155fa9; }
 QToolButton:pressed { background: #c8ddf3; }
-QToolButton::menu-indicator { subcontrol-position: right center; width: 10px; }
+QToolButton[popupMode="1"] { padding-right: 26px; }
+QToolButton::menu-button { subcontrol-origin: padding; subcontrol-position: top right;
+    width: 22px; border: none; border-left: 1px solid #c9d7e5;
+    border-top-right-radius: 4px; border-bottom-right-radius: 4px;
+    background: transparent; }
+QToolButton::menu-button:hover { background: #dceafb; }
+QToolButton::menu-button:pressed { background: #c8ddf3; }
+QToolButton::menu-arrow { image: url("__CHEVRON_DOWN__"); width: 12px; height: 12px; }
 QToolButton#save_xyz_btn, QToolButton#copy_xyz_btn {
     background: #ffffff; border: 1px solid #c9d7e5; font-size: 12px; }
 QToolButton#save_xyz_btn:hover, QToolButton#copy_xyz_btn:hover { background: #e9f1fc; }
@@ -88,3 +97,8 @@ QScrollBar::add-line, QScrollBar::sub-line { width: 0px; height: 0px; }
 QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
 QToolTip { color: #233d56; background: #f6f9fd; border: 1px solid #c4d5e6; padding: 5px; }
 """
+
+# Absolute resource paths also work in a relocated portable _internal tree.
+STYLESHEET = STYLESHEET.replace(
+    "__CHEVRON_DOWN__", (Path(__file__).parent / "icons" / "chevron-down.svg").as_posix(),
+)

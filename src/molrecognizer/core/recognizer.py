@@ -26,6 +26,8 @@ from rdkit.Chem import AllChem
 
 from .molecule import BondType, Molecule
 from .layout import straighten_terminal_nitriles
+from ..runtime import (application_directory, external_dll_search, is_frozen,
+                       subprocess_options)
 
 ImageInput = Union[str, Path, Image.Image, np.ndarray]
 
@@ -133,16 +135,18 @@ class OSRARecognizer:
         cancel_event: Optional[Event] = None,
     ) -> None:
         configured = executable or os.environ.get("OSRA_EXECUTABLE")
-        resolved = shutil.which(str(configured)) if configured else shutil.which("osra")
+        resolved = shutil.which(str(configured)) if configured else None
+        root = application_directory()
+        # A portable release must use its tested OSRA, not an unrelated copy
+        # on PATH. An explicit caller/environment override still wins.
+        directories = [root / "tools" / "osra" / "bin",
+                       root / ".tools" / "osra" / "bin"]
+        if not is_frozen() and configured is None:
+            resolved = shutil.which("osra")
+            directories.reverse()
         if resolved is None and configured is None:
-            # Support a self-contained checkout/release without hard-coding
-            # a user-specific path. DLLs can live next to osra.exe on Windows.
-            project_root = Path(__file__).resolve().parents[3]
             names = ("osra.exe", "osra") if os.name == "nt" else ("osra", "osra.exe")
-            for directory in (
-                project_root / ".tools" / "osra" / "bin",
-                project_root / "tools" / "osra" / "bin",
-            ):
+            for directory in directories:
                 for name in names:
                     candidate = directory / name
                     if candidate.is_file():
@@ -150,6 +154,8 @@ class OSRARecognizer:
                         break
                 if resolved is not None:
                     break
+            if resolved is None:
+                resolved = shutil.which("osra")
         if resolved is None:
             raise RuntimeError(
                 "OSRA is the default recognizer, but its executable was not found. "
@@ -160,19 +166,36 @@ class OSRARecognizer:
         self.timeout = timeout
         self._cancel_event = cancel_event
 
+    def _dictionary_options(self) -> list[str]:
+        # Supply relocatable absolute paths: OSRA may have build-machine paths
+        # compiled in. Never change the user's working directory to find data.
+        binary = Path(self.executable).resolve()
+        for directory in (binary.parent.parent / "share" / "osra",
+                          binary.parent.parent / "share", binary.parent):
+            names = (("-A", "chain.txt"), ("-l", "spelling.txt"),
+                     ("-a", "superatom.txt"))
+            if all((directory / name).is_file() for _, name in names):
+                return [value for flag, name in names
+                        for value in (flag, str(directory / name))]
+        return []
+
     def _check_cancelled(self):
         if self._cancel_event is not None and self._cancel_event.is_set():
             raise RecognitionCancelled("Recognition cancelled")
 
     def _run_osra(self, command, *, timeout, text=False):
         if self._cancel_event is None:
-            return subprocess.run(command, capture_output=True, timeout=timeout,
-                                  text=text, check=False)
+            # Do not hold the DLL-search lock while waiting for OSRA.
+            if not is_frozen():
+                return subprocess.run(command, capture_output=True, timeout=timeout,
+                                      text=text, check=False, **subprocess_options())
         self._check_cancelled()
         # communicate() drains both pipes while waiting. Short time slices let
         # GUI shutdown cancel this process, without waiting on the GUI thread.
-        process = subprocess.Popen(command, stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE, text=text)
+        with external_dll_search():
+            process = subprocess.Popen(command, stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE, text=text,
+                                       **subprocess_options())
         deadline = time.monotonic() + timeout
         try:
             while True:
@@ -283,6 +306,7 @@ class OSRARecognizer:
             "sdf",
             "--timeout",
             str(timeout),
+            *self._dictionary_options(),
             *options,
             "--",
             str(path),
@@ -328,6 +352,7 @@ class OSRARecognizer:
             "can",
             "--timeout",
             str(self.timeout),
+            *self._dictionary_options(),
             "--",
             str(path),
         ]

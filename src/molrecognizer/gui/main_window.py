@@ -22,6 +22,7 @@ import io
 import logging
 import os
 import re
+import sys
 
 from PIL import Image
 from PySide6.QtCore import QSettings, QSize, Qt, QTimer, Signal
@@ -34,6 +35,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QInputDialog,
     QLabel,
+    QLayout,
     QLineEdit,
     QMainWindow,
     QMenu,
@@ -57,11 +59,13 @@ from .screenshot import (
 )
 from .viewer3d import Viewer3DPanel, Viewer3DWidget
 from .workbench_icons import workbench_icon
+from .app_icon import application_icon
 from .inline_menu import InlineMenuBar
 from .native_capture import NativeRegionCapture, native_capture_executable
 from .workers import RecognitionWorker, RecognitionRetryWorker, Render3DWorker
 from .recognition_review import RecognitionReviewDialog
 from .window_placement import OwnerDialog
+from .screen_layout import fitted_geometry, recommended_scale, recommended_size, screen_signature
 
 _logger = logging.getLogger(__name__)
 
@@ -387,7 +391,7 @@ class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Molecule Recognizer")
-        self.setWindowIcon(workbench_icon("molecule"))
+        self.setWindowIcon(application_icon())
         self.resize(1400, 880)
 
         self._molecule: Molecule | None = None
@@ -424,6 +428,14 @@ class MainWindow(QMainWindow):
         self._windows_monitor_width = 0
         self._windows_monitor_height = 0
         self._fit_window_requested = False
+        self._native_screen_signature = None
+        self._native_last_normal_size = None
+        self._native_geometry_busy = False
+        self._native_fitting = False
+        self._native_fit_timer = QTimer(self)
+        self._native_fit_timer.setSingleShot(True)
+        self._native_fit_timer.setInterval(180)
+        self._native_fit_timer.timeout.connect(self._fit_native_monitor)
         self._setup_ui_scaling()
         self._global_hotkey.monitor_changed.connect(
             lambda name, width, height:
@@ -680,8 +692,12 @@ class MainWindow(QMainWindow):
             return
         if is_wsl():
             return
-        handle.screenChanged.connect(self._on_scale_screen_changed)
-        self._on_scale_screen_changed(handle.screen())
+        if self._native_windows_layout():
+            handle.screenChanged.connect(self._schedule_native_fit)
+            self._schedule_native_fit()
+        else:
+            handle.screenChanged.connect(self._on_scale_screen_changed)
+            self._on_scale_screen_changed(handle.screen())
         self._screen_poll_timer = QTimer(self)
         self._screen_poll_timer.setInterval(300)
         self._screen_poll_timer.timeout.connect(self._poll_window_screen)
@@ -690,6 +706,18 @@ class MainWindow(QMainWindow):
     def _poll_window_screen(self):
         """Detect monitor moves when WSLg omits QWindow.screenChanged."""
         if self._closing:
+            return
+        if self._native_windows_layout():
+            # QWindow.screen() uses Windows' native monitor selection. Comparing
+            # rectangles across mixed-DPI Qt "screen islands" can pick the
+            # wrong monitor and cause repeated resize/move oscillations.
+            screen = self.screen()
+            if screen is not None:
+                if screen_signature(screen) != self._native_screen_signature:
+                    if not self._native_fit_timer.isActive():
+                        self._schedule_native_fit()
+                elif not self._native_geometry_busy and not self.isMaximized() and not self.isFullScreen():
+                    self._native_last_normal_size = self.size()
             return
         window_rect = self.frameGeometry()
         best_screen = None
@@ -706,6 +734,9 @@ class MainWindow(QMainWindow):
 
     def _request_windows_monitor_fit(self):
         self._fit_window_requested = True
+        if self._native_windows_layout() and not self._windows_monitor_name:
+            self._schedule_native_fit()
+            return
         if self._windows_monitor_name:
             self._on_windows_monitor_detected((
                 self._windows_monitor_name,
@@ -715,6 +746,80 @@ class MainWindow(QMainWindow):
         else:
             self._status_bar.showMessage(
                 "Waiting for Windows monitor detection…", 3000)
+
+    def _native_windows_layout(self):
+        return sys.platform == "win32" and not is_wsl()
+
+    def nativeEvent(self, event_type, message):  # noqa: N802
+        # Observe the native drag lifecycle only. Let Windows/Qt handle every
+        # cursor, mouse grab and resize; never move a HWND from this callback.
+        if sys.platform == "win32" and bytes(event_type) == b"windows_generic_MSG":
+            import ctypes
+            from ctypes import wintypes
+            event = ctypes.cast(int(message), ctypes.POINTER(wintypes.MSG)).contents.message
+            if event == 0x0231:  # WM_ENTERSIZEMOVE
+                self._native_geometry_busy = True
+                self._native_last_normal_size = self.size()
+            elif event == 0x0232:  # WM_EXITSIZEMOVE
+                self._native_geometry_busy = False
+                if hasattr(self, "_native_fit_timer"):
+                    self._schedule_native_fit()
+        return super().nativeEvent(event_type, message)
+
+    def _schedule_native_fit(self, *_):
+        if not self._closing and not self._native_fitting:
+            self._native_fit_timer.start()
+
+    def _fit_native_monitor(self):
+        if self._closing or self._native_geometry_busy or self._native_fitting:
+            return
+        screen = self.screen()
+        if screen is None:
+            return
+        signature = screen_signature(screen)
+        if signature == self._native_screen_signature and not self._fit_window_requested:
+            return  # A manual resize on the same monitor must stay manual.
+        settings = QSettings()
+        if (self._scale_screen_name and self._scale_screen_name != screen.name()
+                and self._native_last_normal_size is not None):
+            settings.setValue(f"window_size/{self._scale_screen_name}", self._native_last_normal_size)
+        self._native_fitting = True
+        try:
+            self._scale_screen = screen
+            self._scale_screen_name = screen.name()
+            stored = settings.value(f"ui_scale/{screen.name()}")
+            try:
+                scale = float(stored) if stored is not None else recommended_scale(screen)
+            except (TypeError, ValueError):
+                scale = recommended_scale(screen)
+            self._apply_ui_scale(scale)
+            available = screen.availableGeometry()
+            margins = self.windowHandle().frameMargins()
+            client_area = available.marginsRemoved(margins)
+            # Layout minimums, not width alone, determine the safe scale. This
+            # includes the menu/status bars and a short high-DPI work area.
+            while (self._ui_scale > self._minimum_ui_scale()
+                   and (self.minimumSizeHint().width() > client_area.width()
+                        or self.minimumSizeHint().height() > client_area.height())):
+                self._apply_ui_scale(self._ui_scale - 0.1)
+            default = recommended_size(screen)
+            desired = settings.value(f"window_size/{screen.name()}", default)
+            if self._fit_window_requested or not isinstance(desired, QSize) or not desired.isValid():
+                desired = default
+            desired = desired.boundedTo(default)
+            if not self.isMaximized() and not self.isFullScreen():
+                target = fitted_geometry(self.geometry(), desired, self.minimumSizeHint(), available, margins)
+                self.setGeometry(target)
+                self._native_last_normal_size = self.size()
+            self._native_screen_signature = signature
+            self._fit_window_requested = False
+            self._status_bar.showMessage(f"Window fitted to {screen.name()}", 3000)
+            # AnchorUnderMouse can otherwise leave the molecule outside the
+            # viewport after a large DPI-driven resize. This changes only the
+            # view, never the coordinates or chemistry.
+            QTimer.singleShot(0, self._fit_structure)
+        finally:
+            self._native_fitting = False
 
     def _on_windows_monitor_detected(self, result):
         if self._closing:
@@ -801,6 +906,8 @@ class MainWindow(QMainWindow):
     @staticmethod
     def _default_scale_for_screen(screen) -> float:
         """Compensate when WSLg hides Windows' high-DPI scale from Qt."""
+        if sys.platform == "win32" and not is_wsl() and screen is not None:
+            return recommended_scale(screen)
         if screen is not None and screen.geometry().width() >= 2500:
             return 1.8
         return 1.0
@@ -809,6 +916,9 @@ class MainWindow(QMainWindow):
         if self._closing:
             return
         if screen is None:
+            return
+        if self._native_windows_layout():
+            self._schedule_native_fit()
             return
         previous_screen = self._scale_screen
         changed = (previous_screen is not None
@@ -843,7 +953,18 @@ class MainWindow(QMainWindow):
 
     def _change_ui_scale(self, amount: float):
         previous = self._ui_scale
+        geometry = self.geometry()
         self._apply_ui_scale(self._ui_scale + amount, save=True)
+        if self._native_windows_layout() and self.screen() is not None:
+            available = self.screen().availableGeometry()
+            margins = self.windowHandle().frameMargins()
+            room = available.marginsRemoved(margins).size()
+            minimum = self.minimumSizeHint()
+            if amount > 0 and (minimum.width() > room.width() or minimum.height() > room.height()):
+                self._apply_ui_scale(previous, save=True)
+            if not self.isMaximized() and not self.isFullScreen():
+                self.setGeometry(fitted_geometry(geometry, geometry.size(), self.minimumSizeHint(),
+                                                 available, margins))
         if amount > 0 and self._ui_scale == previous:
             self._status_bar.showMessage(
                 "Maximum safe size for this monitor", 3000)
@@ -856,6 +977,16 @@ class MainWindow(QMainWindow):
         else:
             scale = self._default_scale_for_screen(self._scale_screen)
         self._apply_ui_scale(scale, save=True)
+        if self._native_windows_layout():
+            self._request_windows_monitor_fit()
+
+    def _minimum_ui_scale(self):
+        # 60% on a 250%-scaled panel is still 150% in physical pixels. The
+        # old universal 80% floor prevented fitting short logical work areas.
+        if (self._native_windows_layout() and not self._windows_monitor_width
+                and self.screen() is not None and self.screen().devicePixelRatio() >= 1.5):
+            return 0.6
+        return 0.8
 
     def _maximum_ui_scale(self) -> float:
         """Keep maximized WSLg windows within the monitor's configured size."""
@@ -873,7 +1004,7 @@ class MainWindow(QMainWindow):
         return 2.0
 
     def _apply_ui_scale(self, scale: float, save: bool = False):
-        scale = round(max(0.8, min(self._maximum_ui_scale(), scale)), 1)
+        scale = round(max(self._minimum_ui_scale(), min(self._maximum_ui_scale(), scale)), 1)
         if scale == self._ui_scale:
             if save and self._scale_screen_name:
                 QSettings().setValue(
@@ -900,6 +1031,20 @@ class MainWindow(QMainWindow):
         font = QFont(base_font)
         font.setPointSizeF(base_font.pointSizeF() * scale)
         self.centralWidget().setFont(font)
+
+        if self._native_windows_layout() and not self._windows_monitor_width:
+            # Keep sidebar whitespace proportional too; fixed margins alone
+            # used up much of the laptop's short logical work area.
+            for layout in self._left_panel.findChildren(QLayout):
+                if not hasattr(layout, "_base_metrics"):
+                    m = layout.contentsMargins()
+                    layout._base_metrics = ((m.left(), m.top(), m.right(), m.bottom()), layout.spacing())
+                margins, spacing = layout._base_metrics
+                layout.setContentsMargins(*(round(value * scale) for value in margins))
+                if spacing >= 0:
+                    layout.setSpacing(round(spacing * scale))
+            for button in self._left_panel.findChildren(QPushButton):
+                button.setIconSize(QSize(round(16 * scale), round(16 * scale)))
 
         self._left_panel.setMinimumWidth(round(280 * scale))
         self._left_panel.setMaximumWidth(round(350 * scale))
@@ -1437,6 +1582,7 @@ class MainWindow(QMainWindow):
                          self._native_capture is not None)
             self._closing = True
             self._capture_timer.stop()
+            self._native_fit_timer.stop()
             self._menu_refresh_timer.stop()
             if hasattr(self, "_screen_poll_timer"):
                 self._screen_poll_timer.stop()

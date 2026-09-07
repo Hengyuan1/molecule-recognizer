@@ -18,6 +18,7 @@ import os
 import shutil
 import socket
 import subprocess
+import sys
 import tempfile
 
 from PySide6.QtCore import (
@@ -39,6 +40,10 @@ _wsl_cached: bool | None = None
 
 def is_wsl() -> bool:
     """Detect if running under WSL (cached)."""
+    # Native Windows Python can run from a \\wsl.localhost share, where
+    # /proc/version resolves to the share's Linux file. It is still Windows.
+    if sys.platform != "linux":
+        return False
     global _wsl_cached
     if _wsl_cached is None:
         try:

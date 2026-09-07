@@ -8,6 +8,7 @@ import sys
 from PySide6.QtCore import QCoreApplication, QObject, QProcess, QTimer, Signal
 
 from .screenshot import _find_powershell, is_wsl
+from ..runtime import capture_helper
 
 
 # Read C# from stdin, not a command-line argument or a screenshot temp file.
@@ -32,6 +33,9 @@ def native_capture_executable():
     if is_wsl():
         return _find_powershell()
     if sys.platform == "win32":
+        helper = capture_helper()
+        if helper is not None:
+            return str(helper)
         return shutil.which("powershell.exe")
     return None
 
@@ -44,6 +48,7 @@ class NativeRegionCapture(QObject):
     def __init__(self, executable, parent=None):
         super().__init__(parent)
         self._executable = executable
+        self._compiled = Path(executable).name.lower() == "molrecognizercapture.exe"
         self._output = bytearray()
         self._error = ""
         self._done = False
@@ -60,6 +65,9 @@ class NativeRegionCapture(QObject):
 
     def start(self):
         self._startup.start(30000)
+        if self._compiled:
+            self._process.start(self._executable, [])
+            return
         command = base64.b64encode(_LOADER.encode("utf-16-le")).decode("ascii")
         self._process.start(self._executable,
                             ["-NoLogo", "-NoProfile", "-NonInteractive", "-STA",
@@ -68,6 +76,9 @@ class NativeRegionCapture(QObject):
     def _send_source(self):
         if self._done:
             self._process.kill()
+            return
+        if self._compiled:
+            self._process.closeWriteChannel()
             return
         try:
             source = Path(__file__).with_name("capture_overlay.cs").read_bytes()

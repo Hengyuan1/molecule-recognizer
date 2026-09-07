@@ -1,0 +1,6 @@
+--- a/src/osra_lib.cpp
++++ b/src/osra_lib.cpp
+@@ -20,0 +21,1 @@
++#include "osra_portable.h"
+@@ -671,0 +673,1 @@
++  osra_configure_portable_runtime();

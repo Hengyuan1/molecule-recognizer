@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>MolRecognizer: molecular structure recognition</title>
+  <rect x="64" y="64" width="896" height="896" rx="160" fill="#285a89"/>
+  <g fill="none" stroke="#70d9ec" stroke-width="48" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M304 168H208Q168 168 168 208V304"/>
+    <path d="M720 168H816Q856 168 856 208V304"/>
+    <path d="M168 720V816Q168 856 208 856H304"/>
+    <path d="M856 720V816Q856 856 816 856H720"/>
+  </g>
+  <g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M512 260L727 384V640L512 764L297 640V384Z" stroke-width="42"/>
+    <path d="M532 352L653 422M368 432V592M532 672L653 602" stroke-width="36"/>
+  </g>
+</svg>

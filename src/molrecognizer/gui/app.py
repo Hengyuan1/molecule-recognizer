@@ -9,6 +9,7 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
 
 from .main_window import MainWindow
+from .app_icon import application_icon, set_windows_app_id
 from .theme import STYLESHEET
 
 
@@ -75,10 +76,12 @@ def main():
     os.environ.setdefault("XCURSOR_THEME", "Adwaita")
     os.environ.setdefault("XCURSOR_SIZE", "24")
 
+    set_windows_app_id()
     app = QApplication(sys.argv)
     _setup_logging()
     app.setApplicationName("Molecule Recognizer")
     app.setOrganizationName("molrecognizer")
+    app.setWindowIcon(application_icon())
     app._base_stylesheet = STYLESHEET
     app.setStyleSheet(STYLESHEET)
 

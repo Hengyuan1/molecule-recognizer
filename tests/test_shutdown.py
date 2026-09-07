@@ -174,8 +174,8 @@ def test_render_process_roundtrip_and_error(tmp_path):
 def test_close_while_rendering_exits_real_event_loop(tmp_path, close_during_startup):
     _run(tmp_path, f"""
         from molrecognizer.core.smiles import smiles_to_molecule
-        patch('molrecognizer.gui.workers._RENDER_3D',
-              'import time; time.sleep(60)').start()
+        patch('molrecognizer.gui.workers.render_command',
+              return_value=(sys.executable, ['-c', 'import time; time.sleep(60)'])).start()
         window._set_molecule(smiles_to_molecule('CCO'))
         window._on_render_3d()
         if not {close_during_startup!r}:
@@ -218,7 +218,8 @@ def test_render_failed_to_start_finishes_cleanly(tmp_path):
         results, finished = [], []
         worker.result_ready.connect(results.append)
         worker.finished.connect(lambda: finished.append(True))
-        with patch('molrecognizer.gui.workers.sys.executable', '/missing/python'):
+        with patch('molrecognizer.gui.workers.render_command',
+                   return_value=('/missing/python', [])):
             worker.start()
         until(lambda: bool(finished))
         assert len(results) == 1 and isinstance(results[0], Exception)

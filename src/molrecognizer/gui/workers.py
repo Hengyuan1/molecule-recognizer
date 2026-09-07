@@ -1,10 +1,11 @@
 """Cancellable background jobs; no blocking waits in GUI callbacks."""
 
-import sys
 from threading import Event
 
 from PySide6.QtCore import QObject, QProcess, QThread, Signal
 from rdkit import Chem
+
+from ..runtime import render_command
 
 
 class RecognitionWorker(QThread):
@@ -74,14 +75,6 @@ class RecognitionRetryWorker(QThread):
 
 # 3D embedding/optimization is a native computation with no cooperative cancel
 # API. Isolate it in a process that can safely be killed, never QThread.terminate().
-_RENDER_3D = """
-import sys
-from molrecognizer.core.xyz import generate_3d
-mol = generate_3d(sys.stdin.read())
-sys.stdout.buffer.write(mol.ToBinary())
-"""
-
-
 class Render3DWorker(QObject):
     result_ready = Signal(object)
     finished = Signal()
@@ -97,7 +90,8 @@ class Render3DWorker(QObject):
         self._process.errorOccurred.connect(self._error)
 
     def start(self):
-        self._process.start(sys.executable, ['-c', _RENDER_3D])
+        executable, arguments = render_command()
+        self._process.start(executable, arguments)
 
     def isRunning(self):
         return self._process.state() != QProcess.ProcessState.NotRunning

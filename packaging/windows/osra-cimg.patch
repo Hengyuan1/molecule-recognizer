@@ -1,0 +1,11 @@
+--- a/src/CImg.h
++++ b/src/CImg.h
+@@ -4336,1 +4336,1 @@
+-      std::srand((unsigned int)(std::rand() + (unsigned long)rand_mem));
++      std::srand((unsigned int)(std::rand() + (std::size_t)rand_mem));
+@@ -7705,1 +7705,1 @@
+-    fps_timer = 0*(unsigned long)(dimw + dimh + title + normalization_type + events_type + (int)fullscreen_flag + (int)closed_flag);
++    fps_timer = 0*(std::size_t)(dimw + dimh + title + normalization_type + events_type + (int)fullscreen_flag + (int)closed_flag);
+@@ -7791,1 +7791,1 @@
+-    fps_timer = 0*(unsigned long)format;
++    fps_timer = 0*(std::size_t)format;

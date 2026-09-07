@@ -18,7 +18,7 @@ interactive. Close the 3D panel to return to the full canvas.
 - **Small-image label recovery** — If OSRA leaves unrecognized atom labels in a small raster image (up to 1200 pixels on its longest side), the editor tries one 2× enlarged, padded copy. It transfers only unambiguous atom identities when the atom/bond counts, connections, known elements/charges, and specified stereochemistry agree. Original coordinates and wedge/dash markings stay unchanged. Intentional `*`/R-group placeholders are not assumed to be carbon; unresolved labels remain available for manual correction. The temporary retry image is deleted after use.
 - **Reviewable recognition retries** — Click **Retry recognition** (or **File → Retry recognition…**) after opening/capturing an image to compare three local OSRA alternatives: adaptive thresholding, 100 dpi interpretation, and grayscale threshold 0.35. The full-resolution source and candidate drawings have independent pan/zoom; SMILES, ring sizes, unknown atoms, and valence warnings help comparison. Scores are not accuracy percentages and never choose a result automatically. **Use selected** applies the chosen drawing as one undoable change; **Keep current** or Escape leaves your edits intact. **Stop retries** keeps completed candidates available. Initial recognition defaults are unchanged.
 - **Snip-style structure capture** — On WSL, press system-wide Alt+Y to select directly over the monitor under your cursor, including extended monitors. A borderless Windows overlay preserves the screen's original size: draw a rectangle, move it or adjust its edges/corners, then click **Recognize** or press **Enter**. **Esc**, right-click, or **Cancel** discards it. Arrow keys move the box by one pixel (Shift: ten). The full-resolution crop goes directly to local recognition, without a separate preview window or web upload.
-- **Per-monitor UI scaling** — Uses a 180% interface target on high-resolution laptop displays (subject to the monitor's safe size limit). Existing WSL high-resolution profiles receive a one-time readability update to a window about 80% of the screen; extended-monitor profiles stay unchanged. Use `A−` and `A+` to remember a separate size for each monitor, or click the percentage to restore that monitor's recommended scale. `Fit` restores the recommended window size even if a smaller size was saved.
+- **Per-monitor UI scaling** — On WSL, uses a 180% interface target on high-resolution laptops. Native Windows accounts for Windows display scaling instead of applying it twice: for example, 70% in-app on a 250%-scaled laptop is about 175% in physical pixels. Window fitting includes the title bar, taskbar and minimum space needed by the controls. Use `A−` and `A+` to remember a separate size for each monitor, or click the percentage to restore that monitor's recommended scale. `Fit` restores the recommended window size even if an unsuitable size was saved.
 - **Monitor-aware window sizing** — Uses stable Qt-controlled sizing without clipping controls and remembers settings per display; `Fit` and UI-scale controls replace unreliable custom WSLg edge-resize gestures
 - **Monitor-aware retry review** — Retry recognition stays on the main window's monitor. On WSLg it opens inside the main window, avoiding native modal frames and Windows-side repositioning that can freeze or corrupt the display. Close the panel or press Esc to return to editing. Native Windows and other desktops retain a separate, parent-centered review dialog.
 - **Side-by-side 2D/3D comparison** — Double-click the rendered XYZ preview to open an interactive 3D panel beside the 2D canvas. Drag the divider to adjust their widths; both views and the SMILES remain usable. Close the panel (or press Esc while focused in it) to restore the full canvas. Re-rendering updates the panel; a notice appears if the 2D structure has changed since the last successful render. No additional native window is created, including on WSLg.
@@ -58,6 +58,40 @@ interactive. Close the 3D panel to return to the full canvas.
 
 ## Installation
 
+### Standalone Windows build (in development)
+
+Windows portable packaging is being developed on the feature branch; the
+published **v0.2.0 does not contain a standalone EXE**. The complete local
+package is a ZIP you extract and run with `MolRecognizer.exe`, without Python,
+Conda or WSL. Native **OSRA 2.2.4 has now been compiled and tested locally**;
+complete builds bundle it under `tools/osra/` and discover it automatically.
+Builds labelled **`no-osra` are editor-only previews**. No OSRA-bundled public
+release has been published yet; redistribution review remains outstanding.
+The next candidate is **0.3.0rc1**. Its [release audit](packaging/windows/RELEASE-AUDIT.md)
+tracks source/notice coverage and the remaining publication gates; a release
+candidate is not a claim that the redistribution review is complete.
+
+See [Windows build instructions and validation checklist](packaging/windows/README.md)
+for the build script, OSRA runtime layout and GitHub Actions preview workflow.
+The [native OSRA build recipe](packaging/windows/OSRA-BUILD.md) includes pinned
+source archives, Windows compatibility patches, portable runtime collection
+and the recognition-test results (including a known failed stereo test).
+The OSRA-inclusive local ZIP passed relocated and copied-executable checks;
+247 regression tests passed on both native Windows and WSL.
+The portable build compiles the screenshot selector ahead of time, so capture
+does not require running PowerShell scripts on the end user's machine.
+The new molecular-ring/scan-frame icon is included in the EXE and application
+windows, with ten sizes for Windows display scaling. A standalone
+`MolRecognizer.ico` is also included for desktop shortcuts.
+
+The development preview includes DPI-aware dropdown arrows and native Windows
+monitor fitting. Moving between screens adjusts the interface after you finish
+dragging; normal manual resizing on the same monitor remains manual. Laptop
+windows target 80% of the work area and external 1080p monitors target 70%,
+expanding as needed to keep controls visible. Click the bottom-right **Fit**
+button to refit without restarting. Extract each updated preview into a new
+folder and run its EXE, not the previous copy.
+
 ### Python application
 
 ```bash
@@ -94,9 +128,15 @@ OSRA is a separate native executable, not a Python dependency.
 Molecule Recognizer searches for OSRA in this order:
 
 1. The `OSRA_EXECUTABLE` environment variable.
-2. `osra` or `osra.exe` on `PATH`.
-3. A project-local executable at `.tools/osra/bin/osra` or
+2. In a portable build, `tools/osra/bin/osra.exe` beside `MolRecognizer.exe`.
+3. `osra` or `osra.exe` on `PATH`.
+4. A project-local executable at `.tools/osra/bin/osra` or
    `.tools/osra/bin/osra.exe`.
+
+When a complete dictionary set is found beside the selected OSRA installation
+(`share/osra`, `share`, or its `bin` directory), the app supplies absolute paths
+for `chain.txt`, `spelling.txt` and `superatom.txt`. This avoids compiled-in
+build paths and keeps recognition independent of the current working folder.
 
 For a custom installation:
 
@@ -158,6 +198,11 @@ uv --version
 ```
 
 ##### 2. Obtain OSRA for Windows
+
+An OSRA-inclusive portable MolRecognizer build already contains its runtime;
+skip the separate OSRA/Python installation steps when using that bundle.
+Developers can use the [tested native build recipe](packaging/windows/OSRA-BUILD.md)
+to compile OSRA 2.2.4 and package it with the application.
 
 Download an OSRA Windows distribution from the
 [official OSRA download page](https://sourceforge.net/p/osra/wiki/Download/),
@@ -333,13 +378,18 @@ Windows binaries are provided separately. Automatically downloading or
 building OSRA during Python package installation would be slow, fragile, and
 would require platform-specific binary and license handling.
 
-A future Windows release can bundle an OSRA distribution under
-`.tools/osra/`, but that should be built and tested as a separate release
-artifact rather than performed by `pip` or `uv` at install time.
+The [Windows portable builder](packaging/windows/README.md) can include a
+supplied Windows runtime under `tools/osra/`. Obtaining/building a suitable
+OSRA runtime and reviewing its redistribution requirements are separate
+release steps, not something `pip` or `uv` performs at install time.
 
 ### Screenshot backends
 
-**Windows and WSL2/WSLg:** a Windows-native selection overlay is launched through
+**Portable Windows builds:** use a precompiled Windows-native selector and
+the .NET Framework 4.x runtime. No PowerShell or runtime compilation is needed.
+The interaction and full-resolution crop are the same as below.
+
+**Python installations on Windows and WSL2/WSLg:** a Windows-native selection overlay is launched through
 Windows PowerShell and .NET Windows Forms (included with Windows). No additional
 Python dependency or Snipaste installation is needed. Move the cursor onto the
 desired monitor before pressing the shortcut. The overlay freezes that monitor

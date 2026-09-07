@@ -6,6 +6,33 @@ import sys
 import textwrap
 
 
+def test_compiled_capture_uses_no_powershell_or_source(tmp_path):
+    script = '''
+        from pathlib import Path
+        from unittest.mock import patch
+        from PySide6.QtWidgets import QApplication
+        from molrecognizer.gui.native_capture import NativeRegionCapture
+        app = QApplication([])
+        capture = NativeRegionCapture('/tools/MolRecognizerCapture.exe')
+        with patch.object(capture._process, 'start') as start:
+            capture.start()
+            start.assert_called_once_with('/tools/MolRecognizerCapture.exe', [])
+        with patch.object(Path, 'read_bytes', side_effect=AssertionError('Must not compile C#')), \\
+             patch.object(capture._process, 'write') as write, \\
+             patch.object(capture._process, 'closeWriteChannel') as close:
+            capture._send_source()
+            write.assert_not_called()
+            close.assert_called_once()
+        capture.abort()
+    '''
+    result = subprocess.run(
+        [sys.executable, '-c', textwrap.dedent(script)],
+        env={**os.environ, 'QT_QPA_PLATFORM': 'offscreen'},
+        capture_output=True, text=True, timeout=15,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_async_capture_transport(tmp_path):
     script = r'''
         import base64

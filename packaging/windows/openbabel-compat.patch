@@ -1,0 +1,5 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -12,1 +12,1 @@
+-    cmake_policy(SET CMP0042 OLD)
++    cmake_policy(SET CMP0042 NEW)

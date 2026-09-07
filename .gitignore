@@ -9,6 +9,8 @@ build/
 
 # Virtual environments
 .venv/
+.venv-*/
+.tools/
 venv/
 
 # uv

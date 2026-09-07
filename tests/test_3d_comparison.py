@@ -153,6 +153,7 @@ def test_retry_overlay_and_idle_close_work_with_comparison_open(tmp_path):
         from molrecognizer.core.recognizer import OSRARecognizer
         from tests.test_recognition_retry import _source
         patch('molrecognizer.gui.window_placement.is_wsl', return_value=True).start()
+        patch('molrecognizer.core.recognizer.shutil.which', return_value=sys.executable).start()
         patch.object(OSRARecognizer, '_read_sdf', side_effect=lambda *a, **k: _source()).start()
         window._set_molecule(smiles_to_molecule('CCO'))
         source = window._left_panel._viewer_3d

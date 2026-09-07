@@ -7,6 +7,31 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 public sealed class MolRecognizerCapture : Form {
+    [STAThread]
+    public static int Main(string[] args) {
+        try {
+            if (args.Length == 1 && args[0] == "--self-test") {
+                // Validate the compiled helper without capturing the desktop.
+                using (Bitmap image = new Bitmap(20, 10)) {
+                    Rectangle r = SelectionBounds(new Point(12, 8), new Point(2, 3), image.Size);
+                    if (r != new Rectangle(2, 3, 10, 5)) throw new Exception("Selection bounds failed");
+                    if (MoveRegion(r, new Point(-100, 100), image.Size) != new Rectangle(0, 5, 10, 5))
+                        throw new Exception("Selection move failed");
+                    if (!EncodeCrop(image, r).StartsWith("PNG:iVBOR"))
+                        throw new Exception("PNG encoding failed");
+                }
+                Console.WriteLine("OK");
+                return 0;
+            }
+            if (args.Length != 0) throw new ArgumentException("Unknown capture helper argument");
+            Console.WriteLine(Run());
+            return 0;
+        } catch (Exception error) {
+            Console.Error.WriteLine(error.Message);
+            return 1;
+        }
+    }
+
     [DllImport("user32.dll")]
     private static extern bool SetProcessDpiAwarenessContext(IntPtr context);
     [DllImport("user32.dll")]
