@@ -300,10 +300,16 @@ class EditorWidget(QWidget):
             QMessageBox.warning(self, "Layout cleanup", str(exc))
 
     def _undo(self):
+        if self._history.can_undo and self._current_tool is not None:
+            # Restoring another graph may remove selected atom indices or
+            # scene items retained by a drag/preview tool.
+            self._current_tool.deactivate()
         if self._history.undo():
             self._refresh_canvas()
 
     def _redo(self):
+        if self._history.can_redo and self._current_tool is not None:
+            self._current_tool.deactivate()
         if self._history.redo():
             self._refresh_canvas()
 

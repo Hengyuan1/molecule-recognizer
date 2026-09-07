@@ -50,6 +50,20 @@ class _SnapshotCommand(Command):
         mol._mol = Chem.RWMol(self._saved_rwmol)
 
 
+class ReplaceMoleculeCommand(_SnapshotCommand):
+    """Accept a reviewed recognition candidate as one undoable replacement."""
+
+    def __init__(self, replacement: Molecule):
+        super().__init__()
+        self._replacement = Chem.RWMol(replacement.to_rdkit())
+
+    def _apply(self, mol: Molecule) -> None:
+        mol._mol = Chem.RWMol(self._replacement)
+
+    def description(self) -> str:
+        return "Use recognition alternative"
+
+
 class CompoundCommand(Command):
     """Groups multiple commands into a single undoable step."""
 

@@ -33,6 +33,45 @@ class RecognitionWorker(QThread):
             self.result_ready.emit(result)
 
 
+class RecognitionRetryWorker(QThread):
+    candidate_ready = Signal(object)
+    status = Signal(str)
+    failed = Signal(str)
+
+    def __init__(self, image, parent=None):
+        super().__init__(parent)
+        self._image = image
+        self._cancelled = Event()
+
+    @property
+    def cancelled(self):
+        return self._cancelled.is_set()
+
+    def cancel(self):
+        self._cancelled.set()
+
+    def run(self):
+        from ..core.recognizer import OSRARecognizer, RecognitionCancelled
+        from ..core.recognition_retry import recognition_alternatives
+        if self.cancelled:
+            return
+        try:
+            recognizer = OSRARecognizer(cancel_event=self._cancelled)
+            attempts = recognition_alternatives(self._image, recognizer, self.status.emit)
+            try:
+                for candidate in attempts:
+                    if self.cancelled:
+                        break
+                    self.candidate_ready.emit(candidate)
+            finally:
+                attempts.close()
+        except RecognitionCancelled:
+            pass
+        except Exception as error:
+            if not self.cancelled:
+                self.failed.emit(str(error))
+
+
 # 3D embedding/optimization is a native computation with no cooperative cancel
 # API. Isolate it in a process that can safely be killed, never QThread.terminate().
 _RENDER_3D = """

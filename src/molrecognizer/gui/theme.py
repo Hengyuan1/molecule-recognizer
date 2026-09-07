@@ -59,6 +59,13 @@ QLabel#workspace_hint { color: #c5daed; font-size: 11px; }
 QLabel#canvas_empty_hint { color: #7b91a7; background: transparent;
     font-size: 14px; padding: 36px; }
 QGraphicsView { background: #ffffff; border: 1px solid #d3e0ec; border-radius: 3px; }
+QDialog#recognition_review { background: #edf2f7; }
+QListWidget#recognition_candidates { background: #ffffff; color: #32465b;
+    border: 1px solid #d3e0ec; border-radius: 3px; font-size: 13px; }
+QListWidget#recognition_candidates::item { padding: 4px 8px; }
+QListWidget#recognition_candidates::item:selected { background: #dceafb; color: #155fa9; }
+QDialog#recognition_review QPushButton:disabled { color: #8c9bab;
+    background: #f3f6f9; border-color: #dae2eb; }
 QSplitter::handle { background: #d8e2ed; }
 QSplitter::handle:hover { background: #98b7d7; }
 QWidget#bottom_bar { background: #ffffff; border-top: 1px solid #cedbe8; }

@@ -2,16 +2,26 @@
 
 Recognize molecular structures from images (screenshots, papers, web pages), convert them to SMILES strings, interactively edit the recognized structure, and save the 3D structure in xyz format. Built for computational chemistry workflows.
 
-![UI Demo](docs/media/UI-demo.png)
+**Version [0.2.0](https://github.com/Hengyuan1/molecule-recognizer/tree/v0.2.0)** — Side-by-side 2D/3D comparison, reviewable OSRA retries, and WSLg stability improvements. See the [release notes](CHANGELOG.md).
+
+![Molecule Recognizer 0.2.0 showing the source image, editable 2D structure, and interactive 3D comparison panel](docs/media/UI-demo.png)
+
+Double-click the rendered XYZ preview to compare it beside the 2D canvas.
+Drag the divider to adjust the view widths; the editor and SMILES remain
+interactive. Close the 3D panel to return to the full canvas.
 
 ## Features
 
 - **Desktop workbench** — IQmol-inspired menus and icon toolbar, separate source-image and 3D panels, and a blue workspace surround with a light canvas for readable chemical drawings. Menus and the bottom size controls scale with the rest of the interface. File/Edit/Build/View menus expose existing actions and shortcuts; **View → Fit structure** adjusts the view without changing molecular coordinates or bond placement (unlike Format, which regenerates the layout).
 - **Image recognition** — Uses [OSRA](https://sourceforge.net/projects/osra/) by default and preserves its recognized 2D coordinates and explicit single/double-bond placement via SDF output, making image-to-canvas comparison and manual correction easier; MolScribe remains available as an alternative
+- **Linear nitrile groups** — Recognized C–C≡N groups are straightened by moving only the terminal nitrogen, preserving the rest of the drawing and all bond assignments. Format also initializes imported atoms' hybridization so triple bonds remain linear during layout cleanup.
 - **Small-image label recovery** — If OSRA leaves unrecognized atom labels in a small raster image (up to 1200 pixels on its longest side), the editor tries one 2× enlarged, padded copy. It transfers only unambiguous atom identities when the atom/bond counts, connections, known elements/charges, and specified stereochemistry agree. Original coordinates and wedge/dash markings stay unchanged. Intentional `*`/R-group placeholders are not assumed to be carbon; unresolved labels remain available for manual correction. The temporary retry image is deleted after use.
+- **Reviewable recognition retries** — Click **Retry recognition** (or **File → Retry recognition…**) after opening/capturing an image to compare three local OSRA alternatives: adaptive thresholding, 100 dpi interpretation, and grayscale threshold 0.35. The full-resolution source and candidate drawings have independent pan/zoom; SMILES, ring sizes, unknown atoms, and valence warnings help comparison. Scores are not accuracy percentages and never choose a result automatically. **Use selected** applies the chosen drawing as one undoable change; **Keep current** or Escape leaves your edits intact. **Stop retries** keeps completed candidates available. Initial recognition defaults are unchanged.
 - **Snip-style structure capture** — On WSL, press system-wide Alt+Y to select directly over the monitor under your cursor, including extended monitors. A borderless Windows overlay preserves the screen's original size: draw a rectangle, move it or adjust its edges/corners, then click **Recognize** or press **Enter**. **Esc**, right-click, or **Cancel** discards it. Arrow keys move the box by one pixel (Shift: ten). The full-resolution crop goes directly to local recognition, without a separate preview window or web upload.
 - **Per-monitor UI scaling** — Uses a 180% interface target on high-resolution laptop displays (subject to the monitor's safe size limit). Existing WSL high-resolution profiles receive a one-time readability update to a window about 80% of the screen; extended-monitor profiles stay unchanged. Use `A−` and `A+` to remember a separate size for each monitor, or click the percentage to restore that monitor's recommended scale. `Fit` restores the recommended window size even if a smaller size was saved.
 - **Monitor-aware window sizing** — Uses stable Qt-controlled sizing without clipping controls and remembers settings per display; `Fit` and UI-scale controls replace unreliable custom WSLg edge-resize gestures
+- **Monitor-aware retry review** — Retry recognition stays on the main window's monitor. On WSLg it opens inside the main window, avoiding native modal frames and Windows-side repositioning that can freeze or corrupt the display. Close the panel or press Esc to return to editing. Native Windows and other desktops retain a separate, parent-centered review dialog.
+- **Side-by-side 2D/3D comparison** — Double-click the rendered XYZ preview to open an interactive 3D panel beside the 2D canvas. Drag the divider to adjust their widths; both views and the SMILES remain usable. Close the panel (or press Esc while focused in it) to restore the full canvas. Re-rendering updates the panel; a notice appears if the 2D structure has changed since the last successful render. No additional native window is created, including on WSLg.
 - **WSLg menus** — File/Edit/Build/View/Help use a shared dropdown panel drawn inside the application, avoiding native-popup handoffs and cursor polling. Click a heading, then hover between headings; use arrow keys and Enter, Escape to dismiss, or Alt+letter/F10 to open a menu. Clicking outside, moving/resizing the window, or switching applications dismisses the panel. Native Windows and other platforms retain standard Qt menus. The Bond/Ring/XYZ dropdowns retain their separate WSLg popup-resource cleanup.
 - **Interactive editor** — Draw and edit molecular structures:
   - Click an atom to substitute its element; drag from an atom to create new bonds — works in Bond and Atom modes
@@ -35,11 +45,11 @@ Recognize molecular structures from images (screenshots, papers, web pages), con
   - Clean button — clear the canvas, loaded images, and 3D viewer to start fresh
   - Full undo/redo — adding a bonded atom undoes as a single step (atom + bond together); atom, bond, and bulk deletions use complete snapshots to restore original connections, bond types, stereochemistry, and coordinates exactly
 - **Kekulé structure display** — Aromatic systems shown as conjugated single/double bonds (not aromatic notation) for easy valence verification. Implicit Hs displayed on heteroatoms with subscript counts and superscript charges (e.g. NH₂, OH, SH, N⁺, NH₃⁺). Isolated atoms show all Hs (e.g. CH₄, NH₃).
-- **Compact hydroxyl labels** — Ordinary O–H groups from image recognition display as `OH`, with no separate H or O–H line on the 2D canvas. The molecular data and SMILES remain unchanged. Moving/deleting the visible OH group includes its hydrogen and supports Undo/Redo; isotopic, mapped, charged, or stereo-marked hydrogens remain explicit.
+- **Compact hydrogen labels** — Ordinary O–H and N–H groups from image recognition display as `OH`, `NH`, or `NH₂` (also `NH₃⁺`, etc., as appropriate), without separate H atoms or bonds on the 2D canvas. The molecular data and SMILES remain unchanged. Moving/deleting a compact group includes its hidden hydrogens and supports Undo/Redo; isotopic, mapped, charged, or stereo-marked hydrogens remain explicit.
 - **Smart element substitution** — Changing an atom to a lower-valence element automatically downgrades bond orders (e.g. C→S in a ring converts double bonds to single). Undo fully restores original bond types.
 - **Valence checking** — Automatic validation with over-valence warnings; hydrogen counts derived via RDKit sanitization with valence-table fallback for robustness with hypervalent atoms
 - **Stereochemistry** — OSRA's original SDF wedge/dash markings are restored on the same bonds, with their narrow ends at the original atoms; coordinates are mapped to the screen without mirroring the drawing. Stereo is also supported for SMILES-loaded and manually-drawn structures and preserved through SMILES export and 3D generation. Recognition errors or stereo markings absent from OSRA's output still need manual correction.
-- **3D structure viewer** — Generate and view 3D conformers (RDKit ETKDG + MMFF optimization) in an interactive ball-and-stick viewer; left-drag to rotate, right-drag to pan, scroll to zoom; double-click the preview to open a larger viewer window; double/triple bonds drawn explicitly
+- **3D structure viewer** — Generate and view 3D conformers (RDKit ETKDG + MMFF optimization) in an interactive ball-and-stick viewer; left-drag to rotate, right-drag to pan, scroll to zoom; double-click the preview to compare it beside the 2D canvas; double/triple bonds drawn explicitly
 - **XYZ export and clipboard** — After rendering, save or copy 3D coordinates in XYZ format; both controls offer Angstrom (default) or Bohr units
 - **Responsive shutdown** — Closing cancels local recognition, 3D generation, and capture helpers without blocking the UI. Delayed screenshot results cannot reopen a closing window, and unavailable monitor/settings data cannot prevent closing. 3D generation runs in a separate background process so the interface stays responsive.
 - **SMILES export** — Live SMILES conversion as you edit, copy to clipboard or save to file; auto-inferred charges reflected in SMILES (e.g. `[N+]`); chirality (`@`/`@@`) and E/Z geometry preserved
@@ -282,7 +292,10 @@ In the application:
 3. Confirm that the structure appears on the canvas and SMILES appears in
    the bottom bar.
 4. Click **Render** to generate 3D coordinates.
-5. Use **Save xyz** or **Copy xyz** as needed.
+5. Double-click the rendered preview for side-by-side 2D/3D comparison.
+   Rotate with left-drag, pan with right-drag, and scroll to zoom. If you edit
+   the 2D structure, click **Render** again to update the 3D view.
+6. Use **Save xyz** or **Copy xyz** as needed.
 
 You can also test the integration without opening the GUI:
 
@@ -355,6 +368,24 @@ Qt selection overlay uses the existing capture backends:
 
 Select one monitor per capture; to capture a different display, cancel, move
 the cursor there, and press the shortcut again.
+
+### Reviewing difficult recognition
+
+For difficult ring systems, use **Retry recognition** after the initial attempt
+finishes (also available if recognition failed). Select a candidate in the list,
+compare its ring closures and stereochemistry with the source, then click
+**Use selected** only if you want to replace the current structure. Undo restores
+the previous drawing, including manual edits. Re-render 3D after accepting a new
+result before saving/copying XYZ. All candidates may still be wrong; a larger
+capture from the original PDF/vector drawing often provides more useful detail
+than enlarging an existing small PNG.
+
+Retries use the original image pixels held in memory until another image is
+recognized, the workspace is cleared, or the app closes—not the sidebar
+thumbnail. They create one temporary PNG, deleted after completion, failure, or
+cancellation, and never upload the image. Each of the three attempts is limited
+to 15 seconds of OSRA processing plus a 10-second process grace period (up to
+75 seconds total); you can cancel at any time.
 
 ## Usage
 

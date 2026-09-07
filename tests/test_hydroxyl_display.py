@@ -7,7 +7,7 @@ import pytest
 from tests.test_canvas_stereo import _run_qt
 
 
-def _run_oh_qt(body, tmp_path):
+def _run_label_qt(body, tmp_path):
     prelude = '''
         from PySide6.QtCore import QEvent, QPointF, Qt
         from PySide6.QtWidgets import QApplication, QGraphicsSceneMouseEvent
@@ -58,7 +58,7 @@ def _run_oh_qt(body, tmp_path):
 
 
 def test_hydroxyl_label_does_not_change_molecule_or_stereo(tmp_path):
-    _run_oh_qt('''
+    _run_label_qt('''
         from tests.test_label_recovery import recovered_mol
         for mol in [load('CO[H]'), load('c1ccccc1O[H]'), load('CC(=O)O[H]'),
                     load('C[C@H](O[H])F'), Molecule.from_rdkit(recovered_mol())]:
@@ -92,9 +92,9 @@ def test_hydroxyl_label_does_not_change_molecule_or_stereo(tmp_path):
 
 
 def test_special_hydrogens_and_other_oxygen_groups_stay_explicit(tmp_path):
-    _run_oh_qt('''
+    _run_label_qt('''
         for smiles in ['CO[2H]', 'CO[H:7]', 'C[O+]([H])C', '[H]O[H]',
-                       'CN[H]', 'COC', 'C[O-]', 'C=O', '[H]C']:
+                       'COC', 'C[O-]', 'C=O', '[H]C']:
             mol = load(smiles)
             assert not scene._collapsed_hydrogens, smiles
             assert len(scene._atom_items) == mol.num_atoms
@@ -110,7 +110,7 @@ def test_special_hydrogens_and_other_oxygen_groups_stay_explicit(tmp_path):
 
 @pytest.mark.parametrize('group', [False, True])
 def test_dragging_oh_moves_its_hydrogen_and_undo_restores_it(tmp_path, group):
-    _run_oh_qt(f'group = {group!r}\n' + textwrap.dedent('''
+    _run_label_qt(f'group = {group!r}\n' + textwrap.dedent('''
         mol = methanol()
         original = _molecular_state(mol)
         editor._set_tool('select')
@@ -138,7 +138,7 @@ def test_dragging_oh_moves_its_hydrogen_and_undo_restores_it(tmp_path, group):
 
 @pytest.mark.parametrize('mode', ['eraser', 'selection', 'box_eraser'])
 def test_deleting_oh_does_not_leave_an_orphan_hydrogen(tmp_path, mode):
-    _run_oh_qt(f'mode = {mode!r}\n' + textwrap.dedent('''
+    _run_label_qt(f'mode = {mode!r}\n' + textwrap.dedent('''
         mol = methanol()
         original = _molecular_state(mol)
         oxygen_pos = scene._atom_items[1].pos()
@@ -172,11 +172,11 @@ def test_deleting_oh_does_not_leave_an_orphan_hydrogen(tmp_path, mode):
 
 
 def test_editing_oxygen_refreshes_compact_group_membership(tmp_path):
-    _run_oh_qt('''
+    _run_label_qt('''
         from molrecognizer.editor.history import ChangeElementCommand, ChangeChargeCommand
         mol = methanol()
         original = _molecular_state(mol)
-        for cmd in [ChangeElementCommand(1, 'N'), ChangeChargeCommand(1, 1)]:
+        for cmd in [ChangeElementCommand(1, 'C'), ChangeChargeCommand(1, 1)]:
             editor._history.execute(cmd)
             assert not scene._collapsed_hydrogens
             assert 2 in scene._atom_items and scene.get_bond_item(1, 2) is not None

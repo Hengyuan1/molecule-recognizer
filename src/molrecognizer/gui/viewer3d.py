@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import math
 
-from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QBrush, QColor, QPainter, QPen
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QWidget
+from PySide6.QtCore import QPointF, QRectF, Qt, Signal
+from PySide6.QtGui import QBrush, QColor, QKeySequence, QPainter, QPen, QShortcut
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+
+from .window_placement import OwnerDialog
 
 # CPK-ish colours
 _ELEM_COL = {
@@ -40,11 +42,13 @@ class Viewer3DWidget(QWidget):
     """Interactive 3D ball-and-stick viewer.
 
     Left-drag to rotate, right-drag to pan, scroll wheel to zoom.
-    Double-click to open in a larger separate window (unless disabled).
+    Double-click to expand (a comparison pane in the main workbench).
     """
 
+    expand_requested = Signal()
+
     def __init__(self, parent: QWidget | None = None, *,
-                 open_on_dblclick: bool = True) -> None:
+                 open_on_dblclick: bool = True, expand_in_place: bool = False) -> None:
         super().__init__(parent)
         self._atoms: list[tuple[str, float, float, float]] = []
         self._bonds: list[tuple[int, int, int]] = []   # (i, j, order)
@@ -59,6 +63,8 @@ class Viewer3DWidget(QWidget):
         self._pan_start = None
         self._pan_origin: tuple[float, float] = (0.0, 0.0)
         self._open_on_dblclick = open_on_dblclick
+        self._expand_in_place = expand_in_place
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setMinimumSize(160, 140)
         self.setStyleSheet(
             "background: #ffffff;"
@@ -250,9 +256,14 @@ class Viewer3DWidget(QWidget):
         if (self._open_on_dblclick
                 and self._atoms
                 and event.button() == Qt.MouseButton.LeftButton):
+            self._drag_start = self._pan_start = None
+            if self._expand_in_place:
+                self.expand_requested.emit()
+                return
             dlg = Viewer3DDialog(self._atoms, self._bonds,
-                                 self._pitch, self._yaw)
-            dlg.exec()
+                                 self._pitch, self._yaw, parent=self.window())
+            dlg.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+            dlg.open()
 
     def wheelEvent(self, event):  # noqa: N802
         delta = event.angleDelta().y()
@@ -261,11 +272,57 @@ class Viewer3DWidget(QWidget):
         self.update()
 
 
+class Viewer3DPanel(QWidget):
+    """Non-modal comparison pane; the adjacent 2D editor stays interactive."""
+
+    close_requested = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName('editor_workspace')
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 8, 12, 12)
+        header = QHBoxLayout()
+        title = QLabel('3D structure')
+        title.setObjectName('workspace_title')
+        header.addWidget(title, 1)
+        self._close = QPushButton('Close')
+        self._close.setToolTip('Close comparison and restore the full 2D canvas')
+        self._close.clicked.connect(self.close_requested.emit)
+        header.addWidget(self._close)
+        layout.addLayout(header)
+        self._viewer = Viewer3DWidget(open_on_dblclick=False)
+        self._viewer.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        layout.addWidget(self._viewer, 1)
+        hint = QLabel('Left-drag: rotate · Right-drag: pan · Scroll: zoom')
+        hint.setObjectName('workspace_hint')
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+        self._status = QLabel()
+        self._status.setObjectName('workspace_hint')
+        self._status.setWordWrap(True)
+        layout.addWidget(self._status)
+        self.set_stale(False)
+        self._escape = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
+        self._escape.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        self._escape.activated.connect(self.close_requested.emit)
+
+    def copy_from(self, source: Viewer3DWidget):
+        self._viewer.set_molecule(source._atoms, source._bonds)
+        self._viewer._pitch, self._viewer._yaw = source._pitch, source._yaw
+        self._viewer._zoom = source._zoom
+
+    def set_stale(self, stale: bool):
+        self._status.setText('2D structure changed. Click Render to update this 3D view.' if stale else '')
+        self._status.setVisible(stale)
+
+
 # ======================================================================
 # Separate larger viewer dialog
 # ======================================================================
 
-class Viewer3DDialog(QDialog):
+class Viewer3DDialog(OwnerDialog):
     """Resizable window showing a 3D ball-and-stick view of a molecule."""
 
     def __init__(self, atoms, bonds, pitch=None, yaw=None,

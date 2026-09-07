@@ -55,11 +55,13 @@ from .screenshot import (
     GlobalScreenshotHotkey, ScreenshotDialog, grab_screen, is_wsl,
     pixmap_to_png_bytes,
 )
-from .viewer3d import Viewer3DWidget
+from .viewer3d import Viewer3DPanel, Viewer3DWidget
 from .workbench_icons import workbench_icon
 from .inline_menu import InlineMenuBar
 from .native_capture import NativeRegionCapture, native_capture_executable
-from .workers import RecognitionWorker, Render3DWorker
+from .workers import RecognitionWorker, RecognitionRetryWorker, Render3DWorker
+from .recognition_review import RecognitionReviewDialog
+from .window_placement import OwnerDialog
 
 _logger = logging.getLogger(__name__)
 
@@ -155,6 +157,7 @@ class ElementPalette(QWidget):
 class LeftPanel(QWidget):
     open_image = Signal()
     screenshot = Signal()
+    retry_recognition = Signal()
     load_smiles = Signal()
     render_3d = Signal()
     save_xyz = Signal(str)  # "angstrom" or "bohr"
@@ -202,7 +205,9 @@ class LeftPanel(QWidget):
         btn_open.setObjectName("action_btn_secondary")
         btn_open.setIcon(workbench_icon("open"))
         btn_open.clicked.connect(self.open_image.emit)
-        layout.addWidget(btn_open)
+        image_actions = QHBoxLayout()
+        image_actions.addWidget(btn_open)
+        layout.addLayout(image_actions)
 
         btn_screen = QPushButton("Screenshot")
         btn_screen.setObjectName("action_btn")
@@ -213,7 +218,14 @@ class LeftPanel(QWidget):
         btn_smiles = QPushButton("Load SMILES")
         btn_smiles.setObjectName("action_btn_secondary")
         btn_smiles.clicked.connect(self.load_smiles.emit)
-        layout.addWidget(btn_smiles)
+        image_actions.addWidget(btn_smiles)
+
+        self._retry_btn = QPushButton("Retry recognition")
+        self._retry_btn.setObjectName("action_btn_secondary")
+        self._retry_btn.setToolTip("Compare alternative OSRA results for the full-resolution source image")
+        self._retry_btn.setEnabled(False)
+        self._retry_btn.clicked.connect(self.retry_recognition.emit)
+        layout.addWidget(self._retry_btn)
 
         # ---- 3D Structure section ----
         viewer_card = QFrame()
@@ -226,7 +238,8 @@ class LeftPanel(QWidget):
         title_3d.setObjectName("panel_title")
         layout.addWidget(title_3d)
 
-        self._viewer_3d = Viewer3DWidget()
+        self._viewer_3d = Viewer3DWidget(expand_in_place=True)
+        self._viewer_3d.setToolTip('Double-click to compare the 3D structure beside the 2D canvas')
         self._viewer_3d.setMinimumHeight(100)
         self._viewer_3d.setFixedHeight(120)
         layout.addWidget(self._viewer_3d)
@@ -379,8 +392,13 @@ class MainWindow(QMainWindow):
 
         self._molecule: Molecule | None = None
         self._worker: RecognitionWorker | None = None
+        self._retry_worker: RecognitionRetryWorker | None = None
+        self._retry_dialog: RecognitionReviewDialog | None = None
+        self._recognition_image: Image.Image | None = None
         self._render_worker: Render3DWorker | None = None
         self._render_smiles = ""
+        self._rendered_smiles = None  # Identity of the last successful render.
+        self._comparison_sizes = None
         self._closing = False
         self._source_pixmap: QPixmap | None = None
         self._mol_3d = None  # RDKit Mol with 3D conformer (for xyz export)
@@ -441,6 +459,7 @@ class MainWindow(QMainWindow):
         screenshot.setShortcuts([QKeySequence("Alt+Y"),
                                 QKeySequence("Ctrl+Shift+S")])
         action(file_menu, "Load SMILES…", self._on_load_smiles)
+        action(file_menu, "Retry recognition…", self._on_retry_recognition).setEnabled(False)
         file_menu.addSeparator()
         action(file_menu, "Export SMILES…", self._on_export_smiles, "Ctrl+E")
         action(file_menu, "Save XYZ…", lambda: self._on_save_xyz("angstrom"))
@@ -570,10 +589,12 @@ class MainWindow(QMainWindow):
         self._left_panel = LeftPanel()
         self._left_panel.open_image.connect(self._on_open_image)
         self._left_panel.screenshot.connect(self._on_screenshot)
+        self._left_panel.retry_recognition.connect(self._on_retry_recognition)
         self._left_panel.load_smiles.connect(self._on_load_smiles)
         self._left_panel.render_3d.connect(self._on_render_3d)
         self._left_panel.save_xyz.connect(self._on_save_xyz)
         self._left_panel.copy_xyz.connect(self._on_copy_xyz)
+        self._left_panel._viewer_3d.expand_requested.connect(self._show_3d_comparison)
         self._splitter.addWidget(self._left_panel)
 
         self._editor = EditorWidget()
@@ -583,7 +604,17 @@ class MainWindow(QMainWindow):
         outer.addWidget(self._editor._toolbar)
         self._editor.molecule_changed.connect(self._on_editor_changed)
         self._editor.clear_all_requested.connect(self._on_clear_all)
-        self._splitter.addWidget(self._editor)
+        self._comparison_splitter = QSplitter(Qt.Orientation.Horizontal)
+        self._comparison_splitter.setChildrenCollapsible(False)
+        self._comparison_splitter.setHandleWidth(6)
+        self._comparison_splitter.addWidget(self._editor)
+        self._comparison_panel = Viewer3DPanel()
+        self._comparison_panel.close_requested.connect(self._hide_3d_comparison)
+        self._comparison_splitter.addWidget(self._comparison_panel)
+        self._comparison_splitter.setStretchFactor(0, 1)
+        self._comparison_splitter.setStretchFactor(1, 1)
+        self._comparison_panel.hide()
+        self._splitter.addWidget(self._comparison_splitter)
 
         self._palette = ElementPalette()
         self._palette.element_selected.connect(self._on_palette_element)
@@ -882,6 +913,7 @@ class MainWindow(QMainWindow):
             button.setIconSize(QSize(round(20 * scale), round(20 * scale)))
         self._bottom_bar.setMinimumHeight(round(80 * scale))
         self._splitter.setHandleWidth(max(3, round(3 * scale)))
+        self._comparison_splitter.setHandleWidth(max(5, round(6 * scale)))
         self._scale_reset_btn.setText(f"{round(scale * 100)}%")
 
         if save and self._scale_screen_name:
@@ -902,6 +934,11 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _on_open_image(self):
+        if self._closing or self._retry_dialog is not None or self._retry_worker is not None:
+            return
+        if self._worker is not None:
+            self._status_bar.showMessage("Recognition already in progress…", 3000)
+            return
         path, _ = QFileDialog.getOpenFileName(
             self, "Open Molecule Image", "",
             "Images (*.png *.jpg *.jpeg *.bmp *.tiff);;All Files (*)",
@@ -915,9 +952,16 @@ class MainWindow(QMainWindow):
     def _on_screenshot(self):
         # A focused WSL window can receive both Qt's shortcut and Windows'
         # registered hotkey for the same keypress.
-        if self._closing or self._screenshot_pending:
+        if (self._closing or self._screenshot_pending
+                or self._retry_dialog is not None or self._retry_worker is not None):
+            return
+        if any(dialog.isVisible() for dialog in self.findChildren(OwnerDialog)):
+            return  # The global Windows hotkey bypasses Qt's shortcut guard.
+        if self._worker is not None:
+            self._status_bar.showMessage("Recognition already in progress…", 3000)
             return
         self._screenshot_pending = True
+        self._update_retry_available()
         self._status_bar.showMessage("Capturing screen…")
         self._was_maximized_before_screenshot = self.isMaximized()
         self.hide()
@@ -988,7 +1032,8 @@ class MainWindow(QMainWindow):
                 self._status_bar.showMessage("Invalid screenshot image", 5000)
 
     def _recognize_capture(self, pixmap):
-        if self._closing:
+        if (self._closing or self._worker is not None
+                or self._retry_dialog is not None or self._retry_worker is not None):
             return
         self._source_pixmap = pixmap
         self._left_panel.set_preview(pixmap)
@@ -1014,6 +1059,7 @@ class MainWindow(QMainWindow):
         if self._closing:
             return
         self._screenshot_pending = False
+        self._update_retry_available()
         QTimer.singleShot(0, self._refresh_display)
         QTimer.singleShot(150, self._refresh_display)
 
@@ -1056,14 +1102,18 @@ class MainWindow(QMainWindow):
     def _recognize_image(self, img: Image.Image):
         if self._closing:
             return
-        if self._worker is not None:
+        if (self._worker is not None or self._retry_worker is not None
+                or self._retry_dialog is not None):
             self._status_bar.showMessage("Recognition already in progress…")
             return
+        # Keep the actual recognition input, not the scaled sidebar thumbnail.
+        self._recognition_image = img.copy()
         self._status_bar.showMessage("Starting recognition…")
         self._worker = RecognitionWorker(img, parent=self)
         self._worker.status.connect(self._on_worker_status)
         self._worker.result_ready.connect(self._on_recognition_done)
         self._worker.finished.connect(self._on_worker_finished)
+        self._update_retry_available()
         self._worker.start()
 
     def _on_recognition_done(self, result):
@@ -1086,11 +1136,100 @@ class MainWindow(QMainWindow):
             self._worker = None
         if worker is not None:
             worker.deleteLater()
+        self._update_retry_available()
         self._finish_shutdown()
 
     def _on_worker_status(self, message):
         if not self._closing:
             self._status_bar.showMessage(message)
+
+    def _update_retry_available(self):
+        enabled = (self._recognition_image is not None and not self._closing
+                   and self._worker is None and self._retry_worker is None
+                   and self._retry_dialog is None and not self._screenshot_pending)
+        self._left_panel._retry_btn.setEnabled(enabled)
+        self._menu_actions["Retry recognition…"].setEnabled(enabled)
+
+    def _on_retry_recognition(self):
+        if (self._closing or self._recognition_image is None or self._worker is not None
+                or self._retry_worker is not None or self._retry_dialog is not None
+                or self._screenshot_pending):
+            return
+        # Recreate the preview from the same input used for these retries, even
+        # if the sidebar was subsequently refreshed by a rejected capture.
+        stream = io.BytesIO()
+        self._recognition_image.save(stream, format="PNG")
+        source = QPixmap()
+        source.loadFromData(stream.getvalue(), "PNG")
+        dialog = RecognitionReviewDialog(source, self._molecule, self)
+        self._retry_dialog = dialog
+        dialog.stop_requested.connect(self._cancel_retry)
+        dialog.finished.connect(self._on_retry_review_finished)
+        worker = RecognitionRetryWorker(self._recognition_image.copy(), self)
+        self._retry_worker = worker
+        worker.candidate_ready.connect(self._on_retry_candidate)
+        worker.status.connect(self._on_retry_status)
+        worker.failed.connect(self._on_retry_failed)
+        worker.finished.connect(self._on_retry_worker_finished)
+        self._update_retry_available()
+        dialog.open()  # No nested event loop; closing/cancellation stays responsive.
+        worker.start()
+
+    def _cancel_retry(self):
+        if self._retry_worker is not None:
+            self._retry_worker.cancel()
+
+    def _on_retry_candidate(self, candidate):
+        if not self._closing and self._retry_dialog is not None:
+            self._retry_dialog.add_candidate(candidate)
+
+    def _on_retry_status(self, message):
+        if not self._closing and self._retry_dialog is not None:
+            self._retry_dialog.set_status(message)
+
+    def _on_retry_failed(self, message):
+        if not self._closing and self._retry_dialog is not None:
+            self._retry_dialog.set_failure(message)
+
+    def _on_retry_worker_finished(self):
+        worker = self.sender()
+        if worker is self._retry_worker:
+            self._retry_worker = None
+            if not self._closing and self._retry_dialog is not None:
+                self._retry_dialog.finish(worker.cancelled)
+        if worker is not None:
+            worker.deleteLater()
+        self._update_retry_available()
+        self._finish_shutdown()
+
+    def _on_retry_review_finished(self, result):
+        dialog, self._retry_dialog = self._retry_dialog, None
+        self._cancel_retry()
+        if dialog is None:
+            return
+        candidate = dialog.selected_candidate
+        dialog.deleteLater()
+        if not self._closing and result == QDialog.DialogCode.Accepted and candidate is not None:
+            from ..editor.history import ReplaceMoleculeCommand
+            # Old selections and drag/ghost items reference the previous graph.
+            # Clear them while its scene items are still alive.
+            if self._editor._current_tool is not None:
+                self._editor._current_tool.deactivate()
+            self._editor._history.execute(ReplaceMoleculeCommand(candidate.molecule))
+            self._editor._rebuild_tools()
+            if self._render_worker is not None:
+                self._render_worker.cancel()
+            self._mol_3d = None
+            self._rendered_smiles = None
+            self._left_panel._viewer_3d.clear()
+            self._comparison_panel._viewer.clear()
+            self._hide_3d_comparison()
+            self._fit_structure()
+            self._status_bar.showMessage(f"Applied {candidate.name}; Undo restores the previous structure", 5000)
+        # Refresh after the review panel has hidden and the new scene has been
+        # applied. This does not remap, resize or recreate the main surface.
+        QTimer.singleShot(0, self._refresh_display)
+        self._update_retry_available()
 
     # ------------------------------------------------------------------
     # Molecule state
@@ -1124,17 +1263,26 @@ class MainWindow(QMainWindow):
     def _on_editor_changed(self):
         self._molecule = self._editor.molecule
         self._update_info()
+        self._update_comparison_status()
 
     def _on_clear_all(self):
         """Clear the canvas, loaded images, 3D viewer, and SMILES."""
+        if self._retry_dialog is not None:
+            self._retry_dialog.reject()
+        self._cancel_retry()
+        self._recognition_image = None
+        self._update_retry_available()
         if self._render_worker is not None:
             self._render_worker.cancel()
         self._molecule = None
         self._mol_3d = None
+        self._rendered_smiles = None
         self._source_pixmap = None
         self._editor.load_molecule(Molecule())
         self._left_panel.clear_preview()
         self._left_panel._viewer_3d.clear()
+        self._comparison_panel._viewer.clear()
+        self._hide_3d_comparison()
         self._bottom_bar.clear()
         self._status_bar.showMessage("Canvas cleared", 3000)
 
@@ -1158,6 +1306,39 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
     # 3D rendering / XYZ export
     # ------------------------------------------------------------------
+
+    def _show_3d_comparison(self):
+        source = self._left_panel._viewer_3d
+        if self._closing or not source._atoms or self._retry_dialog is not None:
+            return
+        if not self._comparison_panel.isVisible():
+            self._comparison_panel.copy_from(source)
+            self._comparison_panel.show()
+            half = max(1, (self._comparison_splitter.width()
+                           - self._comparison_splitter.handleWidth()) // 2)
+            self._comparison_splitter.setSizes(self._comparison_sizes or [half, half])
+            self._update_comparison_status()
+            # Fit the drawing to its narrower view, without changing atom
+            # coordinates, stereo or the top-level window's geometry.
+            QTimer.singleShot(0, self._fit_structure)
+        self._comparison_panel._viewer.setFocus()
+
+    def _hide_3d_comparison(self):
+        if not self._comparison_panel.isHidden():
+            self._comparison_sizes = self._comparison_splitter.sizes()
+            self._comparison_panel.hide()
+            if not self._closing:
+                self._editor.canvas.setFocus()
+                QTimer.singleShot(0, self._fit_structure)
+
+    def _update_comparison_status(self):
+        if self._comparison_panel.isHidden():
+            return
+        # _update_info already computed this; avoid another chemical conversion
+        # on every mouse move while editing a large molecule.
+        current = self._bottom_bar.smiles_text
+        self._comparison_panel.set_stale(
+            self._rendered_smiles is not None and current != self._rendered_smiles)
 
     def _on_render_3d(self):
         if self._closing:
@@ -1191,9 +1372,13 @@ class MainWindow(QMainWindow):
             if isinstance(result, Exception):
                 raise result
             from ..core.xyz import mol_to_atoms_bonds
-            self._mol_3d = result
-            atoms, bonds = mol_to_atoms_bonds(self._mol_3d)
+            atoms, bonds = mol_to_atoms_bonds(result)
             self._left_panel._viewer_3d.set_molecule(atoms, bonds)
+            self._mol_3d = result
+            self._rendered_smiles = self._render_smiles
+            if not self._comparison_panel.isHidden():
+                self._comparison_panel.copy_from(self._left_panel._viewer_3d)
+                self._update_comparison_status()
             self._status_bar.showMessage("3D structure rendered", 3000)
         except Exception as e:
             self._status_bar.showMessage(f"3D generation failed: {e}", 5000)
@@ -1278,6 +1463,7 @@ class MainWindow(QMainWindow):
                 dialog.reject()
             if self._worker is not None:
                 self._worker.cancel()
+            self._cancel_retry()
             if self._render_worker is not None:
                 self._render_worker.cancel()
             if self._native_capture is not None:
@@ -1297,7 +1483,7 @@ class MainWindow(QMainWindow):
 
     def _has_running_jobs(self):
         return any(job is not None and job.isRunning() for job in (
-            self._worker, self._render_worker, self._native_capture))
+            self._worker, self._retry_worker, self._render_worker, self._native_capture))
 
     def _finish_shutdown(self):
         if self._closing and not self._has_running_jobs():

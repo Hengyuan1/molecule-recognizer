@@ -375,14 +375,14 @@ class MoleculeScene(QGraphicsScene):
         super().__init__(parent)
         self._atom_items: dict[int, AtomItem] = {}
         self._bond_items: dict[tuple[int, int], BondItem] = {}
-        self._collapsed_hydrogens: dict[int, int] = {}  # H index -> O index
+        self._collapsed_hydrogens: dict[int, int] = {}  # H index -> N/O index
 
     def load_molecule(self, mol: Molecule):
         """Clear scene and render the given molecule."""
         self.clear()
         self._atom_items.clear()
         self._bond_items.clear()
-        self._collapsed_hydrogens = self._hydroxyl_hydrogens(mol)
+        self._collapsed_hydrogens = self._label_hydrogens(mol)
 
         coords = mol.get_2d_coords()
         all_bonds = mol.get_all_bonds()
@@ -393,9 +393,9 @@ class MoleculeScene(QGraphicsScene):
         # using inferred charges so sanitization succeeds.
         display_hs = self._compute_display_hs(mol, display_charges)
         # GetTotalNumHs excludes separate H atoms. Include the ones represented
-        # in an OH label, while keeping their atoms/bonds in the molecular model.
-        for oxygen_idx in self._collapsed_hydrogens.values():
-            display_hs[oxygen_idx] = display_hs.get(oxygen_idx, 0) + 1
+        # in OH/NH/NH2 labels, keeping their atoms/bonds in the molecular model.
+        for parent_idx in self._collapsed_hydrogens.values():
+            display_hs[parent_idx] = display_hs.get(parent_idx, 0) + 1
 
         # Add atoms with H-count and (possibly inferred) charge
         for i in range(mol.num_atoms):
@@ -424,8 +424,8 @@ class MoleculeScene(QGraphicsScene):
             self._bond_items[key] = item
 
     @staticmethod
-    def _hydroxyl_hydrogens(mol: Molecule) -> dict[int, int]:
-        """Fold ordinary R-O-H into OH, not isotope/charged/stereo-marked Hs."""
+    def _label_hydrogens(mol: Molecule) -> dict[int, int]:
+        """Fold ordinary N-H/O-H into labels, keeping special Hs explicit."""
         result = {}
         for hydrogen in mol.to_rdkit().GetAtoms():
             if (hydrogen.GetAtomicNum() != 1 or hydrogen.GetDegree() != 1
@@ -435,21 +435,26 @@ class MoleculeScene(QGraphicsScene):
                     or hydrogen.HasProp("atomLabel")):
                 continue
             bond = hydrogen.GetBonds()[0]
-            oxygen = bond.GetOtherAtom(hydrogen)
-            if (oxygen.GetAtomicNum() != 8 or oxygen.GetDegree() != 2
-                    or oxygen.GetFormalCharge() or oxygen.GetNumRadicalElectrons()
-                    or oxygen.GetNumExplicitHs() or oxygen.HasQuery()
-                    or bond.GetBondDir() != Chem.BondDir.NONE
-                    or any(b.GetBondType() != Chem.BondType.SINGLE for b in oxygen.GetBonds())
-                    or not any(a.GetAtomicNum() > 1 for a in oxygen.GetNeighbors())):
+            parent = bond.GetOtherAtom(hydrogen)
+            if (parent.GetAtomicNum() not in (7, 8) or parent.GetNumRadicalElectrons()
+                    or parent.HasQuery() or bond.GetBondDir() != Chem.BondDir.NONE
+                    or bond.GetBondType() != Chem.BondType.SINGLE):
                 continue
-            result[hydrogen.GetIdx()] = oxygen.GetIdx()
+            # Preserve the existing OH rule. Nitrogen also supports several
+            # H neighbors, bracket H counts, charges, and imine/aromatic bonds.
+            if parent.GetAtomicNum() == 8 and (
+                    parent.GetDegree() != 2 or parent.GetFormalCharge()
+                    or parent.GetNumExplicitHs()
+                    or any(b.GetBondType() != Chem.BondType.SINGLE for b in parent.GetBonds())
+                    or not any(a.GetAtomicNum() > 1 for a in parent.GetNeighbors())):
+                continue
+            result[hydrogen.GetIdx()] = parent.GetIdx()
         return result
 
     def expand_atom_group(self, indices: Iterable[int]) -> set[int]:
-        """Include the underlying H when moving/deleting a visible OH group."""
+        """Include hidden Hs when moving/deleting a visible OH/NH/NH2 group."""
         result = set(indices)
-        result.update(h for h, o in self._collapsed_hydrogens.items() if o in result)
+        result.update(h for h, parent in self._collapsed_hydrogens.items() if parent in result)
         return result
 
     @staticmethod

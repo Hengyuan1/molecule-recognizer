@@ -25,6 +25,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 
 from .molecule import BondType, Molecule
+from .layout import straighten_terminal_nitriles
 
 ImageInput = Union[str, Path, Image.Image, np.ndarray]
 
@@ -234,7 +235,7 @@ class OSRARecognizer:
         if rdmol is not None:
             rdmol = self._retry_small_image_labels(path, rdmol)
             self._check_cancelled()
-            return Molecule.from_rdkit(rdmol)
+            return Molecule.from_rdkit(straighten_terminal_nitriles(rdmol))
 
         # A few OSRA builds have incomplete SDF support. Retain recognition
         # through canonical SMILES, accepting that only this fallback redraws.
@@ -271,7 +272,8 @@ class OSRARecognizer:
                 temp_path.unlink(missing_ok=True)
         return mol
 
-    def _read_sdf(self, path: Path, timeout: Optional[int] = None) -> Optional[Chem.Mol]:
+    def _read_sdf(self, path: Path, timeout: Optional[int] = None,
+                  *, options: tuple[str, ...] = ()) -> Optional[Chem.Mol]:
         if not path.is_file():
             raise FileNotFoundError(f"Image file not found: {path}")
         timeout = self.timeout if timeout is None else timeout
@@ -281,6 +283,7 @@ class OSRARecognizer:
             "sdf",
             "--timeout",
             str(timeout),
+            *options,
             "--",
             str(path),
         ]
