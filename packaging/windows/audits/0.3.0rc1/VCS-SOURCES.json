@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "sources": [
+    {
+      "archive": "mingw-w64-poppler-26.08.0-1.src.tar.zst",
+      "component": "mingw-w64-poppler",
+      "commit": "46785c9a414d8918d8d4c55d3498258c7eac86c3",
+      "tree_archive_sha256": "982f8d137e8210a699a22b3615cafef85ded5810a9ac4a6d145944e764f29b9b",
+      "matches_declared_sha256": true,
+      "object_files": 3,
+      "status": "pinned-tree-readable"
+    },
+    {
+      "archive": "mingw-w64-winpthreads-14.0.0.r353.g6df76fa52-2.src.tar.zst",
+      "component": "mingw-w64-winpthreads",
+      "commit": "6df76fa527c36e770217ddd763adaaf37bd2887f",
+      "tree_archive_sha256": "ec92db70e0e43e3169c0b6debc4b35abfe3bafc984b5bdc518fdab554316f644",
+      "matches_declared_sha256": true,
+      "object_files": 3,
+      "status": "pinned-tree-readable"
+    }
+  ],
+  "limitations": [
+    "No upstream signature certification.",
+    "Only source objects read; no archived recipes/config/hooks executed."
+  ]
+}

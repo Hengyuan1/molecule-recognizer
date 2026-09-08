@@ -181,10 +181,13 @@ Technical references:
 
 ## Release-candidate preparation
 
-The source version is now `0.3.0rc1`; the proposed Git tag is `v0.3.0-rc1`.
-This does not replace the existing v0.2.0 release. No public binary release
-is created by changing the version. See [RELEASE-AUDIT.md](RELEASE-AUDIT.md)
-and [draft release notes](RELEASE-NOTES-0.3.0-rc1.md) for the remaining gates.
+The tested source version remains `0.3.0rc1`. The owner wants the next public
+release to be stable `v0.3.0`, not a public RC. No RC tag has been published.
+This does not replace the existing v0.2.0 tag. No public binary release
+is created by changing the version. **Public upload is on hold for the
+OSRA/CImg license-compatibility question** in [RELEASE-AUDIT.md](RELEASE-AUDIT.md).
+See that audit and [draft release notes](RELEASE-NOTES-0.3.0-rc1.md) for the
+remaining gates.
 The local candidate was built from `cd5bf78` and passed 265 regression tests
 on each platform. Its [validation record](audits/0.3.0rc1/VALIDATION.md) identifies
 the exact ZIP and distinguishes completed checks from outstanding review.
@@ -194,6 +197,18 @@ locally compiled OSRA source archives/patches, and Qt/PySide source archives.
 It downloads data only and never executes PKGBUILDs or changes the installed
 runtime. Resumed downloads are checked against local SHA-256 receipts.
 These receipts are not upstream signature verification.
+
+`verify_source_inputs.py` checks the nested source/patch hashes recorded in
+MSYS2 `.SRCINFO` files without executing PKGBUILDs or extracting source trees.
+It requires `zstandard` for `.zst` containers. VCS inputs and `SKIP` entries
+are reported separately rather than treated as verified:
+
+```bash
+python packaging/windows/verify_source_inputs.py \
+  --sources .tools/release-sources \
+  --manifest packaging/windows/audits/0.3.0rc1/SOURCES.json \
+  --report .tools/release-audit/SOURCE-INPUTS.json
+```
 
 `inspect_release_sources.py` checks source-package versions and recovers
 original Qt license texts and attribution notices. It requires `zstandard`.
@@ -208,3 +223,26 @@ relocated EXE checks after every change to this list.
 `--source-revision` records the full commit hash supplied by the builder.
 Only provide it for a build from that exact revision; it is a provenance
 record, not a substitute for verifying a clean source checkout.
+
+### Additional source-preparation tools
+
+`collect_additional_sources.py --requests <manifest> --output <source-cache>
+--report <report>` downloads and checks the explicit wheel dependency inputs
+in `WHEEL-SOURCE-REQUESTS.json` and `VCPKG-SOURCE-REQUESTS.json`. Cached inputs
+are rechecked; transient signed URL parameters are omitted from reports.
+
+`verify_vcs_sources.py --sources <source-cache> --manifest <SOURCES.json>
+--inputs <SOURCE-INPUTS.json> --report <report>` checks the two archived Git
+trees in isolated repositories, without executing archived hooks/config or
+fetching from a network. Git must be installed to run this check.
+
+`collect_source_notices.py` preserves original named and selected header-based
+notices. This complements the Qt notice collector, but is not yet integrated
+into the tested RC. See its `--help` for repeated source manifests.
+
+`package_sources.py --sources <source-cache> --manifest <manifest> --output
+<new-output-directory> --revision <full-commit> --version 0.3.0` packages
+inventoried inputs with the exact committed application source. Repeat
+`--manifest` for each input inventory. It refuses changed inputs or an existing
+ZIP and includes checksums. Read [SOURCE-README.md](SOURCE-README.md) first;
+this script neither certifies redistribution compliance nor publishes a release.

@@ -1,0 +1,124 @@
+{
+  "schema": 1,
+  "archives": [
+    {
+      "component": "rdkit-wheel-recipe",
+      "version": "2026.3.4",
+      "source_revision": "692356f26710ad53595ad889b5b7946052da15cd",
+      "archive": "rdkit-pypi-692356f2.tar.gz",
+      "url": "https://codeload.github.com/kuelumbus/rdkit-pypi/tar.gz/692356f26710ad53595ad889b5b7946052da15cd",
+      "provenance": "Job 87562203517 checked out this PR merge and reports the SHA-256 of the exact PyPI wheel used by the candidate"
+    },
+    {
+      "component": "rdkit-vcpkg-recipes",
+      "source_revision": "42e4e33e1505c9f47b58c21e0f557c1571b751ee",
+      "archive": "vcpkg-42e4e33e.tar.gz",
+      "url": "https://codeload.github.com/microsoft/vcpkg/tar.gz/42e4e33e1505c9f47b58c21e0f557c1571b751ee",
+      "provenance": "RDKit job runner win22/20260706.237 documents vcpkg 42e4e33e15; compare selected port versions and patch names with the job log"
+    },
+    {
+      "component": "openblas",
+      "version": "0.3.23-293-gc2f4bdbb",
+      "source_revision": "c2f4bdbbb43a1d20a7342f40122e18e573ce436a",
+      "archive": "openblas-c2f4bdbb.tar.gz",
+      "url": "https://codeload.github.com/OpenMathLib/OpenBLAS/tar.gz/c2f4bdbbb43a1d20a7342f40122e18e573ce436a"
+    },
+    {
+      "component": "openblas-build-recipes",
+      "source_revision": "1949e84a97655ed586a2cb4b469e98efec8651c0",
+      "archive": "openblas-libs-1949e84a.tar.gz",
+      "url": "https://codeload.github.com/MacPython/openblas-libs/tar.gz/1949e84a97655ed586a2cb4b469e98efec8651c0",
+      "provenance": "Upstream July 31 2023 recipe update to c2f4bdb; retains Windows Rtools40 GCC 10.3 ILP64 build instructions"
+    },
+    {
+      "component": "rtools-ucrt-recipes",
+      "source_revision": "c5344cc8c7e310ee4eee513b2381af2e75d65cb9",
+      "archive": "rtools-ucrt-c5344cc8.tar.gz",
+      "url": "https://codeload.github.com/r-windows/rtools-ucrt/tar.gz/c5344cc8c7e310ee4eee513b2381af2e75d65cb9",
+      "provenance": "Final GCC 10.3.0-9804 recipe revision before the Rtools40 20220206 installer pinned by OpenBLAS; includes compiler patches"
+    },
+    {
+      "component": "gcc-rtools-runtime-source",
+      "version": "10.3.0",
+      "archive": "gcc-10.3.0.tar.xz",
+      "url": "https://ftp.gnu.org/gnu/gcc/gcc-10.3.0/gcc-10.3.0.tar.xz",
+      "expected_hashes": {"sha256": "64f404c1a650f27fc33da242e1f2df54952e3963a49e06e73f6940f3223ac344"}
+    },
+    {
+      "component": "avalon",
+      "version": "2.0.5-pre.3",
+      "archive": "AvalonToolkit_2.0.5-pre.3.tar.gz",
+      "url": "https://github.com/rdkit/ava-formake/archive/refs/tags/AvalonToolkit_2.0.5-pre.3.tar.gz",
+      "expected_hashes": {"md5": "7a20c25a7e79f3344e0f9f49afa03351"}
+    },
+    {
+      "component": "freesasa",
+      "version": "2.0.3",
+      "archive": "freesasa-2.0.3.tar.gz",
+      "url": "https://github.com/mittinatten/freesasa/releases/download/2.0.3/freesasa-2.0.3.tar.gz"
+    },
+    {
+      "component": "maeparser",
+      "version": "1.3.3",
+      "archive": "maeparser-1.3.3.tar.gz",
+      "url": "https://github.com/schrodinger/maeparser/archive/v1.3.3.tar.gz",
+      "expected_hashes": {"md5": "c43dfb89c495512f695ce018b32ac749"}
+    },
+    {
+      "component": "coordgen",
+      "version": "3.0.2",
+      "archive": "coordgenlibs-3.0.2.tar.gz",
+      "url": "https://github.com/schrodinger/coordgenlibs/archive/v3.0.2.tar.gz",
+      "expected_hashes": {"md5": "bc9dabbbb2b99ae426f3a1bf16c4d3cc"}
+    },
+    {
+      "component": "inchi",
+      "version": "1.07.3",
+      "archive": "inchi-1.07.3.zip",
+      "url": "https://github.com/IUPAC-InChI/InChI/releases/download/v1.07.3/INCHI-1-SRC.zip",
+      "expected_hashes": {"md5": "b761f37a7d3a3ff8574daf6906993759"}
+    },
+    {
+      "component": "ringdecomposerlib",
+      "version": "1.1.3_rdkit",
+      "archive": "RingDecomposerLib-1.1.3_rdkit.tar.gz",
+      "url": "https://github.com/rareylab/RingDecomposerLib/archive/v1.1.3_rdkit.tar.gz",
+      "expected_hashes": {"md5": "e9a0bcdda8b921a35e812b9888a9a874"}
+    },
+    {
+      "component": "pubchem-align3d",
+      "source_revision": "daefab3",
+      "archive": "pubchem-align3d-daefab3.tar.gz",
+      "url": "https://github.com/ncbi/pubchem-align3d/archive/daefab3.tar.gz",
+      "expected_hashes": {"md5": "a78a6273851709083ac3803d62cb5ae6"}
+    },
+    {
+      "component": "chemdraw",
+      "version": "1.0.14",
+      "archive": "chemdraw-1.0.14.tar.gz",
+      "url": "https://codeload.github.com/Glysade/chemdraw/tar.gz/refs/tags/v1.0.14",
+      "expected_hashes": {"md5": "44be1a8e5bd41faaa238a6d584ca258b"}
+    },
+    {
+      "component": "better-enums",
+      "version": "0.11.3",
+      "source_revision": "c35576bed0295689540b39873126129adfa0b4c8",
+      "archive": "better-enums-c35576be.tar.gz",
+      "url": "https://codeload.github.com/aantron/better-enums/tar.gz/c35576bed0295689540b39873126129adfa0b4c8"
+    },
+    {
+      "component": "boost-rdkit",
+      "version": "1.85.0",
+      "archive": "boost_1_85_0.tar.bz2",
+      "url": "https://archives.boost.io/release/1.85.0/source/boost_1_85_0.tar.bz2",
+      "expected_hashes": {"sha256": "7009fe1faa1697476bdc7027703a2badb84e849b7b0baad5086b087b971f8617"}
+    },
+    {
+      "component": "yaehmop",
+      "version": "2025.03.2",
+      "archive": "yaehmop-2025.03.2.tar.gz",
+      "url": "https://github.com/greglandrum/yaehmop/archive/refs/tags/v2025.03.2.tar.gz",
+      "expected_hashes": {"md5": "54585c09b0c3c464e4e88c6b71a36db9"}
+    }
+  ]
+}

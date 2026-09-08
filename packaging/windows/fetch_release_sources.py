@@ -16,6 +16,13 @@ import re
 import shutil
 import tempfile
 import urllib.request
+from urllib.parse import urlsplit, urlunsplit
+
+
+def public_origin(url):
+    """Do not retain temporary signed-download query strings in release records."""
+    parts = urlsplit(url)
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
 
 
 def sha256(path):
@@ -62,6 +69,8 @@ def fetch_one(request, directory):
         previous = json.loads(receipt.read_text(encoding="utf-8"))
         if previous["url"] != request["url"] or sha256(destination) != previous["sha256"]:
             raise ValueError(f"Cached archive differs from its receipt: {destination}")
+        if "resolved_url" in previous:
+            previous["resolved_url"] = public_origin(previous["resolved_url"])
         print(f"Verified cached source: {destination.name}", flush=True)
         return previous
     # Unique partial files, and atomic publication only after download completes.
@@ -72,7 +81,7 @@ def fetch_one(request, directory):
                 if not response.url.startswith("https://"):
                     raise ValueError("Refusing an insecure source redirect")
                 shutil.copyfileobj(response, stream, 1024 * 1024)
-                origin = response.url
+                origin = public_origin(response.url)
         except BaseException:
             stream.close()
             temporary.unlink()

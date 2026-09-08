@@ -1,0 +1,41 @@
+To: Igor Filippov <igor.v.filippov@gmail.com>
+Subject: OSRA 2.2.4: CImg licensing clarification for a Windows redistribution
+
+Dear Igor,
+
+Thank you for developing OSRA. It has been very useful in my molecular
+structure recognition and editing workflow.
+
+I develop MolRecognizer, an open-source GUI:
+https://github.com/Hengyuan1/molecule-recognizer
+
+I would like to distribute a free portable Windows package that invokes
+OSRA as a separate command-line program. I compiled OSRA 2.2.4 from the
+published sources using MinGW/UCRT64, patched GOCR/Open Babel, and OCRAD
+0.23. This is not a redistribution of the commercially supplied Windows
+binary. I intend to provide the required sources, build recipes, local
+compatibility/relocation patches and notices alongside the package.
+
+Before publishing, could you help clarify one licensing point?
+
+In osra-2.2.4.tar.gz, src/CImg.h identifies version 1.2.7 (cimg_version 127)
+and uses CeCILL-C. src/osra_anisotropic.cpp includes this header and the
+GREYCstoration plugin. OSRA's source headers use GPL-2.0-or-later, and our
+build links GPLv3 OCRAD. The FSF lists CeCILL-C as GPL-incompatible:
+https://www.gnu.org/licenses/license-list.en.html#CeCILL-C
+
+I also read the OSRA license page's explanation that the NCI-authored
+portion is public domain while dependencies retain their own terms.
+I may be missing an applicable permission or licensing clarification.
+
+Is there an existing exception, alternative license grant, or other
+documented basis covering CImg's inclusion in the compiled OSRA binary?
+If so, could you point me to the permission and any notices we should
+include? If clarification is needed from CImg's rightsholder, could you
+please direct me to the appropriate contact?
+
+I have held the bundled binary release pending clarification. Thank you
+for your guidance and for making OSRA available.
+
+Best regards,
+Hengyuan Shen

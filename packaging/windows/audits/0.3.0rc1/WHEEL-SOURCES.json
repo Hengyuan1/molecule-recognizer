@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "scope": "Supplemental upstream source collection; exact wheel build inputs remain under review",
+  "license_review_complete": false,
+  "archives": [
+    {
+      "component": "numpy",
+      "version": "1.26.4",
+      "archive": "numpy-1.26.4.tar.gz",
+      "url": "https://codeload.github.com/numpy/numpy/tar.gz/refs/tags/v1.26.4",
+      "sha256": "d8aec44c320c1753e60590a19d6510aacdd940586b9697b31dfb2875223c795d",
+      "size_bytes": 9217802,
+      "verification": "HTTPS download and readable tar container; local SHA-256",
+      "limitation": "Does not include the separately built OpenBLAS DLL/toolchain or Git submodules"
+    },
+    {
+      "component": "rdkit",
+      "version": "2026.3.4",
+      "source_revision": "8afba32ec539dcb2369bc84549d802aca3f7eb39",
+      "archive": "rdkit-2026.3.4-8afba32e.tar.gz",
+      "url": "https://codeload.github.com/rdkit/rdkit/tar.gz/8afba32ec539dcb2369bc84549d802aca3f7eb39",
+      "sha256": "2ba1a1dde7908aa29d5132498128a381e5ceffe42650ad218f3630e9d777bb55",
+      "size_bytes": 83338035,
+      "verification": "Upstream Release_2026_03_4 tag resolved via GitHub API; readable tar; local SHA-256",
+      "limitation": "External CMake downloads and wheel packager/toolchain inputs are separate"
+    },
+    {
+      "component": "cairo",
+      "version": "1.18.4",
+      "archive": "cairo-1.18.4.tar.xz",
+      "url": "https://cairographics.org/releases/cairo-1.18.4.tar.xz",
+      "sha256": "445ed8208a6e4823de1226a74ca319d3600e83f6369f99b14265006599c32ccb",
+      "size_bytes": 32578804,
+      "verification": "HTTPS download; local SHA-256; version matches the bundled DLL's cairo_version_string",
+      "limitation": "Exact vcpkg build revision and distributor patches not yet verified"
+    }
+  ]
+}

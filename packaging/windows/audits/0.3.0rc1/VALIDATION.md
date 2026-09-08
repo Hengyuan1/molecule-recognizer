@@ -61,11 +61,44 @@ Detailed generated records are retained locally in `dist/windows-rc1/`:
 The PE check tests imported DLL presence, not ABI compatibility or every
 optional runtime `LoadLibrary` path.
 
+## Runtime signature check after Visual Studio installation
+
+After the owner installed stable Visual Studio Community 2026, a read-only
+PowerShell `Get-AuthenticodeSignature` check returned `Valid` for all 12 DLLs
+whose names matched `^(msvcp|vcruntime|ucrtbase|concrt|vcomp)` under the tested
+candidate's `_internal` folder. This check did not replace or modify any DLL.
+Paths below are relative to `_internal`:
+
+| DLL | File version | Signer |
+| --- | --- | --- |
+| `ucrtbase.dll` | 10.0.10240.16384 | Microsoft Corporation |
+| `VCRUNTIME140.dll` | 14.44.35211.0 | Microsoft Windows |
+| `VCRUNTIME140_1.dll` | 14.44.35211.0 | Microsoft Windows |
+| `PySide6/MSVCP140.dll` | 14.44.35211.0 | Microsoft Windows |
+| `PySide6/MSVCP140_1.dll` | 14.44.35211.0 | The QT Company Oy |
+| `PySide6/MSVCP140_2.dll` | 14.44.35211.0 | The QT Company Oy |
+| `PySide6/VCRUNTIME140.dll` | 14.44.35211.0 | Microsoft Windows |
+| `PySide6/VCRUNTIME140_1.dll` | 14.44.35211.0 | Microsoft Windows |
+| `rdkit.libs/msvcp140-a4c2229bdc2a2a630acdc095b4d86008.dll` | 14.40.33810.0 | Microsoft Windows Software Compatibility Publisher |
+| `shiboken6/MSVCP140.dll` | 14.44.35211.0 | Microsoft Windows |
+| `shiboken6/VCRUNTIME140.dll` | 14.44.35211.0 | Microsoft Windows |
+| `shiboken6/VCRUNTIME140_1.dll` | 14.44.35211.0 | Microsoft Windows |
+
+Individual file hashes are recorded in the existing `PE-IMPORTS.json` report.
+This was a signature/version check, not a finding that every runtime is
+Microsoft-signed or that its redistribution terms are satisfied. It does not
+sign the application or establish that Windows reputation warnings will stop.
+
 ## Still required before publication
 
-1. Complete dependency notices/license selection and any required matching
-   source/relink materials. See the concrete RDKit/NumPy provenance gaps in
-   the release audit; the source collection is not yet a cleared source asset.
+The owner subsequently confirmed that the candidate works well on their
+Windows setup. This is a successful user-reported test; it does not establish
+that the setup was a clean machine or enumerate each exercised workflow.
+
+1. Resolve the OSRA/CImg license-compatibility question, then finish notice
+   integration and any remaining source/relink requirements. The previously
+   unidentified RDKit/NumPy inputs are now recorded in WHEEL-PROVENANCE.md;
+   the source collection is not yet a cleared source asset.
 2. Rebuild/recheck the final distributable after those materials are added.
 3. Test that exact build interactively on a clean Windows machine/account:
    recognition, adjustable capture, mixed-DPI monitors, edits/undo, 3D/XYZ,
@@ -73,3 +106,25 @@ optional runtime `LoadLibrary` path.
 4. Package the reviewed source materials and publish the ZIP, checksums and
    release notes as Release assets. Verify a downloaded copy before promoting
    the release as stable. No tag or release has been created for this candidate.
+
+## Additional source-preparation validation — 2026-09-07
+
+These are checks of the later working-tree preparation tools, not a rebuild
+or a new antivirus scan of the candidate ZIP.
+
+- WSL full suite after all source-preparation changes: **314 passed,
+  5 optional MolScribe tests deselected**.
+- Native Windows full suite before the final two path-validation tests were
+  added: **309 passed, 3 skipped, 5 deselected**. The three Git-dependent
+  packaging tests were skipped because Git was not on that environment's PATH.
+- Native Windows rerun of both source-preparation test modules after those
+  last changes: **64 passed, 3 skipped** for the same Git prerequisite.
+- All three Git-dependent cases pass under WSL: the source ZIP uses committed
+  files only, archived Git config/hooks are ignored, and object alternates
+  are rejected. No downloaded build recipes are executed by these checks.
+- Both real MSYS2 VCS payloads match the declared SHA-256 values for their
+  pinned commit trees. All eleven additional vcpkg inputs match their recipe
+  SHA-512 values. Source inventories omit transient signed-download parameters.
+
+No final v0.3.0 binary/source ZIP, version bump, release tag or GitHub Release
+was created. The tested RC and working Downloads installation are unchanged.

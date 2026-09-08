@@ -33,13 +33,18 @@ a certification that every bundled license obligation has been satisfied.
 
 ## Blocking gates
 
+- [ ] Resolve the CImg/CeCILL-C compatibility question inside the compiled
+  OSRA binary before public upload; see the evidence below. Do not silently
+  remove image preprocessing, relicense third-party code or treat a source
+  ZIP as resolving conflicting license terms.
 - [ ] Finish component-level license selection, notices and any required
   corresponding-source coverage, including NumPy/OpenBLAS/GCC 10.3, RDKit's
   embedded dependencies, Qt/Pillow third-party code and MSVC runtime
   provenance/redistribution notices. Permissive dependencies do not all require
   source redistribution; review their actual notice and other conditions.
-- [ ] Verify nested source inputs/VCS revisions/build recipes; HTTPS downloads
-  and local hashes alone do not establish complete corresponding source.
+- [x] Verify MSYS2 nested source hashes and both pinned Git payloads; collect
+  the identified wheel source/build recipes. This is integrity/provenance
+  verification, not a complete corresponding-source or license certification.
 - [x] Rebuild from the recorded release commit, include recovered Qt notices,
   and verify DLL import closure after removing optional Qt components.
 - [x] Pass native Windows and WSL regression tests plus relocated candidate
@@ -53,26 +58,125 @@ The current candidate passed **265 tests on each of native Windows and WSL**
 (five optional MolScribe tests deselected), plus relocated portable smoke
 checks. See the [candidate validation record](audits/0.3.0rc1/VALIDATION.md)
 for the exact build revision, ZIP hash, checks and their limitations.
-The owner's earlier interactive Windows test covered the preceding build,
-not this reduced Qt payload. It does not close the clean-machine gate above.
+The owner subsequently reported that the new candidate works well on their
+Windows setup. Record that as a successful user test, not a claim that all
+checklist items were individually exercised or that the machine was clean.
 
-## Remaining wheel provenance gaps
+## Review progress after owner testing
 
-The RDKit 2026.3.4 version-bump revision
-`cf74fc396a01ebb5915610033d57a7778a31f042` uses the runner's `vcpkg` with no
-`builtin-baseline` or dependency version pins in its manifest. Its recipe is
-useful evidence, but it does not alone establish the wheel's Cairo/FreeType/
-Pixman/Fontconfig input revisions. The candidate's DLL version resources show
-FreeType 2.14.3, Expat 2.8.2, zlib 1.3.2 and MSVCP 14.40.33810.0; not all DLLs
-provide version resources. Resolve the matching wheel build records and
-original notices before claiming complete coverage.
+- `verify_source_inputs.py` checked all 39 MSYS2 source containers and verified
+  150 nested source/patch hashes against their `.SRCINFO` declarations. Eighteen
+  detached signature files are explicitly marked `SKIP` upstream. Both Git
+  payloads subsequently passed pinned-commit object/tree checks, including
+  their declared `git archive` SHA-256 values; see
+  [VCS-SOURCES.json](audits/0.3.0rc1/VCS-SOURCES.json). The nested-input report is retained at
+  `.tools/release-audit/SOURCE-INPUTS.json`.
+- Pillow 12.2.0's bundled LICENSE already contains named dependency notices,
+  including FreeType, HarfBuzz, image codecs and compression libraries. It is
+  not limited to Pillow's own license. Keep that original combined file.
+- Read-only version APIs in the tested RDKit DLLs identify Cairo 1.18.4,
+  Pixman 0.46.4, Fontconfig 2.17.1, Brotli 1.2.0 and bzip2 1.0.8. These identify
+  upstream versions, not exact distributor patches.
+- Collected matching upstream NumPy 1.26.4, RDKit 2026.3.4 and Cairo 1.18.4
+  source archives. The [supplemental inventory](audits/0.3.0rc1/WHEEL-SOURCES.json)
+  records their hashes and explicitly does not claim complete source coverage.
+- The NumPy OpenBLAS DLL embeds the compiler identifier `Built by Jeroen for
+  the R-project` with GCC 10.3.0. This narrows the toolchain to legacy Rtools40's
+  UCRT toolchain, not the newer GCC collected for OSRA. The old Anaconda binary
+  link now returns HTML and its API endpoint returns 404; it was not accepted
+  as a source archive. The matching OpenBLAS/GCC sources and historic Rtools
+  build recipes have now been collected; see the updated provenance below.
 
-NumPy 1.26.4's helper pins OpenBLAS `v0.3.23-293-gc2f4bdbb`; the upstream
-commit resolves to `c2f4bdbbb43a1d20a7342f40122e18e573ce436a`. The runtime notice
-identifies statically linked GCC runtime components, including libquadmath.
-The exact GCC 10.3 toolchain patches and corresponding build/relink materials
-are not yet established. A later OpenBLAS build recipe or the OSRA GCC 16.2
-source package must not be substituted as proof of those inputs.
+## Microsoft runtime review — Visual Studio installation confirmed
+
+The owner subsequently installed **Visual Studio Community 2026** themselves
+and reported linking their GitHub account. A read-only `vswhere` check confirmed
+version **18.9.2** (`18.9.12120.119`) at
+`C:\Program Files\Microsoft Visual Studio\18\Community`: complete, launchable,
+on the stable Release channel, not prerelease, and with no reboot required.
+The previous "VS Code only" installation blocker is no longer current. No
+additional workloads were installed, and no license was accepted on the
+owner's behalf.
+
+Redistribution remains subject to the owner's eligibility and the applicable
+[Community 2026 terms](https://visualstudio.microsoft.com/license-terms/vs2026-ga-community/)
+and [2026 distributable-code list](https://learn.microsoft.com/en-us/visualstudio/releases/2026/redistribution).
+The installed `Licenses/1033/Redist.txt` points to that list. GitHub sign-in is
+not evidence of runtime redistribution rights, code signing, or publication.
+Do not copy arbitrary IDE DLLs as substitutes for documented redistributables.
+
+Read-only Authenticode checks returned `Valid` for all 12 runtime DLLs matched
+in the extracted candidate. Ten are Microsoft-signed; PySide6's
+`MSVCP140_1.dll` and `MSVCP140_2.dll` are signed by The QT Company Oy. Preserve
+that distinction when reviewing provenance and the unmodified-file conditions;
+a valid signature alone does not establish redistribution permission. See
+the [runtime check record](audits/0.3.0rc1/VALIDATION.md#runtime-signature-check-after-visual-studio-installation).
+
+The tested app and ZIP were not changed. The installation does not finish the
+remaining dependency notices/source review or sign MolRecognizer itself.
+End users do not need Visual Studio to run the portable app.
+
+## Wheel provenance recovered
+
+The matching RDKit build log records a wheel checksum identical to the
+candidate's wheel. Its actual checkout, runner/vcpkg revision, eleven native
+dependency inputs and patches are now identified. Seventeen additional
+archives include embedded RDKit libraries, full Boost source, the historic
+OpenBLAS source/recipe and the matching Rtools GCC 10.3.0 sources/patches.
+All eleven vcpkg downloads match the SHA-512 values in their pinned recipes.
+See [WHEEL-PROVENANCE.md](audits/0.3.0rc1/WHEEL-PROVENANCE.md) for exact pins,
+evidence and limitations. Header-based notices, including InChI's MIT grant,
+are collected in addition to top-level license files.
+
+These findings resolve the earlier unidentified-input gaps. The historic
+wheel/compiler builds and LGPL library replacement/relink procedure have
+not been reproduced locally. The collected notices still need integration
+into a new final bundle; the tested RC and Downloads copy remain unchanged.
+
+## Publication hold: CImg inside OSRA
+
+The exact OSRA 2.2.4 source archive (SHA-256
+`419d87fbf540338d881aaf6df6227785c7af8cbab73e487877a2fb182216bf46`)
+contains `src/CImg.h`, version macro `127` (1.2.7), with a CeCILL-C grant.
+`src/osra_anisotropic.cpp` includes that header and the GREYCstoration plugin;
+`src/Makefile` includes `osra_anisotropic.o` in the linked object list. This
+is not an unused file merely sitting beside the executable. Our Windows
+compatibility patch changes this header without changing its license.
+
+The [FSF license list](https://www.gnu.org/licenses/license-list.en.html#CeCILL-C)
+classifies CeCILL-C as GPL-incompatible. OSRA's own source is GPL-2.0-or-later
+and this build also links GPLv3 OCRAD. No explicit exception for this
+combination was found in the inspected OSRA source notices, README, COPYING
+or bundled Debian copyright files. The basic CeCILL license's GPL clause
+must not be assumed to apply to the distinct CeCILL-C license.
+
+This is a concrete compatibility question requiring clarification, not a
+legal ruling that every OSRA distribution is unlawful. Seek an applicable
+upstream permission/exception or informed licensing review before uploading
+this binary. An alternative build without the disputed code would require
+an explicit implementation decision and recognition regression testing;
+it must not silently replace the owner's tested build. Contacting upstream
+on the owner's behalf also requires approval. Merely installing Visual
+Studio, adding attribution files or supplying source does not answer this
+particular question. No public Release, tag or final-version build was made
+as part of this preparation.
+
+### Upstream inquiry status — 2026-09-07
+
+The owner authorized contacting OSRA's maintainer. Igor Filippov's address
+`igor.v.filippov@gmail.com` appears in the exact 2.2.4 README and the
+[official release directory's README](https://sourceforge.net/projects/osra/files/osra/2.2.4/).
+A [message template](OSRA-LICENSING-EMAIL.txt) was prepared locally. The owner
+subsequently confirmed that they sent the email to the maintainer.
+**Status: sent by the owner; awaiting a reply.** This is user-reported sending,
+not independent confirmation of delivery. The assistant did not send an email
+or create a support ticket, and no upstream response has been provided here.
+
+The inquiry also acknowledges the [official OSRA license page](https://sourceforge.net/p/osra/wiki/License/),
+which describes NCI-authored portions as public domain while preserving
+third-party license conditions. That clarification alone does not answer
+the CImg/GPL dependency-combination question. The message asks for applicable
+existing permissions rather than asserting that OSRA is unlawfully licensed.
 
 ## Source inventory
 
@@ -83,7 +187,7 @@ Both deliberately keep `license_review_complete: false`. Store raw archives
 outside Git; publish required source materials as a separate Release asset.
 The current [collection manifest](audits/0.3.0rc1/SOURCES.json) and
 [container inspection report](audits/0.3.0rc1/SOURCE-INSPECTION.json) are saved
-in Git. The roughly 527 MiB of local source materials under
+in Git. The roughly 940 MiB of collected source archives under
 `.tools/release-sources/` are an incomplete audit collection, **not** an already
 cleared corresponding-source release asset. Keep them for completion of the
 review; downloading them again is unnecessary.
@@ -100,6 +204,8 @@ The existing GitHub workflow builds a **no-OSRA** preview, not this full bundle.
 - [JBIG-KIT author/source](https://www.cl.cam.ac.uk/~mgk25/jbigkit/)
 - [MSYS2 source archive](https://repo.msys2.org/mingw/sources/)
 - [PySide 6.11.0 source](https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.11.0-src/)
-- [RDKit wheel build workflow at the 2026.3.4 version bump](https://github.com/kuelumbus/rdkit-pypi/blob/cf74fc396a01ebb5915610033d57a7778a31f042/.github/workflows/wheels.yml)
-- [Matching RDKit vcpkg manifest](https://github.com/kuelumbus/rdkit-pypi/blob/cf74fc396a01ebb5915610033d57a7778a31f042/vcpkg.json)
+- [Actual RDKit wheel build checkout](https://github.com/kuelumbus/rdkit-pypi/tree/692356f26710ad53595ad889b5b7946052da15cd)
+- [Matching vcpkg recipes](https://github.com/microsoft/vcpkg/tree/42e4e33e1505c9f47b58c21e0f557c1571b751ee)
 - [NumPy 1.26.4 OpenBLAS build helper](https://github.com/numpy/numpy/blob/v1.26.4/tools/openblas_support.py)
+- [Legacy Rtools40 toolchains](https://github.com/r-windows/docs)
+- [Visual Studio Community eligibility](https://visualstudio.microsoft.com/vs/community/)

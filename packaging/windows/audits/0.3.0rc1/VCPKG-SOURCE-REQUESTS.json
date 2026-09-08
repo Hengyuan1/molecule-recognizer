@@ -1,0 +1,137 @@
+{
+  "schema": 1,
+  "archives": [
+    {
+      "component": "rdkit-cairo",
+      "version": "1.18.4",
+      "port_version": 1,
+      "archive": "rdkit-cairo-1.18.4.tar.gz",
+      "url": "https://gitlab.freedesktop.org/cairo/cairo/-/archive/1.18.4/cairo-1.18.4.tar.gz",
+      "expected_hashes": {
+        "sha512": "663e6edf2718e8205e30ba309ac609ced9e88e6e1ec857fc48b345dfce82b044d58ec6b4a2d2b281fba30a659a368625ea7501f8b43fe26c137a7ebffdbaac91"
+      },
+      "declared_license": "LGPL-2.1-only OR MPL-1.1",
+      "recipe_archive": "vcpkg-42e4e33e.tar.gz"
+    },
+    {
+      "component": "rdkit-pixman",
+      "version": "0.46.4",
+      "port_version": 1,
+      "archive": "rdkit-pixman-0.46.4.tar.gz",
+      "url": "https://gitlab.freedesktop.org/pixman/pixman/-/archive/pixman-0.46.4/pixman-pixman-0.46.4.tar.gz",
+      "expected_hashes": {
+        "sha512": "f0abfef9bfd2d1c51995e1f4ffac0cedcd8e55dc2c404a5456f7673e837dd171613a8d4132744b10f0d3f7ec36726dc73f72c8cd109d954e904142d147b431b3"
+      },
+      "declared_license": "MIT AND BSD-2-Clause",
+      "recipe_archive": "vcpkg-42e4e33e.tar.gz"
+    },
+    {
+      "component": "rdkit-fontconfig",
+      "version": "2.17.1",
+      "port_version": 2,
+      "archive": "rdkit-fontconfig-2.17.1.tar.gz",
+      "url": "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/2.17.1/fontconfig-2.17.1.tar.gz",
+      "expected_hashes": {
+        "sha512": "8e05cad63cd0c5ca15d1359e19a605912198fcc0ec6ecc11d5a0ef596d72e795cd8128e4d350716e63cbc01612c3807b1455b8153901333790316170c9ef8e75"
+      },
+      "declared_license": "MIT",
+      "recipe_archive": "vcpkg-42e4e33e.tar.gz"
+    },
+    {
+      "component": "rdkit-freetype",
+      "version": "2.14.3",
+      "port_version": 0,
+      "archive": "rdkit-freetype-2.14.3.tar.gz",
+      "url": "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-2-14-3/freetype-VER-2-14-3.tar.gz",
+      "expected_hashes": {
+        "sha512": "c3b6b0cc4b428c9c647ab2148386901dfd315273b68051940e8fea6010d46fdd2913467c3ef58be0d499b8e2ef5a0f1a4cc5e739756155587f4f7dff08ef9695"
+      },
+      "declared_license": "FTL OR GPL-2.0-or-later",
+      "recipe_archive": "vcpkg-42e4e33e.tar.gz"
+    },
+    {
+      "component": "rdkit-pthreads",
+      "version": "3.0.0",
+      "port_version": 14,
+      "archive": "rdkit-pthreads-3.0.0.zip",
+      "url": "https://downloads.sourceforge.net/project/pthreads4w/pthreads4w-code-v3.0.0.zip",
+      "expected_hashes": {
+        "sha512": "49e541b66c26ddaf812edb07b61d0553e2a5816ab002edc53a38a897db8ada6d0a096c98a9af73a8f40c94283df53094f76b429b09ac49862465d8697ed20013"
+      },
+      "declared_license": "Apache-2.0",
+      "recipe_archive": "vcpkg-42e4e33e.tar.gz"
+    },
+    {
+      "component": "rdkit-dirent",
+      "version": "1.26",
+      "port_version": 0,
+      "archive": "rdkit-dirent-1.26.tar.gz",
+      "url": "https://github.com/tronkko/dirent/archive/1.26.tar.gz",
+      "expected_hashes": {
+        "sha512": "5dc3ae63247259e209f8a93c0be9369c094e6783bd0b9df41545067e4d807da2e5339509da03cfdb1ea1c2f9642b1fad33124b7b2ec7e649442cc6e561b0a3f9"
+      },
+      "declared_license": "MIT",
+      "recipe_archive": "vcpkg-42e4e33e.tar.gz"
+    },
+    {
+      "component": "rdkit-libpng",
+      "version": "1.6.58",
+      "port_version": 0,
+      "archive": "rdkit-libpng-1.6.58.tar.gz",
+      "url": "https://github.com/pnggroup/libpng/archive/v1.6.58.tar.gz",
+      "expected_hashes": {
+        "sha512": "65f54d805e1f7c46a5fc335b984e4cbd4f934e0f02fbf6673c13800b49a4c11fbeb4098eebfb33079527a56c3d933e97631f91ab68dbb31442982784f9241ace"
+      },
+      "declared_license": "libpng-2.0",
+      "recipe_archive": "vcpkg-42e4e33e.tar.gz"
+    },
+    {
+      "component": "rdkit-expat",
+      "version": "2.8.2",
+      "port_version": 0,
+      "archive": "rdkit-expat-2.8.2.tar.gz",
+      "url": "https://github.com/libexpat/libexpat/archive/R_2_8_2.tar.gz",
+      "expected_hashes": {
+        "sha512": "e60e6d6ae9d0115f41186f06f3854008054863f0b29a58d44142f5b30057a494337145d820b5e18270b8ca3e779e318a757fcc6bf64d6d204e5498df5eeb2195"
+      },
+      "declared_license": "MIT",
+      "recipe_archive": "vcpkg-42e4e33e.tar.gz"
+    },
+    {
+      "component": "rdkit-brotli",
+      "version": "1.2.0",
+      "port_version": 0,
+      "archive": "rdkit-brotli-1.2.0.tar.gz",
+      "url": "https://github.com/google/brotli/archive/v1.2.0.tar.gz",
+      "expected_hashes": {
+        "sha512": "f94542afd2ecd96cc41fd21a805a3da314281ae558c10650f3e6d9ca732b8425bba8fde312823f0a564c7de3993bdaab5b43378edab65ebb798cefb6fd702256"
+      },
+      "declared_license": "MIT",
+      "recipe_archive": "vcpkg-42e4e33e.tar.gz"
+    },
+    {
+      "component": "rdkit-bzip2",
+      "version": "1.0.8",
+      "port_version": 6,
+      "archive": "rdkit-bzip2-1.0.8.tar.gz",
+      "url": "https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz",
+      "expected_hashes": {
+        "sha512": "083f5e675d73f3233c7930ebe20425a533feedeaaa9d8cc86831312a6581cefbe6ed0d08d2fa89be81082f2a5abdabca8b3c080bf97218a1bd59dc118a30b9f3"
+      },
+      "declared_license": "bzip2-1.0.6",
+      "recipe_archive": "vcpkg-42e4e33e.tar.gz"
+    },
+    {
+      "component": "rdkit-zlib",
+      "version": "1.3.2",
+      "port_version": 1,
+      "archive": "rdkit-zlib-1.3.2.tar.gz",
+      "url": "https://github.com/madler/zlib/archive/v1.3.2.tar.gz",
+      "expected_hashes": {
+        "sha512": "16fea4df307a68cf0035858abe2fd550250618a97590e202037acd18a666f57afc10f8836cbbd472d54a0e76539d0e558cb26f059d53de52ff90634bbf4f47d4"
+      },
+      "declared_license": "Zlib",
+      "recipe_archive": "vcpkg-42e4e33e.tar.gz"
+    }
+  ]
+}

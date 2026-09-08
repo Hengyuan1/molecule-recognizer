@@ -1,0 +1,272 @@
+{
+  "schema": 1,
+  "license_review_complete": false,
+  "scope": "Additional wheel dependency sources and build recipes",
+  "limitations": [
+    "No downloaded code executed; no signature certification.",
+    "A source inventory is not a completed license review."
+  ],
+  "archives": [
+    {
+      "component": "rdkit-wheel-recipe",
+      "version": "2026.3.4",
+      "source_revision": "692356f26710ad53595ad889b5b7946052da15cd",
+      "archive": "rdkit-pypi-692356f2.tar.gz",
+      "url": "https://codeload.github.com/kuelumbus/rdkit-pypi/tar.gz/692356f26710ad53595ad889b5b7946052da15cd",
+      "provenance": "Job 87562203517 checked out this PR merge and reports the SHA-256 of the exact PyPI wheel used by the candidate",
+      "resolved_url": "https://codeload.github.com/kuelumbus/rdkit-pypi/tar.gz/692356f26710ad53595ad889b5b7946052da15cd",
+      "sha256": "e140046f0c5ee25a2edfe33899a5301b2aed2f5d2c2e46fe4c7cbd767e451586",
+      "size_bytes": 74408,
+      "verification": "HTTPS download; local SHA-256",
+      "archive_entries": 104,
+      "expected_hashes_verified": []
+    },
+    {
+      "component": "rdkit-vcpkg-recipes",
+      "source_revision": "42e4e33e1505c9f47b58c21e0f557c1571b751ee",
+      "archive": "vcpkg-42e4e33e.tar.gz",
+      "url": "https://codeload.github.com/microsoft/vcpkg/tar.gz/42e4e33e1505c9f47b58c21e0f557c1571b751ee",
+      "provenance": "RDKit job runner win22/20260706.237 documents vcpkg 42e4e33e15; compare selected port versions and patch names with the job log",
+      "resolved_url": "https://codeload.github.com/microsoft/vcpkg/tar.gz/42e4e33e1505c9f47b58c21e0f557c1571b751ee",
+      "sha256": "76391ebcd29846b677cb00b0640a65ee9fcc60cffea1bb792bcf13439ec9dc3c",
+      "size_bytes": 5297835,
+      "verification": "HTTPS download; local SHA-256",
+      "archive_entries": 17297,
+      "expected_hashes_verified": []
+    },
+    {
+      "component": "openblas",
+      "version": "0.3.23-293-gc2f4bdbb",
+      "source_revision": "c2f4bdbbb43a1d20a7342f40122e18e573ce436a",
+      "archive": "openblas-c2f4bdbb.tar.gz",
+      "url": "https://codeload.github.com/OpenMathLib/OpenBLAS/tar.gz/c2f4bdbbb43a1d20a7342f40122e18e573ce436a",
+      "resolved_url": "https://codeload.github.com/OpenMathLib/OpenBLAS/tar.gz/c2f4bdbbb43a1d20a7342f40122e18e573ce436a",
+      "sha256": "9c0f2b8d1f6839f8b0d1309417e06d38eabfa76ba52d9fe80f79df496d5afddc",
+      "size_bytes": 24274239,
+      "verification": "HTTPS download; local SHA-256",
+      "archive_entries": 12109,
+      "expected_hashes_verified": []
+    },
+    {
+      "component": "openblas-build-recipes",
+      "source_revision": "1949e84a97655ed586a2cb4b469e98efec8651c0",
+      "archive": "openblas-libs-1949e84a.tar.gz",
+      "url": "https://codeload.github.com/MacPython/openblas-libs/tar.gz/1949e84a97655ed586a2cb4b469e98efec8651c0",
+      "provenance": "Upstream July 31 2023 recipe update to c2f4bdb; retains Windows Rtools40 GCC 10.3 ILP64 build instructions",
+      "resolved_url": "https://codeload.github.com/MacPython/openblas-libs/tar.gz/1949e84a97655ed586a2cb4b469e98efec8651c0",
+      "sha256": "8fbe5d550d02573df25ddfab5f1307832ced617f2ffd9400ac559be51a717fec",
+      "size_bytes": 350783,
+      "verification": "HTTPS download; local SHA-256",
+      "archive_entries": 33,
+      "expected_hashes_verified": []
+    },
+    {
+      "component": "rtools-ucrt-recipes",
+      "source_revision": "c5344cc8c7e310ee4eee513b2381af2e75d65cb9",
+      "archive": "rtools-ucrt-c5344cc8.tar.gz",
+      "url": "https://codeload.github.com/r-windows/rtools-ucrt/tar.gz/c5344cc8c7e310ee4eee513b2381af2e75d65cb9",
+      "provenance": "Final GCC 10.3.0-9804 recipe revision before the Rtools40 20220206 installer pinned by OpenBLAS; includes compiler patches",
+      "resolved_url": "https://codeload.github.com/r-windows/rtools-ucrt/tar.gz/c5344cc8c7e310ee4eee513b2381af2e75d65cb9",
+      "sha256": "6540c9aeb9234f7438401257c1aacdeaaee8ef3d3877b14df50319042a1cd12f",
+      "size_bytes": 101725,
+      "verification": "HTTPS download; local SHA-256",
+      "archive_entries": 100,
+      "expected_hashes_verified": []
+    },
+    {
+      "component": "gcc-rtools-runtime-source",
+      "version": "10.3.0",
+      "archive": "gcc-10.3.0.tar.xz",
+      "url": "https://ftp.gnu.org/gnu/gcc/gcc-10.3.0/gcc-10.3.0.tar.xz",
+      "expected_hashes": {
+        "sha256": "64f404c1a650f27fc33da242e1f2df54952e3963a49e06e73f6940f3223ac344"
+      },
+      "resolved_url": "https://ftp.gnu.org/gnu/gcc/gcc-10.3.0/gcc-10.3.0.tar.xz",
+      "sha256": "64f404c1a650f27fc33da242e1f2df54952e3963a49e06e73f6940f3223ac344",
+      "size_bytes": 76692288,
+      "verification": "HTTPS download; local SHA-256",
+      "archive_entries": 106302,
+      "expected_hashes_verified": [
+        "sha256"
+      ]
+    },
+    {
+      "component": "avalon",
+      "version": "2.0.5-pre.3",
+      "archive": "AvalonToolkit_2.0.5-pre.3.tar.gz",
+      "url": "https://github.com/rdkit/ava-formake/archive/refs/tags/AvalonToolkit_2.0.5-pre.3.tar.gz",
+      "expected_hashes": {
+        "md5": "7a20c25a7e79f3344e0f9f49afa03351"
+      },
+      "resolved_url": "https://codeload.github.com/rdkit/ava-formake/tar.gz/refs/tags/AvalonToolkit_2.0.5-pre.3",
+      "sha256": "a553cc9e04c2485891a2e215e309b71db62161b4cb2bff8efbb074c72441c487",
+      "size_bytes": 556017,
+      "verification": "HTTPS download; local SHA-256",
+      "archive_entries": 194,
+      "expected_hashes_verified": [
+        "md5"
+      ]
+    },
+    {
+      "component": "freesasa",
+      "version": "2.0.3",
+      "archive": "freesasa-2.0.3.tar.gz",
+      "url": "https://github.com/mittinatten/freesasa/releases/download/2.0.3/freesasa-2.0.3.tar.gz",
+      "resolved_url": "https://release-assets.githubusercontent.com/github-production-release-asset/10760758/dc16f04a-2c3e-11e8-8fb8-8dbd16bb6646",
+      "sha256": "ba1d4f7e9dd51ae2452b5c3a80ac34039d51da4826dae1dbe173cd7a1d6aca94",
+      "size_bytes": 852096,
+      "verification": "HTTPS download; local SHA-256",
+      "archive_entries": 157,
+      "expected_hashes_verified": []
+    },
+    {
+      "component": "maeparser",
+      "version": "1.3.3",
+      "archive": "maeparser-1.3.3.tar.gz",
+      "url": "https://github.com/schrodinger/maeparser/archive/v1.3.3.tar.gz",
+      "expected_hashes": {
+        "md5": "c43dfb89c495512f695ce018b32ac749"
+      },
+      "resolved_url": "https://codeload.github.com/schrodinger/maeparser/tar.gz/refs/tags/v1.3.3",
+      "sha256": "78e7571a779ea4952e752ecef57c62fb26463947e29ef7f4b31b11988d88ca07",
+      "size_bytes": 39896,
+      "verification": "HTTPS download; local SHA-256",
+      "archive_entries": 38,
+      "expected_hashes_verified": [
+        "md5"
+      ]
+    },
+    {
+      "component": "coordgen",
+      "version": "3.0.2",
+      "archive": "coordgenlibs-3.0.2.tar.gz",
+      "url": "https://github.com/schrodinger/coordgenlibs/archive/v3.0.2.tar.gz",
+      "expected_hashes": {
+        "md5": "bc9dabbbb2b99ae426f3a1bf16c4d3cc"
+      },
+      "resolved_url": "https://codeload.github.com/schrodinger/coordgenlibs/tar.gz/refs/tags/v3.0.2",
+      "sha256": "f67697434f7fec03bca150a6d84ea0e8409f6ec49d5aab43badc5833098ff4e3",
+      "size_bytes": 166817,
+      "verification": "HTTPS download; local SHA-256",
+      "archive_entries": 77,
+      "expected_hashes_verified": [
+        "md5"
+      ]
+    },
+    {
+      "component": "inchi",
+      "version": "1.07.3",
+      "archive": "inchi-1.07.3.zip",
+      "url": "https://github.com/IUPAC-InChI/InChI/releases/download/v1.07.3/INCHI-1-SRC.zip",
+      "expected_hashes": {
+        "md5": "b761f37a7d3a3ff8574daf6906993759"
+      },
+      "resolved_url": "https://release-assets.githubusercontent.com/github-production-release-asset/738653530/aebf0940-4e8b-449d-a1c0-b28b05dbb4c4",
+      "sha256": "b42d828b5d645bd60bc43df7e0516215808d92e5a46c28e12b1f4f75dfaae333",
+      "size_bytes": 6513779,
+      "verification": "HTTPS download; local SHA-256",
+      "archive_entries": 292,
+      "expected_hashes_verified": [
+        "md5"
+      ]
+    },
+    {
+      "component": "ringdecomposerlib",
+      "version": "1.1.3_rdkit",
+      "archive": "RingDecomposerLib-1.1.3_rdkit.tar.gz",
+      "url": "https://github.com/rareylab/RingDecomposerLib/archive/v1.1.3_rdkit.tar.gz",
+      "expected_hashes": {
+        "md5": "e9a0bcdda8b921a35e812b9888a9a874"
+      },
+      "resolved_url": "https://codeload.github.com/rareylab/RingDecomposerLib/tar.gz/refs/tags/v1.1.3_rdkit",
+      "sha256": "944b5816712a48bbf88aa25d4300ce11871ddf6e971218eac08f90ed2192f715",
+      "size_bytes": 137931,
+      "verification": "HTTPS download; local SHA-256",
+      "archive_entries": 107,
+      "expected_hashes_verified": [
+        "md5"
+      ]
+    },
+    {
+      "component": "pubchem-align3d",
+      "source_revision": "daefab3",
+      "archive": "pubchem-align3d-daefab3.tar.gz",
+      "url": "https://github.com/ncbi/pubchem-align3d/archive/daefab3.tar.gz",
+      "expected_hashes": {
+        "md5": "a78a6273851709083ac3803d62cb5ae6"
+      },
+      "resolved_url": "https://codeload.github.com/ncbi/pubchem-align3d/tar.gz/daefab3dd0c90ca56da9d3d5e375fe4d651e6be3",
+      "sha256": "4871a08104c660890015f27d32a0147fc32df69a8962ca5cd1fe54ef6319c779",
+      "size_bytes": 112426,
+      "verification": "HTTPS download; local SHA-256",
+      "archive_entries": 16,
+      "expected_hashes_verified": [
+        "md5"
+      ]
+    },
+    {
+      "component": "chemdraw",
+      "version": "1.0.14",
+      "archive": "chemdraw-1.0.14.tar.gz",
+      "url": "https://codeload.github.com/Glysade/chemdraw/tar.gz/refs/tags/v1.0.14",
+      "expected_hashes": {
+        "md5": "44be1a8e5bd41faaa238a6d584ca258b"
+      },
+      "resolved_url": "https://codeload.github.com/Glysade/chemdraw/tar.gz/refs/tags/v1.0.14",
+      "sha256": "bedd75643b9bfaee1663fc41814370ac9329c8d0934e970179929cb355a82aff",
+      "size_bytes": 530904,
+      "verification": "HTTPS download; local SHA-256",
+      "archive_entries": 492,
+      "expected_hashes_verified": [
+        "md5"
+      ]
+    },
+    {
+      "component": "better-enums",
+      "version": "0.11.3",
+      "source_revision": "c35576bed0295689540b39873126129adfa0b4c8",
+      "archive": "better-enums-c35576be.tar.gz",
+      "url": "https://codeload.github.com/aantron/better-enums/tar.gz/c35576bed0295689540b39873126129adfa0b4c8",
+      "resolved_url": "https://codeload.github.com/aantron/better-enums/tar.gz/c35576bed0295689540b39873126129adfa0b4c8",
+      "sha256": "9b78dcef7f88d1345b6f25335bfbcba5f024b08990c7d6dc605b833f4128b8dd",
+      "size_bytes": 137228,
+      "verification": "HTTPS download; local SHA-256",
+      "archive_entries": 120,
+      "expected_hashes_verified": []
+    },
+    {
+      "component": "boost-rdkit",
+      "version": "1.85.0",
+      "archive": "boost_1_85_0.tar.bz2",
+      "url": "https://archives.boost.io/release/1.85.0/source/boost_1_85_0.tar.bz2",
+      "expected_hashes": {
+        "sha256": "7009fe1faa1697476bdc7027703a2badb84e849b7b0baad5086b087b971f8617"
+      },
+      "resolved_url": "https://archives.boost.io/release/1.85.0/source/boost_1_85_0.tar.bz2",
+      "sha256": "7009fe1faa1697476bdc7027703a2badb84e849b7b0baad5086b087b971f8617",
+      "size_bytes": 124015250,
+      "verification": "HTTPS download; local SHA-256",
+      "archive_entries": 85080,
+      "expected_hashes_verified": [
+        "sha256"
+      ]
+    },
+    {
+      "component": "yaehmop",
+      "version": "2025.03.2",
+      "archive": "yaehmop-2025.03.2.tar.gz",
+      "url": "https://github.com/greglandrum/yaehmop/archive/refs/tags/v2025.03.2.tar.gz",
+      "expected_hashes": {
+        "md5": "54585c09b0c3c464e4e88c6b71a36db9"
+      },
+      "resolved_url": "https://codeload.github.com/greglandrum/yaehmop/tar.gz/refs/tags/v2025.03.2",
+      "sha256": "b55481bea135a9dc2da5f0f32535a25195e8e74414af480d04edb8ce9959efe9",
+      "size_bytes": 2188719,
+      "verification": "HTTPS download; local SHA-256",
+      "archive_entries": 260,
+      "expected_hashes_verified": [
+        "md5"
+      ]
+    }
+  ]
+}

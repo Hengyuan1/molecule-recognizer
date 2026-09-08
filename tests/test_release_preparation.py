@@ -1,6 +1,7 @@
 """Release-source collection and Qt-payload policy without Windows or network."""
 
 import importlib.util
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -15,6 +16,93 @@ def module(name):
     result = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(result)
     return result
+
+
+def packaging_module(name, monkeypatch):
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[1] / "packaging/windows"))
+    return module(name)
+
+
+def test_source_receipts_do_not_publish_signed_download_parameters():
+    assert module("fetch_release_sources").public_origin(
+        "https://example.org/source.zip?sig=temporary&jwt=temporary#fragment"
+    ) == "https://example.org/source.zip"
+
+
+@pytest.mark.parametrize("name", ["../file.tar.gz", "/file.tar.gz", "x\\file.zip", "x:foo.zip", "file.html"])
+def test_additional_source_request_rejects_unsafe_names(name, monkeypatch):
+    with pytest.raises(ValueError, match="Unsafe"):
+        packaging_module("collect_additional_sources", monkeypatch).validate_request(
+            {"archive": name, "url": "https://example.org/source"})
+
+
+def test_additional_source_checks_declared_hash_and_container(tmp_path, monkeypatch):
+    collector = packaging_module("collect_additional_sources", monkeypatch)
+    path = tmp_path / "source.tar.xz"
+    qt_archive(path, {"source/LICENSE": "original"})
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    assert collector.check_archive(path, {"expected_hashes": {"sha256": digest}}) == 1
+    with pytest.raises(ValueError, match="mismatch"):
+        collector.check_archive(path, {"expected_hashes": {"sha256": "0" * 64}})
+    path.write_bytes(b"<html>not an archive</html>")
+    with pytest.raises(tarfile.ReadError):
+        collector.check_archive(path, {})
+
+
+def test_additional_source_zip_never_extracts_and_rejects_traversal(tmp_path, monkeypatch):
+    import zipfile
+    collector = packaging_module("collect_additional_sources", monkeypatch)
+    path = tmp_path / "source.zip"
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("../LICENSE", "untrusted")
+    with pytest.raises(ValueError, match="Unsafe"):
+        collector.check_archive(path, {})
+    assert not (tmp_path.parent / "LICENSE").exists()
+
+
+@pytest.mark.parametrize("name", ["LICENSE", "license.txt", "OFL.txt", "docs/FTL.TXT", "font_license.txt"])
+def test_original_notice_filename_selection(name, monkeypatch):
+    assert packaging_module("collect_source_notices", monkeypatch).is_notice(Path(name).name)
+
+
+def test_source_notices_preserve_complete_inline_inchi_license(tmp_path, monkeypatch):
+    collector = packaging_module("collect_source_notices", monkeypatch)
+    path = tmp_path / "source.tar.xz"
+    notice = "/* Copyright Example\n * Permission notice and disclaimer.\n */\n"
+    qt_archive(path, {"inchi/src/example.c": notice + "int main() { return 0; }"})
+    records = collector.extract_notices(path, "inchi", tmp_path / "notices")
+    assert len(records) == 1
+    assert (tmp_path / "notices/inchi/src/example.c.notice.txt").read_text() == notice
+
+
+def test_source_notices_refuse_changed_output(tmp_path, monkeypatch):
+    collector = packaging_module("collect_source_notices", monkeypatch)
+    path = tmp_path / "source.tar.xz"
+    qt_archive(path, {"source/LICENSE": "original"})
+    output = tmp_path / "notices"
+    collector.extract_notices(path, "component", output)
+    (output / "component/LICENSE").write_text("user edit")
+    with pytest.raises(ValueError, match="overwrite"):
+        collector.extract_notices(path, "component", output)
+    assert (output / "component/LICENSE").read_text() == "user edit"
+
+
+@pytest.mark.parametrize("component", [".", ".."])
+def test_source_notice_component_cannot_escape_destination(tmp_path, monkeypatch, component):
+    with pytest.raises(ValueError, match="Unsafe component"):
+        packaging_module("collect_source_notices", monkeypatch).extract_notices(
+            tmp_path / "unopened.tar.gz", component, tmp_path / "notices")
+
+
+def test_source_notices_reject_windows_path_and_case_collisions(tmp_path, monkeypatch):
+    collector = packaging_module("collect_source_notices", monkeypatch)
+    path = tmp_path / "source.tar.xz"
+    qt_archive(path, {"source/C:/LICENSE": "bad"})
+    with pytest.raises(ValueError, match="Unsafe"):
+        collector.extract_notices(path, "component", tmp_path / "notices")
+    qt_archive(path, {"source/LICENSE": "one", "source/license": "two"})
+    with pytest.raises(ValueError, match="Duplicate"):
+        collector.extract_notices(path, "component", tmp_path / "notices")
 
 
 @pytest.mark.parametrize("path", ["PySide6/Qt6VirtualKeyboard.dll",
@@ -115,3 +203,104 @@ def test_inspector_rejects_license_path_traversal(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="Unsafe archive path"):
         module("inspect_release_sources").inspect_qt(archive, "qtbase", tmp_path / "notices")
     assert not (tmp_path / "LICENSE.txt").exists()
+
+
+def source_package(path, content=b"source payload", *, extra=(), expected=None):
+    checksum = expected or hashlib.sha256(content).hexdigest()
+    metadata = ("pkgbase = example\n\tpkgver = 1.0\n\tpkgrel = 1\n"
+                "\tsource = source.tar.gz::https://example.org/source\n"
+                f"\tsha256sums = {checksum}\n")
+    with tarfile.open(path, "w") as archive:
+        for name, payload in [("example/.SRCINFO", metadata.encode()),
+                              ("example/PKGBUILD", b"never execute this recipe"),
+                              ("example/source.tar.gz", content), *extra]:
+            member = tarfile.TarInfo(name)
+            member.size = len(payload)
+            archive.addfile(member, io.BytesIO(payload))
+
+
+def test_nested_source_hash_is_verified_without_execution(tmp_path):
+    archive = tmp_path / "sources.tar"
+    source_package(archive)
+    result = module("verify_source_inputs").verify_package(archive, "example", "1.0-1")
+    assert result["all_inputs_hash_verified"]
+    assert result["inputs"][0]["verified_algorithms"] == ["sha256"]
+
+
+def test_nested_source_hash_mismatch_fails(tmp_path):
+    archive = tmp_path / "sources.tar"
+    source_package(archive, expected="0" * 64)
+    with pytest.raises(ValueError, match="sha256 mismatch"):
+        module("verify_source_inputs").verify_package(archive, "example", "1.0-1")
+
+
+def test_source_package_identity_is_verified(tmp_path):
+    archive = tmp_path / "sources.tar"
+    source_package(archive)
+    with pytest.raises(ValueError, match="identity mismatch"):
+        module("verify_source_inputs").verify_package(archive, "example", "2.0-1")
+
+
+@pytest.mark.parametrize("name", ["../outside", "/outside", "example/../outside", "example\\outside"])
+def test_source_hash_checker_rejects_unsafe_entries(tmp_path, name):
+    archive = tmp_path / "sources.tar"
+    source_package(archive, extra=[(name, b"invalid")])
+    with pytest.raises(ValueError, match="Unsafe archive path"):
+        module("verify_source_inputs").verify_package(archive, "example", "1.0-1")
+
+
+def test_source_hash_checker_rejects_duplicate_entries(tmp_path):
+    archive = tmp_path / "sources.tar"
+    source_package(archive, extra=[("example/source.tar.gz", b"second payload")])
+    with pytest.raises(ValueError, match="Duplicate source entry"):
+        module("verify_source_inputs").verify_package(archive, "example", "1.0-1")
+
+
+def test_source_hash_checker_rejects_symlinks(tmp_path):
+    archive = tmp_path / "sources.tar"
+    source_package(archive)
+    with tarfile.open(archive, "a") as output:
+        member = tarfile.TarInfo("example/link")
+        member.type = tarfile.SYMTYPE
+        member.linkname = "/outside"
+        output.addfile(member)
+    with pytest.raises(ValueError, match="non-file source entry"):
+        module("verify_source_inputs").verify_package(archive, "example", "1.0-1")
+
+
+def test_architecture_specific_inputs_keep_matching_checksums():
+    checker = module("verify_source_inputs")
+    fields = checker.fields_from_srcinfo("source_x86_64 = source.c\nsha256sums_x86_64 = abc\n")
+    result = checker.verify_payload(fields, {"source.c": {"sha256": "abc"}}, {"source.c"})
+    assert result[0]["status"] == "hash-verified"
+    assert result[0]["group"] == "source_x86_64"
+
+
+def test_source_checksum_count_must_match():
+    with pytest.raises(ValueError, match="Checksum count"):
+        module("verify_source_inputs").verify_payload(
+            {"source": ["one", "two"], "sha256sums": ["abc"]}, {}, set())
+
+
+def test_skip_and_vcs_are_never_claimed_hash_verified():
+    checker = module("verify_source_inputs")
+    fields = {"source": ["source.sig", "repo::git+https://example.org/repo#commit=" + "a" * 40],
+              "sha256sums": ["SKIP", "a" * 64]}
+    results = checker.verify_payload(fields, {"source.sig": {"sha256": "abc"}},
+                                     {"source.sig", "repo/objects/pack/example.pack"})
+    assert [r["status"] for r in results] == ["present-not-hash-verified",
+                                             "vcs-payload-present-not-verified"]
+
+
+def test_missing_source_and_vcs_payload_fail():
+    checker = module("verify_source_inputs")
+    for source in ("missing", "repo::git+https://example.org/repo"):
+        with pytest.raises(ValueError, match="Missing"):
+            checker.verify_payload({"source": [source]}, {}, set())
+
+
+@pytest.mark.parametrize("source", ["../file::https://example.org/a", "..::https://example.org/a",
+                                     "x\\y::https://example.org/a"])
+def test_source_alias_cannot_escape_package(source):
+    with pytest.raises(ValueError, match="Unsafe source filename"):
+        module("verify_source_inputs").source_filename(source)
