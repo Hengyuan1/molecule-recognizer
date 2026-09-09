@@ -1072,9 +1072,7 @@ class MainWindow(QMainWindow):
         self._palette.setMinimumWidth(round(52 * scale))
         self._palette.setMaximumWidth(round(80 * scale))
         self._palette.apply_scale(scale)
-        self._editor._toolbar.setMinimumHeight(round(46 * scale))
-        for button in self._editor._toolbar.findChildren(QToolButton):
-            button.setIconSize(QSize(round(20 * scale), round(20 * scale)))
+        self._editor._toolbar.apply_scale(scale)
         self._bottom_bar.setMinimumHeight(round(80 * scale))
         self._splitter.setHandleWidth(max(3, round(3 * scale)))
         self._comparison_splitter.setHandleWidth(max(5, round(6 * scale)))

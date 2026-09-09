@@ -157,7 +157,10 @@ def test_split_button_arrow_has_its_own_space_and_click_target(tmp_path, scale):
                                                       QStyle.SubControl.SC_ToolButtonMenu, button)
             assert menu_rect.width() >= round(22 * {scale}), (button.text(), menu_rect)
             assert button.rect().contains(menu_rect)
-            assert menu_rect.left() > option.fontMetrics.horizontalAdvance(button.text()), (button.text(), button.size(), menu_rect)
+            content_width = (button.iconSize().width()
+                             if button.toolButtonStyle() == Qt.ToolButtonStyle.ToolButtonIconOnly
+                             else option.fontMetrics.horizontalAdvance(button.text()))
+            assert menu_rect.left() > content_width, (button.text(), button.size(), menu_rect)
             # Verify that the SVG chevron, not a native theme glyph, was drawn.
             pixmap = button.grab()
             pixmap.save(str(Path(sys.argv[1]) / f'dropdown-{{index}}.png'))

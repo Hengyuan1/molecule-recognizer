@@ -15,7 +15,7 @@ def smoke_test(report_path: Path, *, require_osra: bool = False) -> int:
     app = None
     os.environ["QT_QPA_PLATFORM"] = "offscreen"
     try:
-        from PySide6.QtCore import QEventLoop, QSettings, QTimer
+        from PySide6.QtCore import QEventLoop, QSettings, QTimer, Qt
         from PySide6.QtGui import QAction, QFont, QIcon
         from PySide6.QtWidgets import QApplication
         from rdkit import Chem
@@ -55,6 +55,14 @@ def smoke_test(report_path: Path, *, require_osra: bool = False) -> int:
                 raise RuntimeError("Main window is not using the application icon")
             report["checks"].append("multi-size application icon and title-bar identity")
             report["checks"].append("Qt window, icons and SMILES editor")
+            toolbar = window._editor._toolbar
+            for key in ("ring", "charge+", "charge-"):
+                button = toolbar._tool_buttons[key]
+                if (button.icon().isNull()
+                        or button.toolButtonStyle() != Qt.ToolButtonStyle.ToolButtonIconOnly
+                        or button.iconSize().width() <= toolbar._tool_buttons["bond"].iconSize().width()):
+                    raise RuntimeError(f"Missing large toolbar symbol: {key}")
+            report["checks"].append("large ring and charge toolbar icons")
             material_index = application_directory() / "licenses/release-materials/MATERIALS.json"
             if material_index.is_file():
                 if not any(action.text().startswith("Third-party licenses")

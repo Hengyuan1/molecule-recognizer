@@ -30,21 +30,12 @@ BOND_TYPES = [
 
 # (label, tool_data_key, n_sides, aromatic)
 RING_TYPES = [
-    ("\u232C Benzene", "benzene", 6, True),     # ⌬
-    ("\u2B21 6-ring", "ring6", 6, False),        # ⬡
-    ("\u2B20 5-ring", "ring5", 5, False),        # ⬠
-    ("\u25A1 4-ring", "ring4", 4, False),         # □
-    ("\u25B3 3-ring", "ring3", 3, False),         # △
+    ("Benzene", "benzene", 6, True),
+    ("6-ring", "ring6", 6, False),
+    ("5-ring", "ring5", 5, False),
+    ("4-ring", "ring4", 4, False),
+    ("3-ring", "ring3", 3, False),
 ]
-
-# Short labels for the button face
-_RING_SHORT = {
-    "benzene": "\u232C",
-    "ring6": "\u2B21",
-    "ring5": "\u2B20",
-    "ring4": "\u25A1",
-    "ring3": "\u25B3",
-}
 
 
 class EditorToolbar(QWidget):
@@ -119,9 +110,11 @@ class EditorToolbar(QWidget):
 
         # Ring button with dropdown for ring-type selection
         self._ring_btn = QToolButton()
-        self._ring_btn.setText("\u232C")        # default: benzene ⌬
+        self._ring_btn.setText("Benzene")
+        self._ring_btn.setToolTip("Draw benzene (dropdown to choose a ring)")
+        self._ring_btn.setIcon(workbench_icon("benzene"))
         self._ring_btn.setCheckable(True)
-        self._ring_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        self._ring_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
         self._ring_btn.setPopupMode(
             QToolButton.ToolButtonPopupMode.MenuButtonPopup)
         self._ring_btn.clicked.connect(lambda: self._on_tool_click("ring"))
@@ -130,7 +123,7 @@ class EditorToolbar(QWidget):
         self._ring_action_group = QActionGroup(self)
         self._ring_action_group.setExclusive(True)
         for label, key, _n, _aro in RING_TYPES:
-            action = ring_menu.addAction(label)
+            action = ring_menu.addAction(workbench_icon(key), label)
             action.setCheckable(True)
             action.setData(key)
             self._ring_action_group.addAction(action)
@@ -146,8 +139,13 @@ class EditorToolbar(QWidget):
         row.addWidget(self._sep())
 
         # Charge buttons (in the exclusive group so they act as tools)
-        self._make_tool_button("\u2295", "charge+", row)   # ⊕
-        self._make_tool_button("\u2296", "charge-", row)   # ⊖
+        self._make_tool_button("Increase charge", "charge+", row)
+        self._make_tool_button("Decrease charge", "charge-", row)
+        for name, delta in (("charge+", "+1"), ("charge-", "−1")):
+            button = self._tool_buttons[name]
+            button.setIcon(workbench_icon(name))
+            button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+            button.setToolTip(f"{button.text()} ({delta})")
 
         row.addWidget(self._sep())
 
@@ -194,10 +192,20 @@ class EditorToolbar(QWidget):
             button.setIcon(workbench_icon(name))
             button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
         for button in self.findChildren(QToolButton):
-            button.setIconSize(QSize(20, 20))
             button.setAccessibleName(button.text())
+        self.apply_scale(1.0)
 
     # -- helpers -----------------------------------------------------------
+
+    def apply_scale(self, scale: float):
+        """Keep standalone chemistry symbols legible at every UI/DPI scale."""
+        self.setMinimumHeight(round(46 * scale))
+        symbol_buttons = (self._ring_btn, self._tool_buttons["charge+"],
+                          self._tool_buttons["charge-"])
+        for button in self.findChildren(QToolButton):
+            base_size = 24 if button in symbol_buttons else 20
+            size = round(base_size * scale)
+            button.setIconSize(QSize(size, size))
 
     @staticmethod
     def _sep() -> QFrame:
@@ -246,8 +254,11 @@ class EditorToolbar(QWidget):
 
     def _on_ring_menu_triggered(self, action):
         key = action.data()
-        # Update button label to show selected ring
-        self._ring_btn.setText(_RING_SHORT.get(key, "\u232C"))
+        # The icon reflects the selected ring without depending on font glyphs.
+        self._ring_btn.setIcon(action.icon())
+        self._ring_btn.setText(action.text())
+        self._ring_btn.setAccessibleName(action.text())
+        self._ring_btn.setToolTip(f"Draw {action.text().lower()} (dropdown to choose a ring)")
         self.ring_type_changed.emit(key)
         # Also activate the ring tool
         self._ring_btn.setChecked(True)
