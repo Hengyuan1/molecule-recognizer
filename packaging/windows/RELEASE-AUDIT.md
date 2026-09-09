@@ -4,6 +4,30 @@ Status: **0.3.0rc1 built and tested locally; not cleared for public distribution
 This is an engineering inventory and release checklist, not legal advice or
 a certification that every bundled license obligation has been satisfied.
 
+## 0.3.0 preparation — 2026-09-08
+
+The owner reports receiving a supportive reply from CImg's maintainer and
+having replied to his compatibility question. This is not recorded as a new
+license grant. At the owner's request, work continues on final-version notice
+integration, source packaging and Windows validation **while public upload
+remains pending**. No recognition algorithm or CImg license is changed.
+
+The source version is now 0.3.0 for local preparation. `release_materials.py`
+checks original notice hashes against exact source inputs, recovers Qt notices,
+and includes `DEPENDENCY-LICENSES.md`, source/replacement instructions and the
+original CImg/GREYCstoration notices. Cairo's per-file copyright headers are
+also preserved. `build.py` requires these materials and a source revision for
+stable OSRA builds, and verifies their package versions before building.
+The GUI exposes the bundled notices through Help → Third-party licenses.
+
+`validate_release.py` checks the exact extracted ZIP, matches it to the source
+ZIP revision, verifies every inner source hash, runs PE/import and relocated
+EXE checks, and optionally records Defender scans. The final interactive
+acceptance form is `TEST-CHECKLIST.md`. These tools do not publish a Release,
+tag, install over the owner's working copy, or claim licensing clearance.
+Results for the final-version artifacts are recorded separately from the
+historical RC results below.
+
 ## Findings from the tested 0.2.0 portable bundle
 
 - All 39 MSYS2 package bases/versions owning the 51 OSRA dependency DLLs and
@@ -168,15 +192,36 @@ The owner authorized contacting OSRA's maintainer. Igor Filippov's address
 [official release directory's README](https://sourceforge.net/projects/osra/files/osra/2.2.4/).
 A [message template](OSRA-LICENSING-EMAIL.txt) was prepared locally. The owner
 subsequently confirmed that they sent the email to the maintainer.
-**Status: sent by the owner; awaiting a reply.** This is user-reported sending,
-not independent confirmation of delivery. The assistant did not send an email
-or create a support ticket, and no upstream response has been provided here.
+The owner subsequently provided the maintainer's reply: it explains his
+understanding of the CeCILL family and recommends asking the CImg/GREYCstoration
+developers for further clarification. This is not recorded as a new license
+exception. The assistant did not send the email, and its private text has not
+been published in an upstream issue.
 
 The inquiry also acknowledges the [official OSRA license page](https://sourceforge.net/p/osra/wiki/License/),
 which describes NCI-authored portions as public domain while preserving
 third-party license conditions. That clarification alone does not answer
 the CImg/GPL dependency-combination question. The message asks for applicable
 existing permissions rather than asserting that OSRA is unlawfully licensed.
+
+### CImg follow-up
+
+At the owner's request, a focused public question was posted from `Hengyuan1`
+to CImg's official GitHub issue tracker:
+[GreycLab/CImg #492 — License option for legacy CImg 1.2.7 bundled in OSRA](https://github.com/GreycLab/CImg/issues/492).
+The [posted message](CIMG-LICENSING-QUESTION.md) contains public technical
+details, not the private email exchange. Status: posted; awaiting clarification.
+
+The [current CImg website](https://cimg.eu/) explicitly describes the core as
+dual-licensed under CeCILL-C or GPL-compatible CeCILL, and identifies David
+Tschumperlé as project manager. This is useful additional evidence beyond the
+CeCILL-C notice in OSRA's older header. The question asks whether the alternative
+CeCILL grant also covers that legacy 1.2.7 code, which license version/notices
+apply, or whether another documented permission is needed. It does not assume
+that the modern grant automatically applies retroactively. No dependency
+license or recognition implementation has been changed. The owner has since
+replied to the maintainer and authorized local 0.3.0 release preparation while
+the focused compatibility question remains pending.
 
 ## Source inventory
 

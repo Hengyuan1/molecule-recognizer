@@ -1,6 +1,6 @@
 [project]
 name = "molrecognizer"
-version = "0.3.0rc1"
+version = "0.3.0"
 description = "Recognize molecular structures from images, convert to SMILES, and edit interactively"
 readme = "README.md"
 license = { text = "MIT" }

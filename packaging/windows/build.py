@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
 import struct
 import subprocess
@@ -110,6 +111,15 @@ def build(args) -> Path:
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     version = metadata.version("molrecognizer")
+    materials = getattr(args, "release_materials_dir", None)
+    if re.fullmatch(r"\d+\.\d+\.\d+", version) and osra and (materials is None or source_revision is None):
+        raise ValueError("A stable OSRA build requires --release-materials-dir and --source-revision")
+    material_index = None
+    if materials is not None:
+        from release_materials import verify_materials
+        expected_versions = {name: metadata.version(name) for name in
+                             json.loads((materials / "MATERIALS.json").read_text(encoding="utf-8"))["packages"]}
+        material_index = verify_materials(materials, expected_versions)
     label = f"MolRecognizer-{version}-windows-x64" + ("" if osra else "-no-osra")
     archive = output / f"{label}.zip"
     if archive.exists():
@@ -150,6 +160,11 @@ def build(args) -> Path:
                      helper_dir / "MolRecognizerCapture.exe")
     }
     versions = collect_licenses(bundle / "licenses")
+    if materials is not None:
+        shutil.copytree(materials, bundle / "licenses/release-materials")
+        verify_materials(bundle / "licenses/release-materials", versions)
+        shutil.copy2(materials / "SOURCE-README.md", bundle / "SOURCE-ACCESS.md")
+        shutil.copy2(ROOT / "packaging/windows/RELEASE-NOTES-0.3.0.md", bundle / "RELEASE-NOTES.md")
     qt_notices = getattr(args, "qt_notices_dir", None)
     if qt_notices is not None:
         for component in ("qtbase", "qtsvg", "qtimageformats", "pyside-setup"):
@@ -162,7 +177,12 @@ def build(args) -> Path:
                 "python": sys.version, "packages": versions, "signed": False,
                 "source_revision": source_revision,
                 "release_status": "candidate-not-cleared-for-publication",
-                "qt_source_notices_included": qt_notices is not None,
+                "qt_source_notices_included": qt_notices is not None or materials is not None,
+                "release_materials_included": materials is not None,
+                "release_materials_sha256": (hashlib.sha256((materials / "MATERIALS.json").read_bytes()).hexdigest()
+                                              if materials else None),
+                "release_material_file_count": len(material_index["files"]) if material_index else 0,
+                "source_archive": f"MolRecognizer-{version}-sources.zip" if materials else None,
                 "embedded_icon_sizes": embedded_icons}
     (bundle / "BUILD-INFO.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     if not osra:
@@ -212,6 +232,8 @@ def main():
     parser.add_argument("--source-revision", help="Full commit hash for a build from that verified source revision")
     parser.add_argument("--qt-notices-dir", type=Path,
                         help="Original notices extracted from matching Qt sources by inspect_release_sources.py")
+    parser.add_argument("--release-materials-dir", type=Path,
+                        help="Verified output from release_materials.py; required for stable OSRA builds")
     args = parser.parse_args()
     build(args)
 

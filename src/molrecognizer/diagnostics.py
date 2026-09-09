@@ -16,7 +16,7 @@ def smoke_test(report_path: Path, *, require_osra: bool = False) -> int:
     os.environ["QT_QPA_PLATFORM"] = "offscreen"
     try:
         from PySide6.QtCore import QEventLoop, QSettings, QTimer
-        from PySide6.QtGui import QFont, QIcon
+        from PySide6.QtGui import QAction, QFont, QIcon
         from PySide6.QtWidgets import QApplication
         from rdkit import Chem
         from rdkit.Chem import Draw
@@ -27,7 +27,7 @@ def smoke_test(report_path: Path, *, require_osra: bool = False) -> int:
         from .gui.main_window import MainWindow
         from .gui.theme import STYLESHEET
         from .gui.workers import Render3DWorker
-        from .runtime import capture_helper, subprocess_options
+        from .runtime import application_directory, capture_helper, subprocess_options
 
         with tempfile.TemporaryDirectory(prefix="molrecognizer-smoke-") as temporary:
             app = QApplication([])
@@ -55,6 +55,14 @@ def smoke_test(report_path: Path, *, require_osra: bool = False) -> int:
                 raise RuntimeError("Main window is not using the application icon")
             report["checks"].append("multi-size application icon and title-bar identity")
             report["checks"].append("Qt window, icons and SMILES editor")
+            material_index = application_directory() / "licenses/release-materials/MATERIALS.json"
+            if material_index.is_file():
+                if not any(action.text().startswith("Third-party licenses")
+                           for action in window.findChildren(QAction)):
+                    raise RuntimeError("Packaged license access action is missing")
+                if not (application_directory() / "SOURCE-ACCESS.md").is_file():
+                    raise RuntimeError("Packaged source-access instructions are missing")
+                report["checks"].append("license menu and packaged source-access instructions")
 
             results = []
             loop = QEventLoop()

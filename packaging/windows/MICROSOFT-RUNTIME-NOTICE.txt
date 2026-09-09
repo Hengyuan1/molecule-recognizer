@@ -1,0 +1,25 @@
+Microsoft Visual C++ runtime components
+
+Copyright Microsoft Corporation. All rights reserved.
+
+The MSVCP140*, VCRUNTIME140* and related Microsoft runtime DLLs accompanying
+Python/Qt/RDKit retain their original terms. They are not covered by
+MolRecognizer's MIT license and are not offered as modifiable GPL sources.
+This package preserves those DLLs as supplied; it does not copy arbitrary
+Visual Studio IDE/debug files or grant rights to Microsoft's development tools.
+
+Applicable upstream terms and distributable-code lists:
+https://visualstudio.microsoft.com/license-terms/vs2026-ga-community/
+https://learn.microsoft.com/en-us/visualstudio/releases/2026/redistribution
+https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files
+
+The distributor installed Visual Studio Community 2026 themselves. Users of
+the portable application do not need Visual Studio. Further redistribution
+remains subject to the applicable Microsoft terms; installing or signing in
+to Visual Studio is not code signing of MolRecognizer.
+
+The candidate's runtime provenance record distinguishes Microsoft-signed DLLs
+from PySide6's MSVCP140_1.dll and MSVCP140_2.dll signed by The Qt Company Oy.
+Neither signer is represented as endorsing MolRecognizer. Exact file hashes,
+versions and signature observations belong to the final validation record.
+This notice is informational and does not replace Microsoft's agreements.

@@ -181,12 +181,12 @@ Technical references:
 
 ## Release-candidate preparation
 
-The tested source version remains `0.3.0rc1`. The owner wants the next public
-release to be stable `v0.3.0`, not a public RC. No RC tag has been published.
+The earlier tested source version was `0.3.0rc1`. The current source prepares
+stable `v0.3.0`, not a public RC. No RC or v0.3.0 tag has been published.
 This does not replace the existing v0.2.0 tag. No public binary release
 is created by changing the version. **Public upload is on hold for the
 OSRA/CImg license-compatibility question** in [RELEASE-AUDIT.md](RELEASE-AUDIT.md).
-See that audit and [draft release notes](RELEASE-NOTES-0.3.0-rc1.md) for the
+See that audit and [draft release notes](RELEASE-NOTES-0.3.0.md) for the
 remaining gates.
 The local candidate was built from `cd5bf78` and passed 265 regression tests
 on each platform. Its [validation record](audits/0.3.0rc1/VALIDATION.md) identifies
@@ -237,8 +237,9 @@ trees in isolated repositories, without executing archived hooks/config or
 fetching from a network. Git must be installed to run this check.
 
 `collect_source_notices.py` preserves original named and selected header-based
-notices. This complements the Qt notice collector, but is not yet integrated
-into the tested RC. See its `--help` for repeated source manifests.
+notices. `release_materials.py` integrates them into the 0.3.0 preparation,
+checks their hashes against the inventories and extracts Qt notices directly
+from the matching sources. See their `--help` for repeated source manifests.
 
 `package_sources.py --sources <source-cache> --manifest <manifest> --output
 <new-output-directory> --revision <full-commit> --version 0.3.0` packages
@@ -246,3 +247,35 @@ inventoried inputs with the exact committed application source. Repeat
 `--manifest` for each input inventory. It refuses changed inputs or an existing
 ZIP and includes checksums. Read [SOURCE-README.md](SOURCE-README.md) first;
 this script neither certifies redistribution compliance nor publishes a release.
+
+### Prepare and validate a matching 0.3.0 archive pair
+
+1. Run `collect_source_notices.py` for `ADDITIONAL-SOURCES.json`,
+   `VCPKG-SOURCES.json` and `WHEEL-SOURCES.json` from `audits/0.3.0rc1/`.
+   The directory name records the provenance baseline, not a public RC.
+2. Run `release_materials.py --sources <cache> --manifest <inventory> ...
+   --wheel-notices <collected-notices> --wheel-report <WHEEL-NOTICES.json>
+   --output <new-materials-folder>`. Repeat `--manifest` for the original
+   `SOURCES.json` and those three additional inventories. No downloads occur.
+3. Record a committed release-preparation revision, export that clean tree,
+   and install it in the isolated native Windows build environment with the
+   exact `RELEASE-PACKAGES.json` / `requirements-build.txt` versions.
+4. Build using `build.py --osra-dir <tested-runtime> --source-revision <commit>
+   --release-materials-dir <materials> --work-dir <local-NTFS-work>
+   --output <new-assets-folder>`. Stable OSRA builds reject missing materials
+   or a missing revision; all package versions must match the notice inventory.
+5. Run `package_sources.py` with the **same commit and version**, the four
+   source inventories and the same assets folder. Existing ZIPs are never
+   overwritten. Copy the release notes and `TEST-CHECKLIST.md` alongside them.
+6. With native Windows Python, run `validate_release.py --binary <app.zip>
+   --sources <sources.zip> --output <new-report-folder> --work-dir <local-NTFS>
+   --scan`. It verifies both receipts, inner source hashes and matching
+   revisions, extracts to a fresh path with spaces, checks notice/PE integrity,
+   and runs the extracted EXE with system-only PATH. Optional Defender custom
+   scans do not change security settings. No desktop images are captured.
+7. Complete `TEST-CHECKLIST.md` on the exact final ZIP. Keep automated results
+   separate from clean-machine interactive results and licensing review.
+
+These commands do not publish, tag, sign, change the user's installed app,
+or resolve the pending CImg question. Do not upload the assets until the
+release audit's remaining publication items are resolved.

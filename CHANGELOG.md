@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0 — Windows release preparation (not published)
+
+- Prepare a stable-version Windows package while the OSRA/CImg compatibility
+  inquiry remains open. No public upload or license exception is implied.
+- Integrate original Qt and native wheel notices, including copyright-bearing
+  CImg/GREYCstoration and Cairo headers, with a component/license-option map.
+- Add Help → Third-party licenses, source-access/library-replacement
+  instructions, final release notes and a clean-Windows acceptance checklist.
+- Verify notice hashes against their exact source inventories and reject
+  stale package versions, changed notices or unexpected material files.
+- Add exact binary/source ZIP pairing, safe extraction, extracted-executable
+  smoke tests, PE import checks and optional Defender scan reporting.
+- Keep the existing installed app untouched; build/test in separate folders.
+
 ## 0.3.0rc1 — Windows release candidate (not published)
 
 - Started a component/source audit, collected exact OSRA/MSYS2 and Qt source

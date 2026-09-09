@@ -6,6 +6,18 @@ declaration that the binary distribution's licensing review is complete.
 of its bundled CImg license; see `packaging/windows/RELEASE-AUDIT.md` in the
 application source. Do not present a generated archive as release clearance.
 
+The companion asset for the prepared Windows app is
+`MolRecognizer-0.3.0-sources.zip`. At publication, provide it on the same
+release page as `MolRecognizer-0.3.0-windows-x64.zip`:
+https://github.com/Hengyuan1/molecule-recognizer/releases
+These are currently local preparation artifacts, not existing public downloads.
+The binary's `BUILD-INFO.json` source revision must equal `app_revision` in
+the source ZIP's `SOURCES.json`. Do not substitute GitHub's automatic source ZIP;
+it does not contain the archived third-party inputs.
+
+In the binary ZIP, this guide is named `SOURCE-ACCESS.md`; the contents below
+describe the separate source ZIP, not folders beside the EXE.
+
 ## Contents and verification
 
 `SOURCES.json` records the application commit, archive paths, origins and

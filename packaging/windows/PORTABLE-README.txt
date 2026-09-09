@@ -15,8 +15,9 @@ chain.txt, spelling.txt and superatom.txt under tools/osra/share/. The app
 finds this runtime automatically. OSRA_EXECUTABLE can explicitly override it.
 Images are processed locally; they are not uploaded to a recognition service.
 The locally compiled OSRA 2.2.4 runtime includes its sources/patches and notices.
-This is an unsigned release-candidate build. Public distribution is on hold
-until the dependency/source review in the project is complete.
+This is an unsigned local release-preparation build. The version number is
+not a statement of publication or licensing clearance. Public distribution
+of this OSRA bundle is on hold pending the CImg compatibility review.
 Review recognized connectivity and stereochemistry carefully;
 the generated stereo test in the build recipe was not recognized correctly.
 
@@ -46,3 +47,5 @@ accuracy or a guarantee of correct behavior on every monitor configuration.
 
 Project and source: https://github.com/Hengyuan1/molecule-recognizer
 See THIRD-PARTY-NOTICES.md and licenses/ for dependency notices.
+Help > Third-party licenses opens the local notice folder. SOURCE-ACCESS.md
+describes the matching source/patch/build-recipe ZIP and library replacement.

@@ -67,9 +67,12 @@ Conda or WSL. Native **OSRA 2.2.4 has now been compiled and tested locally**;
 complete builds bundle it under `tools/osra/` and discover it automatically.
 Builds labelled **`no-osra` are editor-only previews**. No OSRA-bundled public
 release has been published yet; redistribution review remains outstanding.
-The next candidate is **0.3.0rc1**. Its [release audit](packaging/windows/RELEASE-AUDIT.md)
-tracks source/notice coverage and the remaining publication gates; a release
-candidate is not a claim that the redistribution review is complete.
+The next public version is planned as **0.3.0**. It is being prepared locally,
+not published: the [release audit](packaging/windows/RELEASE-AUDIT.md) tracks
+the pending OSRA/CImg licensing clarification and final acceptance tests.
+Prepared builds include original dependency notices accessible from
+**Help → Third-party licenses**, source-access instructions, and a matching
+source/patch/build-recipe archive. See the [draft 0.3.0 release notes](packaging/windows/RELEASE-NOTES-0.3.0.md).
 
 See [Windows build instructions and validation checklist](packaging/windows/README.md)
 for the build script, OSRA runtime layout and GitHub Actions preview workflow.

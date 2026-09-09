@@ -5,6 +5,18 @@ retain their respective licenses; they are not relicensed under the project's
 MIT license. Installed distribution metadata and available license files are
 copied into `licenses/`; exact package versions are in `BUILD-INFO.json`.
 
+For the prepared 0.3.0 Windows bundle, start with
+`licenses/release-materials/DEPENDENCY-LICENSES.md`. It maps components to
+original notices and records selected license alternatives. The matching
+source/patch/build-recipe asset is `MolRecognizer-0.3.0-sources.zip`; see
+`SOURCE-ACCESS.md` beside the EXE. Publication is pending the recorded CImg
+compatibility review; neither asset is claimed to be publicly available yet.
+
+This software uses the Qt libraries under LGPLv3 and includes OSRA's CImg
+image-processing code, copyright David Tschumperlé, under CeCILL-C. Original
+notices and full license texts are accessible through Help → Third-party
+licenses. These acknowledgments do not relicense any third-party component.
+
 Upstream projects and corresponding source locations:
 
 - Python: https://www.python.org/downloads/source/

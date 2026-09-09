@@ -25,8 +25,8 @@ import re
 import sys
 
 from PIL import Image
-from PySide6.QtCore import QSettings, QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QAction, QFont, QKeySequence, QPixmap
+from PySide6.QtCore import QSettings, QSize, Qt, QTimer, QUrl, Signal
+from PySide6.QtGui import QAction, QDesktopServices, QFont, QKeySequence, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -521,7 +521,26 @@ class MainWindow(QMainWindow):
             self, "Molecule Recognizer",
             "Molecule Recognizer\n\n"
             "Image recognition, interactive structure editing and XYZ export.\n"
-            "Powered by OSRA, RDKit and Qt."))
+            "Powered by OSRA, RDKit and Qt (LGPLv3).\n"
+            "OSRA includes CImg image processing, copyright David Tschumperlé,\n"
+            "under CeCILL-C. See Help → Third-party licenses for notices."))
+        action(help_menu, "Third-party licenses…", self._open_third_party_licenses)
+
+    def _open_third_party_licenses(self):
+        from ..runtime import application_directory
+        root = application_directory()
+        directory = root / "licenses"
+        if directory.is_dir() and QDesktopServices.openUrl(QUrl.fromLocalFile(str(directory))):
+            return
+        QMessageBox.information(
+            self, "Third-party licenses",
+            "MolRecognizer's code is MIT-licensed. Dependencies retain their own licenses.\n\n"
+            "Qt/PySide uses LGPLv3. OSRA includes CImg image processing, copyright "
+            "David Tschumperlé, under CeCILL-C. RDKit, NumPy and Pillow retain "
+            "their original third-party notices.\n\n"
+            "Portable builds include a licenses folder and SOURCE-ACCESS.md beside the EXE. "
+            "For a source installation, consult the installed packages' license files and "
+            "packaging/windows/THIRD-PARTY-NOTICES.md in the project source.")
 
     def _fit_structure(self):
         canvas = self._editor.canvas

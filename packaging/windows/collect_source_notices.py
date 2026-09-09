@@ -17,7 +17,7 @@ import zipfile
 from fetch_release_sources import sha256
 
 
-HEADER_COMPONENTS = frozenset({"inchi", "rdkit", "numpy", "openblas",
+HEADER_COMPONENTS = frozenset({"inchi", "rdkit", "numpy", "openblas", "cairo", "rdkit-cairo",
                                "rdkit-pixman", "rdkit-dirent", "pubchem-align3d", "chemdraw"})
 
 
