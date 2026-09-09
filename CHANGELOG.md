@@ -13,6 +13,12 @@
 - Add exact binary/source ZIP pairing, safe extraction, extracted-executable
   smoke tests, PE import checks and optional Defender scan reporting.
 - Keep the existing installed app untouched; build/test in separate folders.
+- Built the matching binary/source ZIP pair from `12e93ba`; verified 8,947
+  extracted files, 330 native import tables and 90 source payload hashes.
+  WSL: 349 tests passed. Native Windows: 346 passed, three Git-dependent skips.
+  Five optional MolScribe tests were deselected on each platform. Extracted-EXE
+  smoke checks passed; Defender reported no threats in the folder or ZIP.
+  OSRA's known failed stereo drawing remains documented (six of seven matches).
 
 ## 0.3.0rc1 — Windows release candidate (not published)
 

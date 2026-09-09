@@ -57,6 +57,8 @@ diagnosis. These generated folders are ignored by Git.
 If the source is on a WSL/network share, put the build environment and cache
 on local Windows storage. Pass `--work-dir C:\path\to\build-work` for local
 intermediates; Windows tools may not support file locking on the WSL share.
+Stage the release-materials folder on local Windows storage as well: verifying
+thousands of individual notice paths across a WSL share can be very slow.
 
 ### OSRA input
 

@@ -73,6 +73,10 @@ the pending OSRA/CImg licensing clarification and final acceptance tests.
 Prepared builds include original dependency notices accessible from
 **Help → Third-party licenses**, source-access instructions, and a matching
 source/patch/build-recipe archive. See the [draft 0.3.0 release notes](packaging/windows/RELEASE-NOTES-0.3.0.md).
+The [0.3.0 validation record](packaging/windows/audits/0.3.0/VALIDATION.md)
+documents the locally built ZIP pair, exact checksums, regression results and
+Defender scans. Public upload and clean-machine interactive acceptance remain
+pending; this is not yet a downloadable GitHub release.
 
 See [Windows build instructions and validation checklist](packaging/windows/README.md)
 for the build script, OSRA runtime layout and GitHub Actions preview workflow.

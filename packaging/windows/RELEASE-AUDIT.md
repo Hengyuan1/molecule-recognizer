@@ -1,6 +1,6 @@
-# Windows release audit — 0.3.0rc1
+# Windows release audit — 0.3.0 preparation and RC history
 
-Status: **0.3.0rc1 built and tested locally; not cleared for public distribution**.
+Status: **0.3.0 packaged and tested locally; public distribution still pending**.
 This is an engineering inventory and release checklist, not legal advice or
 a certification that every bundled license obligation has been satisfied.
 
@@ -25,8 +25,14 @@ ZIP revision, verifies every inner source hash, runs PE/import and relocated
 EXE checks, and optionally records Defender scans. The final interactive
 acceptance form is `TEST-CHECKLIST.md`. These tools do not publish a Release,
 tag, install over the owner's working copy, or claim licensing clearance.
-Results for the final-version artifacts are recorded separately from the
-historical RC results below.
+The [0.3.0 validation record](audits/0.3.0/VALIDATION.md) identifies the exact
+matching ZIPs, source commit, 349 passing WSL tests / 346 passing native Windows
+tests (three Git-dependent skips), 8,947 verified extracted files, PE closure,
+extracted-EXE smoke checks and both clean Defender scans. The broader OSRA
+accuracy check retains its known failed stereo case (six of seven match).
+All 326 dependency DLL/PYD files are unchanged from the RC. Assets and full
+machine-readable reports are in `dist/windows-0.3.0-prepared/`. These results
+are separate from the historical RC results below.
 
 ## Findings from the tested 0.2.0 portable bundle
 
@@ -61,11 +67,12 @@ historical RC results below.
   OSRA binary before public upload; see the evidence below. Do not silently
   remove image preprocessing, relicense third-party code or treat a source
   ZIP as resolving conflicting license terms.
-- [ ] Finish component-level license selection, notices and any required
-  corresponding-source coverage, including NumPy/OpenBLAS/GCC 10.3, RDKit's
-  embedded dependencies, Qt/Pillow third-party code and MSVC runtime
-  provenance/redistribution notices. Permissive dependencies do not all require
-  source redistribution; review their actual notice and other conditions.
+- [x] Integrate the identified component notices, explicit license-option map,
+  source inventory and build/replacement instructions into the 0.3.0 package,
+  including NumPy/OpenBLAS/GCC 10.3, RDKit's embedded dependencies, Qt/Pillow
+  notices and Microsoft runtime information. Exact source inputs and archive
+  pairing are verified. This engineering completion is not a legal certification
+  and does not resolve the separate CImg compatibility item.
 - [x] Verify MSYS2 nested source hashes and both pinned Git payloads; collect
   the identified wheel source/build recipes. This is integrity/provenance
   verification, not a complete corresponding-source or license certification.
@@ -75,8 +82,10 @@ historical RC results below.
   smoke checks; record final antivirus scan results without suppressing alerts.
 - [ ] Record clean-machine interactive testing for the final candidate (capture,
   mixed-DPI screens, editing/undo, recognition, 3D/XYZ, closing/cancellation).
-- [ ] Package source materials, final hashes and release notes together; verify
-  the actual downloaded assets before publishing/marking the release stable.
+- [x] Package matching binary/source ZIPs, checksums, release notes and test
+  instructions; validate the exact local ZIP contents and source revision.
+- [ ] Once publication is cleared, finalize release wording/status and verify
+  uploaded/downloaded GitHub assets before marking the release public/stable.
 
 The current candidate passed **265 tests on each of native Windows and WSL**
 (five optional MolScribe tests deselected), plus relocated portable smoke
@@ -154,8 +163,9 @@ are collected in addition to top-level license files.
 
 These findings resolve the earlier unidentified-input gaps. The historic
 wheel/compiler builds and LGPL library replacement/relink procedure have
-not been reproduced locally. The collected notices still need integration
-into a new final bundle; the tested RC and Downloads copy remain unchanged.
+not been reproduced locally. The collected notices have now been integrated
+into the separate 0.3.0 local preparation. The earlier RC and installed Downloads
+copy remain unchanged.
 
 ## Publication hold: CImg inside OSRA
 
