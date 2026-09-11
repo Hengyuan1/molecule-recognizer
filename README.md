@@ -2,7 +2,7 @@
 
 Recognize molecular structures from images (screenshots, papers, web pages), convert them to SMILES strings, interactively edit the recognized structure, and save the 3D structure in xyz format. Built for computational chemistry workflows.
 
-**Current working version: 0.3.0** — Windows portable packaging with bundled OSRA, alongside the Linux/Python application. The Windows binary release is not yet published; see [Windows usage](#windows-usage) for its status. Earlier releases are listed in the [changelog](CHANGELOG.md).
+**Version [0.3.0](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0)** — Standalone Windows application with bundled OSRA, alongside the Linux/Python application. [Download for Windows](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-windows-x64.zip) or follow the [Linux instructions](#linux-usage). See the [changelog](CHANGELOG.md).
 
 ![Molecule Recognizer showing the source image, editable 2D structure, and interactive 3D comparison panel](docs/media/UI-demo.png)
 
@@ -21,14 +21,11 @@ interactive. Close the 3D panel to return to the full canvas.
 
 ### Portable EXE — no Python, Conda or WSL required
 
-**Release status:** the OSRA-inclusive **0.3.0** Windows ZIP has been built,
-validated and initially tested by the owner, but has **not yet been published**
-as a GitHub Release. The published v0.2.0 does not include a standalone EXE.
-The steps below apply to the prepared ZIP and to the download once published;
-do not use GitHub's automatic “Source code” ZIP as the runnable application.
+**Available now:** the OSRA-inclusive **0.3.0** Windows ZIP is on
+[GitHub Releases](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0).
+Choose the Windows application ZIP, not GitHub's automatic “Source code” ZIP.
 
-1. Obtain `MolRecognizer-0.3.0-windows-x64.zip`. After publication, it will be
-   available from [GitHub Releases](https://github.com/Hengyuan1/molecule-recognizer/releases).
+1. Download [MolRecognizer-0.3.0-windows-x64.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-windows-x64.zip) (159 MiB).
 2. Extract the **entire ZIP** into a short, permanent, user-writable folder,
    such as `C:\Users\YourName\Apps`. Avoid deeply nested folders.
 3. Open `MolRecognizer.exe` inside the extracted `MolRecognizer` folder.
@@ -64,6 +61,11 @@ For build and release details, see the
 and [release audit](packaging/windows/RELEASE-AUDIT.md).
 Original dependency notices and recorded upstream permissions are included
 under **Help → Third-party licenses**.
+
+The download is the unchanged, tested build. Some documents inside its archives
+retain their build-time "not published" status; the release page records the
+subsequent publication. The `v0.3.0` tag identifies the exact built source;
+`main` also includes newer documentation updates.
 
 ### Run from source in PowerShell — uv or Conda
 

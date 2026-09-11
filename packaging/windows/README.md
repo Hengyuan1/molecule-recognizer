@@ -1,9 +1,14 @@
-# Windows portable builds (development)
+# Windows portable builds
 
 Target: native Windows 10/11 x64. Users extract a ZIP and run
 `MolRecognizer.exe`; they do not install Python, Conda, uv or WSL.
-This packaging work is not part of the published v0.2.0 tag. No complete,
-OSRA-bundled Windows release has been published yet.
+The OSRA-inclusive [v0.3.0 release](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0)
+provides the Windows ZIP, matching source archive and checksums. For end-user
+installation, see [Windows usage](../../README.md#windows-usage).
+The [final validation record](audits/0.3.0-final/VALIDATION.md) identifies the
+unchanged tested build; its original preparation documents are historical.
+
+## Earlier development checks — 2026-09-07
 
 Local validation on **2026-09-07**: built a no-OSRA Windows x64 ZIP with Python
 3.11.16, PyInstaller 6.22.2, PySide6 6.11.0 and RDKit 2026.3.4. Its relocated
@@ -25,7 +30,7 @@ drawing was misrecognized. See the [OSRA build recipe and limitations](OSRA-BUIL
 The complete OSRA-inclusive ZIP was then built and passed its relocated-EXE
 checks for the editor, 3D worker/XYZ/comparison, compiled selector and PNG-to-SDF
 recognition. The icon update also passed the relocated and installed-executable
-checks; copied bundle files and the ZIP checksum were verified. The full suite now has
+checks; copied bundle files and the ZIP checksum were verified. That suite had
 **247 passing tests on both Windows and WSL**, with five optional MolScribe
 tests excluded. The failed stereo drawing produces the same incorrect graph
 with the existing Linux OSRA 2.2.4; it is not unique to this Windows build.

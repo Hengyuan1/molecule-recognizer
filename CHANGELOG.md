@@ -1,6 +1,26 @@
 # Changelog
 
-## 0.3.0 — Windows release preparation (not published)
+## 0.3.0 — Windows portable release
+
+- Publish the tested native Windows x64 ZIP with bundled OSRA 2.2.4, plus
+  matching dependency sources/build recipes and SHA-256 checksums on
+  [GitHub Releases](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0).
+  No Python, Conda, uv, WSL or separate OSRA installation is needed to run it.
+- Include the application icon, readable ring/charge icons, native DPI-aware
+  monitor fitting, adjustable capture, and side-by-side 2D/3D comparison.
+- Preserve the scoped upstream legacy-CImg permission and original dependency
+  notices. The release tag points to exact built source `ae2877a`; the tested
+  ZIPs are unchanged. Build-time preparation records remain historical.
+- Final validation: 358 passing WSL tests; 355 passing native Windows tests,
+  three Git-dependent skips; five optional MolScribe tests deselected on each.
+  Verified 8,950 extracted files, 330 native import tables and 90 source
+  payloads. Extracted-EXE smoke checks passed and Defender scans of the Windows
+  ZIP and extracted app reported no threats. These are not a security guarantee
+  or clean-machine test; the app remains unsigned and OSRA needs manual review.
+- Separate Windows and Linux setup/usage in the README, with direct Windows
+  downloads and clear native PowerShell/Conda versus optional WSLg instructions.
+
+### Historical preparation — 2026-09-08
 
 - Prepare a stable-version Windows package while the OSRA/CImg compatibility
   inquiry remains open. No public upload or license exception is implied.

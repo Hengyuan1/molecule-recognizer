@@ -1,9 +1,24 @@
 # Windows release audit — 0.3.0 preparation and RC history
 
-Status: **CImg permission recorded; final 0.3.0 archives verified locally;
-owner reports successful initial testing; public release approval still pending**.
+Status: **v0.3.0 published with the owner's explicit approval**, using the
+unchanged, tested Windows ZIP and matching source archive. See the
+[GitHub Release](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0)
+and [publication record](audits/0.3.0-final/PUBLICATION.md).
 This is an engineering inventory and release checklist, not legal advice or
 a certification that every bundled license obligation has been satisfied.
+
+## Publication — 2026-09-11 UTC
+
+The owner authorized publishing v0.3.0 after testing the final Windows ZIP.
+The annotated tag points to `ae2877a6bd93a724cc3cc87ac63ee1d61368ec6a`, the
+revision recorded by both archives. The release includes the Windows ZIP,
+companion dependency source ZIP and both SHA-256 receipts, with installation
+instructions and known limitations. Later documentation-only commits remain
+on `main`; neither archive was rebuilt or modified for publication.
+
+The records below and inside the archives describe preparation at their
+original dates. Their former publication holds and `publication_cleared: false`
+metadata are historical, not a description of this published release.
 
 ## Explicit CImg permission — 2026-09-10
 
@@ -41,11 +56,12 @@ the same ZIP are preserved in the report. Assets are in
 Downloads `MolRecognizer-0.3.0-final` folder. Their working app is untouched.
 Previous archive hashes and scan reports below are historical evidence, not
 results for these new bytes.
-Public upload is not authorized by successful automated checks alone.
+At that preparation stage, public upload was not authorized by automated checks alone.
 After testing the final ZIP, the owner reported: "I tested, looks good so far."
 They requested committing and pushing the branch. This records successful
 initial owner testing, not a completed per-feature checklist or a clean-machine
-test. A branch push does not create a release tag or publish the binary assets.
+test. The subsequent explicit publication authorization and upload are recorded
+above; a branch push by itself did not publish the binary assets.
 
 ## Historical 0.3.0 preparation — 2026-09-08
 

@@ -1,9 +1,11 @@
 # Windows 0.3.0 — verified release preparation, 2026-09-10
 
-**Verified locally; owner reports successful initial testing; unsigned; binary
-release not published.** Public-release approval remains separate from these
-checks. This is not a legal certification or a guarantee of recognition
-accuracy/security.
+**Historical preparation record.** At the time of these checks the archives
+were verified locally, the owner reported successful initial testing, and
+public-release approval was still pending. The unchanged ZIPs have since been
+published as v0.3.0 with explicit owner approval; see [PUBLICATION.md](PUBLICATION.md).
+The app remains unsigned. This record is not a legal certification or a
+guarantee of recognition accuracy/security.
 
 ## Exact archive pair
 
@@ -84,7 +86,7 @@ extraction layout, including the extra folder suggested by Extract All, the
 longest complete path is 246 characters. Prefer a short local extraction path
 and avoid deeply nested folders on systems with legacy path limits.
 
-## Owner handoff and remaining steps
+## Owner handoff and remaining steps at preparation time
 
 A checksum-verified Windows ZIP, receipt, release notes and checklist were
 copied to `C:\Users\hengyuan\Downloads\MolRecognizer-0.3.0-final`.
