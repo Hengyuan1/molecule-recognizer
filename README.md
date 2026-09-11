@@ -1,5 +1,7 @@
 # Molecule Recognizer
 
+English | [简体中文](README.zh-CN.md) | [한국어](README.ko.md) | [Русский](README.ru.md) | [Français](README.fr.md)
+
 Recognize molecular structures from images (screenshots, papers, web pages), convert them to SMILES strings, interactively edit the recognized structure, and save the 3D structure in xyz format. Built for computational chemistry workflows.
 
 **Version [0.3.0](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0)** — Standalone Windows application with bundled OSRA, alongside the Linux/Python application. [Download for Windows](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-windows-x64.zip) or follow the [Linux instructions](#linux-usage). See the [changelog](CHANGELOG.md).
