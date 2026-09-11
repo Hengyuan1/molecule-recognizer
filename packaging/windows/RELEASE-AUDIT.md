@@ -1,7 +1,7 @@
 # Windows release audit — 0.3.0 preparation and RC history
 
 Status: **CImg permission recorded; final 0.3.0 archives verified locally;
-owner acceptance/publication approval still pending**.
+owner reports successful initial testing; public release approval still pending**.
 This is an engineering inventory and release checklist, not legal advice or
 a certification that every bundled license obligation has been satisfied.
 
@@ -42,6 +42,10 @@ Downloads `MolRecognizer-0.3.0-final` folder. Their working app is untouched.
 Previous archive hashes and scan reports below are historical evidence, not
 results for these new bytes.
 Public upload is not authorized by successful automated checks alone.
+After testing the final ZIP, the owner reported: "I tested, looks good so far."
+They requested committing and pushing the branch. This records successful
+initial owner testing, not a completed per-feature checklist or a clean-machine
+test. A branch push does not create a release tag or publish the binary assets.
 
 ## Historical 0.3.0 preparation — 2026-09-08
 
@@ -119,9 +123,9 @@ are separate from the historical RC results below.
   and verify DLL import closure after removing optional Qt components.
 - [x] Pass native Windows and WSL regression tests plus relocated candidate
   smoke checks; record final antivirus scan results without suppressing alerts.
-- [ ] Record owner acceptance of the exact final ZIP (capture, mixed-DPI screens,
-  editing/undo, recognition, 3D/XYZ, closing/cancellation). Clean-machine testing
-  is recommended and has not been reported; do not imply it was completed.
+- [x] Record the owner's successful initial test of the final ZIP: "I tested,
+  looks good so far." Individual capture/mixed-DPI/editing/3D/closing checklist
+  results and clean-machine testing were not reported; do not imply completion.
 - [x] Package matching binary/source ZIPs, checksums, release notes and test
   instructions; validate the exact local ZIP contents and source revision.
 - [ ] Once publication is cleared, finalize release wording/status and verify

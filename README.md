@@ -78,8 +78,9 @@ source/patch/build-recipe archive. The latest build also includes larger ring
 and charge icons that scale with the interface. See the [draft 0.3.0 release notes](packaging/windows/RELEASE-NOTES-0.3.0.md).
 The [final 0.3.0 validation record](packaging/windows/audits/0.3.0-final/VALIDATION.md)
 documents the matching ZIP pair, exact checksums, 358 passing WSL tests / 355
-passing Windows tests, and both clean Defender scans. Final owner acceptance
-and public upload remain pending; this is not yet a downloadable GitHub release.
+passing Windows tests, and both clean Defender scans. The owner reports a
+successful initial test of the final ZIP. Public release upload remains pending;
+this is not yet a downloadable GitHub release.
 Extract the whole ZIP into a short local folder, avoiding deeply nested paths
 on Windows systems with legacy path-length limits.
 

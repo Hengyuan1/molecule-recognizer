@@ -1,8 +1,9 @@
 # Windows 0.3.0 — verified release preparation, 2026-09-10
 
-**Verified locally; unsigned; not published.** Final owner acceptance and
-public-upload approval remain separate from these automated checks. This is
-not a legal certification or a guarantee of recognition accuracy/security.
+**Verified locally; owner reports successful initial testing; unsigned; binary
+release not published.** Public-release approval remains separate from these
+checks. This is not a legal certification or a guarantee of recognition
+accuracy/security.
 
 ## Exact archive pair
 
@@ -88,10 +89,13 @@ and avoid deeply nested folders on systems with legacy path limits.
 A checksum-verified Windows ZIP, receipt, release notes and checklist were
 copied to `C:\Users\hengyuan\Downloads\MolRecognizer-0.3.0-final`.
 The working `MolRecognizer-0.3.0-larger-icons` installation was not replaced.
-The owner previously approved that UI build; the final ZIP has not yet been
-reported as interactively tested on a clean Windows machine.
+The owner previously approved that UI build. After testing the final ZIP,
+they reported: "I tested, looks good so far." This is successful initial owner
+testing on their Windows setup, not confirmation of every checklist item or
+of a clean-machine test. No binary/source ZIP was modified after that report.
 
-After owner acceptance, finalize publication wording and explicitly authorize
-the push/tag/Release upload. Publish the matching binary/source/checksum pair
-and verify the downloaded assets. No push, release tag or public GitHub Release
-was created during this preparation.
+The owner requested committing and pushing the current branch. Release-tag
+creation and binary/source asset publication remain separate actions requiring
+approval. At that stage, finalize publication wording, publish the matching
+binary/source/checksum pair and verify the downloaded assets. A source-branch
+push alone does not publish a downloadable Windows release.
