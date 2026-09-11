@@ -76,10 +76,12 @@ Prepared builds include original dependency notices accessible from
 **Help → Third-party licenses**, source-access instructions, and a matching
 source/patch/build-recipe archive. The latest build also includes larger ring
 and charge icons that scale with the interface. See the [draft 0.3.0 release notes](packaging/windows/RELEASE-NOTES-0.3.0.md).
-The [0.3.0 validation record](packaging/windows/audits/0.3.0/VALIDATION.md)
-documents the locally built ZIP pair, exact checksums, regression results and
-Defender scans. Public upload and clean-machine interactive acceptance remain
-pending; this is not yet a downloadable GitHub release.
+The [final 0.3.0 validation record](packaging/windows/audits/0.3.0-final/VALIDATION.md)
+documents the matching ZIP pair, exact checksums, 358 passing WSL tests / 355
+passing Windows tests, and both clean Defender scans. Final owner acceptance
+and public upload remain pending; this is not yet a downloadable GitHub release.
+Extract the whole ZIP into a short local folder, avoiding deeply nested paths
+on Windows systems with legacy path-length limits.
 
 See [Windows build instructions and validation checklist](packaging/windows/README.md)
 for the build script, OSRA runtime layout and GitHub Actions preview workflow.

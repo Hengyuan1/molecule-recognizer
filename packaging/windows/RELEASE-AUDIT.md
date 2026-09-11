@@ -1,7 +1,7 @@
 # Windows release audit — 0.3.0 preparation and RC history
 
-Status: **CImg permission recorded; final 0.3.0 repackaging/verification in progress;
-public distribution still pending**.
+Status: **CImg permission recorded; final 0.3.0 archives verified locally;
+owner acceptance/publication approval still pending**.
 This is an engineering inventory and release checklist, not legal advice or
 a certification that every bundled license obligation has been satisfied.
 
@@ -30,9 +30,17 @@ skips; five optional MolScribe tests deselected), plus packaged OSRA/editor/3D
 smoke checks. This is owner acceptance on their Windows setup, not evidence
 of a clean-machine test. Its Downloads copy remains the working installation.
 
-The final matching archive pair will include both this permission and those
-icon changes, built from a clean committed snapshot. Previous archive hashes
-and scan reports below are historical evidence, not results for new bytes.
+The [final matching archive pair](audits/0.3.0-final/VALIDATION.md) includes both
+this permission and those icon changes, built from clean source revision
+`ae2877a6bd93a724cc3cc87ac63ee1d61368ec6a`. All 8,950 extracted files, 90 source
+payloads and 330 native binaries passed the recorded checks; both Defender
+scans reported no threats. OSRA and all 326 dependency DLL/PYD files are
+unchanged. The initial long-validation-path failure and successful retry on
+the same ZIP are preserved in the report. Assets are in
+`dist/windows-0.3.0-final/`; the Windows ZIP and receipt are also in the owner's
+Downloads `MolRecognizer-0.3.0-final` folder. Their working app is untouched.
+Previous archive hashes and scan reports below are historical evidence, not
+results for these new bytes.
 Public upload is not authorized by successful automated checks alone.
 
 ## Historical 0.3.0 preparation — 2026-09-08
@@ -111,8 +119,9 @@ are separate from the historical RC results below.
   and verify DLL import closure after removing optional Qt components.
 - [x] Pass native Windows and WSL regression tests plus relocated candidate
   smoke checks; record final antivirus scan results without suppressing alerts.
-- [ ] Record clean-machine interactive testing for the final candidate (capture,
-  mixed-DPI screens, editing/undo, recognition, 3D/XYZ, closing/cancellation).
+- [ ] Record owner acceptance of the exact final ZIP (capture, mixed-DPI screens,
+  editing/undo, recognition, 3D/XYZ, closing/cancellation). Clean-machine testing
+  is recommended and has not been reported; do not imply it was completed.
 - [x] Package matching binary/source ZIPs, checksums, release notes and test
   instructions; validate the exact local ZIP contents and source revision.
 - [ ] Once publication is cleared, finalize release wording/status and verify
