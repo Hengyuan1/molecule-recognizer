@@ -120,6 +120,8 @@ def build(args) -> Path:
         expected_versions = {name: metadata.version(name) for name in
                              json.loads((materials / "MATERIALS.json").read_text(encoding="utf-8"))["packages"]}
         material_index = verify_materials(materials, expected_versions)
+    if osra and re.fullmatch(r"\d+\.\d+\.\d+", version) and not (material_index or {}).get("cimg_permission"):
+        raise ValueError("Regenerate release materials to include the recorded CImg permission")
     label = f"MolRecognizer-{version}-windows-x64" + ("" if osra else "-no-osra")
     archive = output / f"{label}.zip"
     if archive.exists():
@@ -176,7 +178,8 @@ def build(args) -> Path:
     manifest = {"version": version, "osra_included": bool(osra),
                 "python": sys.version, "packages": versions, "signed": False,
                 "source_revision": source_revision,
-                "release_status": "candidate-not-cleared-for-publication",
+                "release_status": "prepared-awaiting-publication",
+                "cimg_permission": material_index.get("cimg_permission") if material_index else None,
                 "qt_source_notices_included": qt_notices is not None or materials is not None,
                 "release_materials_included": materials is not None,
                 "release_materials_sha256": (hashlib.sha256((materials / "MATERIALS.json").read_bytes()).hexdigest()

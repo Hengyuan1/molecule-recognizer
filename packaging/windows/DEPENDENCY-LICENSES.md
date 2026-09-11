@@ -1,7 +1,9 @@
 # Windows dependency licenses and source access
 
-This inventory accompanies the **0.3.0 local release preparation**, not a
-declaration that the pending CImg/GPL compatibility question is resolved.
+This inventory accompanies the **0.3.0 Windows release preparation**.
+The scoped upstream permission for legacy CImg is preserved in
+`CIMG-PERMISSION.md` and `CIMG-PERMISSION.json`; it is not a blanket license
+certification for the entire package.
 Each original notice governs its component; MolRecognizer's MIT license does
 not replace third-party terms. Version pins are in `BUILD-INFO.json` and the
 source archive's `SOURCES.json`. No upstream project endorses this package.
@@ -54,11 +56,15 @@ upstream versions for the recorded versions.
 - OSRA's source grant is GPL-2.0-or-later; this build also links GPLv3 OCRAD.
   GPLv3-compatible distribution terms are therefore needed for that combined
   binary. Open Babel, GOCR and other dependencies keep their original notices.
-- The legacy CImg 1.2.7 header is **CeCILL-C**, copyright David Tschumperlé.
-  It is used for image processing inside OSRA. The GREYCstoration 2.51 header
+- The legacy CImg 1.2.7 header originally specifies **CeCILL-C**, copyright
+  David Tschumperlé. His September 10, 2026 permission offers ordinary CeCILL
+  as an alternative for the code whose copyrights he holds. This distribution
+  elects **CeCILL 2.1** and its article 5.3.4 GPL-combination route; see
+  `CIMG-PERMISSION.md` for the exact scope and version-selection explanation.
+  CImg is used for image processing inside OSRA. The GREYCstoration 2.51 header
   carries an **ordinary CeCILL** notice, not CeCILL-C. The original notices are
-  in `osra-header-notices/`; `license-texts/CECILL-C.txt` supplies the full
-  CeCILL-C agreement. These are not new grants or a change of license.
+  in `osra-header-notices/`. Both full agreements are in `license-texts/`.
+  Original notices are retained unchanged and supplemented by the permission.
 - `osra-cimg.patch` documents our three pointer-size compatibility fixes;
   `osra-portable.patch`, `osra_portable.h` and `openbabel-compat.patch` record
   the other local build/relocation changes. All accompany the sources.
@@ -67,9 +73,10 @@ upstream versions for the recorded versions.
 - GCC 16.2/MSYS2 OSRA runtimes are distinct from NumPy's GCC 10.3 runtime code.
   Both sets of exact sources/recipes are supplied; one does not replace the other.
 
-**Public distribution of this OSRA build remains pending the CImg compatibility
-review.** Keeping these notices or publishing a source ZIP alone does not
-resolve that question. See GreycLab/CImg issue 492 and the repository audit.
+The specific legacy-CImg permission gap is addressed by the linked upstream
+grant, not merely by collecting notices or sources. Publication remains a
+separate owner decision after final package checks; no upstream endorsement
+or rights beyond the permission's stated scope are claimed.
 
 ## Source access, modification and library replacement
 

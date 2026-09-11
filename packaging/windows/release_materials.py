@@ -22,6 +22,24 @@ from package_sources import inventory
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = "MATERIALS.json"
 QT_COMPONENTS = ("qtbase", "qtsvg", "qtimageformats", "pyside-setup")
+CIMG_DOCUMENTS = ("CIMG-PERMISSION.md", "CIMG-PERMISSION.json")
+
+
+def cimg_permission(root):
+    """Check the recorded permission materials, not legal sufficiency."""
+    record = json.loads(safe_path(root, "CIMG-PERMISSION.json").read_text(encoding="utf-8"))
+    permission = record["permission"]
+    if (record.get("schema") != 1 or permission.get("user") != "dtschump"
+            or permission.get("html_url") !=
+            "https://github.com/GreycLab/CImg/issues/492#issuecomment-5618853659"):
+        raise ValueError("Unexpected CImg permission provenance")
+    required = (*CIMG_DOCUMENTS, "license-texts/CECILL-C.txt", "license-texts/CECILL-2.1.txt")
+    for name in required:
+        if not safe_path(root, name).is_file():
+            raise ValueError(f"Missing CImg permission material: {name}")
+    return {"record": "CIMG-PERMISSION.json", "record_sha256": sha256(root / "CIMG-PERMISSION.json"),
+            "permission_url": permission["html_url"], "selected_license": "CECILL-2.1",
+            "scope": record["scope"]}
 
 
 def safe_path(root, name):
@@ -63,6 +81,8 @@ def verify_materials(root, versions=None):
         safe_path(root, name)
     if tree_files(root) != index["files"]:
         raise ValueError("Release materials changed, missing, or contain unlisted files")
+    if "cimg_permission" in index and cimg_permission(root) != index["cimg_permission"]:
+        raise ValueError("CImg permission record differs from material inventory")
     if versions is not None:
         for name, expected in index["packages"].items():
             if versions.get(name) != expected:
@@ -130,7 +150,8 @@ def prepare(args):
             if notice is None:
                 raise ValueError(f"Missing original OSRA header notice: {name}")
             (original / (name + ".notice.txt")).write_bytes(notice)
-    for name in ("DEPENDENCY-LICENSES.md", "SOURCE-README.md", "MICROSOFT-RUNTIME-NOTICE.txt"):
+    for name in ("DEPENDENCY-LICENSES.md", "SOURCE-README.md", "MICROSOFT-RUNTIME-NOTICE.txt",
+                 *CIMG_DOCUMENTS):
         shutil.copy2(ROOT / "packaging/windows" / name, args.output / name)
     shutil.copytree(ROOT / "packaging/windows/license-texts", args.output / "license-texts")
     source_map = {"schema": 1, "archives": sources,
@@ -140,7 +161,8 @@ def prepare(args):
     shutil.copy2(args.wheel_report, args.output / "WHEEL-NOTICES.json")
     index = {"schema": 1, "packages": packages,
              "publication_cleared": False,
-             "note": "Verified notice/source inventory; CImg compatibility review is separate.",
+             "note": "Verified notice/source inventory with scoped upstream CImg permission; not publication approval.",
+             "cimg_permission": cimg_permission(args.output),
              "files": tree_files(args.output)}
     (args.output / INDEX).write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
     verify_materials(args.output, packages)

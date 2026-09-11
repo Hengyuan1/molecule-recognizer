@@ -186,8 +186,9 @@ Technical references:
 The earlier tested source version was `0.3.0rc1`. The current source prepares
 stable `v0.3.0`, not a public RC. No RC or v0.3.0 tag has been published.
 This does not replace the existing v0.2.0 tag. No public binary release
-is created by changing the version. **Public upload is on hold for the
-OSRA/CImg license-compatibility question** in [RELEASE-AUDIT.md](RELEASE-AUDIT.md).
+is created by changing the version. The legacy-CImg permission gap is addressed
+by the [upstream grant](CIMG-PERMISSION.md), verified September 10, 2026.
+Final package verification and public-upload approval remain separate steps.
 See that audit and [draft release notes](RELEASE-NOTES-0.3.0.md) for the
 remaining gates.
 The local candidate was built from `cd5bf78` and passed 265 regression tests
@@ -242,6 +243,9 @@ fetching from a network. Git must be installed to run this check.
 notices. `release_materials.py` integrates them into the 0.3.0 preparation,
 checks their hashes against the inventories and extracts Qt notices directly
 from the matching sources. See their `--help` for repeated source manifests.
+It also includes the exact CImg permission/request record and ordinary CeCILL
+2.1 license text, without rewriting the original header notices. Stable OSRA
+builds reject older material inventories that omit the permission record.
 
 `package_sources.py --sources <source-cache> --manifest <manifest> --output
 <new-output-directory> --revision <full-commit> --version 0.3.0` packages
@@ -278,6 +282,7 @@ this script neither certifies redistribution compliance nor publishes a release.
 7. Complete `TEST-CHECKLIST.md` on the exact final ZIP. Keep automated results
    separate from clean-machine interactive results and licensing review.
 
-These commands do not publish, tag, sign, change the user's installed app,
-or resolve the pending CImg question. Do not upload the assets until the
+These commands do not publish, tag, sign, or change the user's installed app.
+They verify the inclusion of the scoped CImg permission, not blanket legal
+compliance. Do not upload the assets until the
 release audit's remaining publication items are resolved.

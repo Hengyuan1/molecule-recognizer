@@ -2,9 +2,11 @@
 
 This is a source-package guide, not a public release announcement or a
 declaration that the binary distribution's licensing review is complete.
-**Publication of the OSRA-inclusive build is on hold** pending clarification
-of its bundled CImg license; see `packaging/windows/RELEASE-AUDIT.md` in the
-application source. Do not present a generated archive as release clearance.
+The upstream alternative-license permission for legacy CImg is preserved in
+`packaging/windows/CIMG-PERMISSION.md` and `CIMG-PERMISSION.json` inside the
+application source, alongside the full license texts. Original dependency
+archives and notices are unchanged. Do not present a generated archive as
+blanket legal clearance; publication is a separate owner decision.
 
 The companion asset for the prepared Windows app is
 `MolRecognizer-0.3.0-sources.zip`. At publication, provide it on the same

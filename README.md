@@ -69,10 +69,13 @@ Builds labelled **`no-osra` are editor-only previews**. No OSRA-bundled public
 release has been published yet; redistribution review remains outstanding.
 The next public version is planned as **0.3.0**. It is being prepared locally,
 not published: the [release audit](packaging/windows/RELEASE-AUDIT.md) tracks
-the pending OSRA/CImg licensing clarification and final acceptance tests.
+the recorded [upstream CImg permission](packaging/windows/CIMG-PERMISSION.md)
+and final acceptance tests. David Tschumperlé granted the ordinary CeCILL
+alternative for the covered legacy CImg code on September 10, 2026.
 Prepared builds include original dependency notices accessible from
 **Help → Third-party licenses**, source-access instructions, and a matching
-source/patch/build-recipe archive. See the [draft 0.3.0 release notes](packaging/windows/RELEASE-NOTES-0.3.0.md).
+source/patch/build-recipe archive. The latest build also includes larger ring
+and charge icons that scale with the interface. See the [draft 0.3.0 release notes](packaging/windows/RELEASE-NOTES-0.3.0.md).
 The [0.3.0 validation record](packaging/windows/audits/0.3.0/VALIDATION.md)
 documents the locally built ZIP pair, exact checksums, regression results and
 Defender scans. Public upload and clean-machine interactive acceptance remain

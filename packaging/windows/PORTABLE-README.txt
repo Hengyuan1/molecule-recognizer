@@ -16,8 +16,10 @@ finds this runtime automatically. OSRA_EXECUTABLE can explicitly override it.
 Images are processed locally; they are not uploaded to a recognition service.
 The locally compiled OSRA 2.2.4 runtime includes its sources/patches and notices.
 This is an unsigned local release-preparation build. The version number is
-not a statement of publication or licensing clearance. Public distribution
-of this OSRA bundle is on hold pending the CImg compatibility review.
+not a statement of publication or blanket licensing clearance. The scoped
+ordinary-CeCILL permission for legacy CImg is preserved with its original
+notices in licenses/release-materials/CIMG-PERMISSION.md and the JSON record.
+Public upload remains a separate owner decision after final package checks.
 Review recognized connectivity and stereochemistry carefully;
 the generated stereo test in the build recipe was not recognized correctly.
 

@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import shutil
 
 import pytest
 
@@ -53,6 +54,52 @@ def test_material_changes_fail_closed(tmp_path, materials, change):
         (path / "private.txt").write_text("must not enter archive", encoding="utf-8")
     with pytest.raises(ValueError, match="changed, missing, or contain unlisted"):
         materials.verify_materials(path)
+
+
+def permission_tree(tmp_path, materials):
+    root = materials.ROOT / "packaging/windows"
+    output = tmp_path / "permission"
+    output.mkdir()
+    for name in materials.CIMG_DOCUMENTS:
+        shutil.copy2(root / name, output / name)
+    shutil.copytree(root / "license-texts", output / "license-texts")
+    return output
+
+
+def test_permission_retains_exact_question_reply_and_license_text(tmp_path, materials):
+    root = permission_tree(tmp_path, materials)
+    result = materials.cimg_permission(root)
+    evidence = json.loads((root / result["record"]).read_text(encoding="utf-8"))
+    assert evidence["request"]["user"] == "Hengyuan1"
+    assert evidence["permission"]["user"] == "dtschump"
+    assert evidence["permission"]["body"].startswith("> Would you be willing to explicitly offer the ordinary CeCILL")
+    assert evidence["permission"]["body"].endswith("If it helps, you have my permission—yes.")
+    assert "insofar as you hold the relevant copyrights" in evidence["permission"]["body"]
+    assert result["selected_license"] == "CECILL-2.1"
+    assert hashlib.sha256((root / "license-texts/CECILL-2.1.txt").read_bytes()).hexdigest() == (
+        "4ea234937bc7b0aa5247e436690d1eb9324875bc7590ecde50befd38e35190a5")
+
+
+@pytest.mark.parametrize("missing", ["CIMG-PERMISSION.md", "license-texts/CECILL-2.1.txt",
+                                    "license-texts/CECILL-C.txt"])
+def test_permission_requires_both_original_and_alternative_notices(tmp_path, materials, missing):
+    root = permission_tree(tmp_path, materials)
+    (root / missing).unlink()
+    with pytest.raises(ValueError, match="Missing CImg permission material"):
+        materials.cimg_permission(root)
+
+
+def test_permission_index_cannot_claim_a_different_license(tmp_path, materials):
+    root = permission_tree(tmp_path, materials)
+    permission = materials.cimg_permission(root)
+    index = {"schema": 1, "packages": {}, "files": materials.tree_files(root),
+             "cimg_permission": permission}
+    (root / "MATERIALS.json").write_text(json.dumps(index), encoding="utf-8")
+    materials.verify_materials(root)
+    index["cimg_permission"]["selected_license"] = "MIT"
+    (root / "MATERIALS.json").write_text(json.dumps(index), encoding="utf-8")
+    with pytest.raises(ValueError, match="CImg permission record differs"):
+        materials.verify_materials(root)
 
 
 def notice_fixture(tmp_path):

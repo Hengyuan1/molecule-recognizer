@@ -1,8 +1,9 @@
 # MolRecognizer v0.3.0 — Windows portable application
 
-**Local release preparation. Not published.** Public upload of the OSRA bundle
-is pending the licensing item in `RELEASE-AUDIT.md` and final user testing.
-Do not remove this status merely because automated checks pass.
+**Prepared for final verification. Not published.** David Tschumperlé's explicit
+alternative-license permission for legacy CImg is recorded in
+`CIMG-PERMISSION.md`. Final archive verification and owner publication approval
+remain separate steps. Do not remove this status merely because tests pass.
 
 ## Download and run (after publication)
 
@@ -27,6 +28,8 @@ source archive. Ordinary users need only the Windows application ZIP.
 - Interactive side-by-side 3D comparison; save/copy XYZ in Angstrom or Bohr.
 - Adjustable full-resolution region capture on laptop or extended monitors.
 - Native Windows mixed-DPI fitting, readable dropdown arrows and multi-size icon.
+- Larger, font-independent ring and charge icons that follow interface scaling.
+- Scoped upstream CImg permission with its request, permalink and license text.
 - Original dependency notices, source-access instructions and build checksums.
   Help → Third-party licenses opens the bundled notice folder.
 

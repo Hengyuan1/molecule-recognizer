@@ -134,7 +134,11 @@ def validate(args):
         print("Verifying matching source ZIP and inner source hashes", flush=True)
         record["sources"] = verify_source_zip(args.sources, info["version"], info["source_revision"])
         materials = bundle / "licenses/release-materials"
-        verify_materials(materials, info["packages"])
+        material_index = verify_materials(materials, info["packages"])
+        permission = material_index.get("cimg_permission")
+        if not permission or permission != info.get("cimg_permission"):
+            raise ValueError("CImg permission must be included and match BUILD-INFO")
+        record["cimg_permission"] = permission
         if sha256(materials / "MATERIALS.json") != info["release_materials_sha256"]:
             raise ValueError("Notice inventory differs from BUILD-INFO")
         validate_qt_payload(bundle)
@@ -188,7 +192,7 @@ def validate(args):
         record["limitations"] = ["Local automated checks, not a clean-machine interactive test.",
                                   "No desktop screenshots were captured.",
                                   "A scan result is not a safety guarantee or code signature.",
-                                  "CImg licensing clarification and publication remain pending."]
+                                  "Scoped CImg permission is recorded; publication still requires owner approval."]
     except Exception as error:
         record["error"] = str(error)
         raise

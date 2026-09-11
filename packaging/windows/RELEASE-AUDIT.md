@@ -1,10 +1,41 @@
 # Windows release audit — 0.3.0 preparation and RC history
 
-Status: **0.3.0 packaged and tested locally; public distribution still pending**.
+Status: **CImg permission recorded; final 0.3.0 repackaging/verification in progress;
+public distribution still pending**.
 This is an engineering inventory and release checklist, not legal advice or
 a certification that every bundled license obligation has been satisfied.
 
-## 0.3.0 preparation — 2026-09-08
+## Explicit CImg permission — 2026-09-10
+
+David Tschumperlé (`dtschump`) quoted the request for ordinary CeCILL as an
+alternative for CImg 1.2.7 bundled with OSRA, insofar as he holds its copyrights,
+and replied: "If it helps, you have my permission—yes."
+The [public comment](https://github.com/GreycLab/CImg/issues/492#issuecomment-5618853659)
+and [request](https://github.com/GreycLab/CImg/issues/492#issuecomment-5612079056)
+were verified using the GitHub API. Exact bodies and metadata are preserved in
+[CIMG-PERMISSION.json](CIMG-PERMISSION.json); the scoped license choice is
+explained in [CIMG-PERMISSION.md](CIMG-PERMISSION.md).
+
+This addresses the specific legacy-CImg permission gap. The distribution
+elects ordinary CeCILL 2.1 and its article 5.3.4 GPL-combination route for the
+covered code. The reply does not specify a version; 2.1 is the distributor's
+recorded selection, not a quotation from the reply. Original CImg/CeCILL-C
+and GREYCstoration notices remain unchanged. No preprocessing or recognition
+code is removed, no native OSRA binary changes, and no rights held by others
+or unrelated license obligations are waived by this record.
+
+The owner tested and approved the larger toolbar symbols in `9db41d0`.
+That build passed 353 WSL tests and 350 Windows tests (three Git-dependent
+skips; five optional MolScribe tests deselected), plus packaged OSRA/editor/3D
+smoke checks. This is owner acceptance on their Windows setup, not evidence
+of a clean-machine test. Its Downloads copy remains the working installation.
+
+The final matching archive pair will include both this permission and those
+icon changes, built from a clean committed snapshot. Previous archive hashes
+and scan reports below are historical evidence, not results for new bytes.
+Public upload is not authorized by successful automated checks alone.
+
+## Historical 0.3.0 preparation — 2026-09-08
 
 The owner reports receiving a supportive reply from CImg's maintainer and
 having replied to his compatibility question. This is not recorded as a new
@@ -63,10 +94,10 @@ are separate from the historical RC results below.
 
 ## Blocking gates
 
-- [ ] Resolve the CImg/CeCILL-C compatibility question inside the compiled
-  OSRA binary before public upload; see the evidence below. Do not silently
-  remove image preprocessing, relicense third-party code or treat a source
-  ZIP as resolving conflicting license terms.
+- [x] Record the scoped upstream ordinary-CeCILL alternative for legacy CImg
+  inside OSRA. Include the exact request/permission and original notices.
+  The September 10 grant, not a source ZIP or the earlier supportive replies,
+  addresses this particular permission gap.
 - [x] Integrate the identified component notices, explicit license-option map,
   source inventory and build/replacement instructions into the 0.3.0 package,
   including NumPy/OpenBLAS/GCC 10.3, RDKit's embedded dependencies, Qt/Pillow
@@ -167,7 +198,12 @@ not been reproduced locally. The collected notices have now been integrated
 into the separate 0.3.0 local preparation. The earlier RC and installed Downloads
 copy remain unchanged.
 
-## Publication hold: CImg inside OSRA
+## Historical publication hold: CImg inside OSRA
+
+The following records the reason for the earlier hold. It is superseded for
+the covered code by the explicit September 10 permission documented above;
+it is retained to explain the investigation, not to claim permission is still
+awaited.
 
 The exact OSRA 2.2.4 source archive (SHA-256
 `419d87fbf540338d881aaf6df6227785c7af8cbab73e487877a2fb182216bf46`)
@@ -220,7 +256,8 @@ At the owner's request, a focused public question was posted from `Hengyuan1`
 to CImg's official GitHub issue tracker:
 [GreycLab/CImg #492 — License option for legacy CImg 1.2.7 bundled in OSRA](https://github.com/GreycLab/CImg/issues/492).
 The [posted message](CIMG-LICENSING-QUESTION.md) contains public technical
-details, not the private email exchange. Status: posted; awaiting clarification.
+details, not the private email exchange. Initial status: awaiting clarification;
+the subsequent explicit permission is recorded above.
 
 The [current CImg website](https://cimg.eu/) explicitly describes the core as
 dual-licensed under CeCILL-C or GPL-compatible CeCILL, and identifies David
@@ -231,7 +268,8 @@ apply, or whether another documented permission is needed. It does not assume
 that the modern grant automatically applies retroactively. No dependency
 license or recognition implementation has been changed. The owner has since
 replied to the maintainer and authorized local 0.3.0 release preparation while
-the focused compatibility question remains pending.
+the focused compatibility question was still pending. That historical status
+does not override the September 10 permission.
 
 ## Source inventory
 
