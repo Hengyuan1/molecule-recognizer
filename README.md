@@ -2,13 +2,514 @@
 
 Recognize molecular structures from images (screenshots, papers, web pages), convert them to SMILES strings, interactively edit the recognized structure, and save the 3D structure in xyz format. Built for computational chemistry workflows.
 
-**Version [0.2.0](https://github.com/Hengyuan1/molecule-recognizer/tree/v0.2.0)** — Side-by-side 2D/3D comparison, reviewable OSRA retries, and WSLg stability improvements. See the [release notes](CHANGELOG.md).
+**Current working version: 0.3.0** — Windows portable packaging with bundled OSRA, alongside the Linux/Python application. The Windows binary release is not yet published; see [Windows usage](#windows-usage) for its status. Earlier releases are listed in the [changelog](CHANGELOG.md).
 
-![Molecule Recognizer 0.2.0 showing the source image, editable 2D structure, and interactive 3D comparison panel](docs/media/UI-demo.png)
+![Molecule Recognizer showing the source image, editable 2D structure, and interactive 3D comparison panel](docs/media/UI-demo.png)
 
 Double-click the rendered XYZ preview to compare it beside the 2D canvas.
 Drag the divider to adjust the view widths; the editor and SMILES remain
 interactive. Close the 3D panel to return to the full canvas.
+
+## Start here
+
+- [Windows usage](#windows-usage) — portable EXE, native PowerShell/Conda, or optional WSLg.
+- [Linux usage](#linux-usage) — OSRA setup, Python installation and desktop capture.
+- [Common workflow and controls](#common-workflow-and-controls) — recognition, editing and XYZ export.
+- [OSRA configuration](#osra-configuration) · [Python API](#python-api) · [Features](#features)
+
+## Windows usage
+
+### Portable EXE — no Python, Conda or WSL required
+
+**Release status:** the OSRA-inclusive **0.3.0** Windows ZIP has been built,
+validated and initially tested by the owner, but has **not yet been published**
+as a GitHub Release. The published v0.2.0 does not include a standalone EXE.
+The steps below apply to the prepared ZIP and to the download once published;
+do not use GitHub's automatic “Source code” ZIP as the runnable application.
+
+1. Obtain `MolRecognizer-0.3.0-windows-x64.zip`. After publication, it will be
+   available from [GitHub Releases](https://github.com/Hengyuan1/molecule-recognizer/releases).
+2. Extract the **entire ZIP** into a short, permanent, user-writable folder,
+   such as `C:\Users\YourName\Apps`. Avoid deeply nested folders.
+3. Open `MolRecognizer.exe` inside the extracted `MolRecognizer` folder.
+   Keep `_internal`, `tools`, the worker EXE and all other companion files
+   together; copying only the main EXE will not work.
+4. Optionally create a desktop shortcut to that EXE. For an update, close the
+   app, extract the new version into a separate folder, test it, and update
+   the shortcut to the new copy.
+
+Target: **Windows 10/11 x64**, with .NET Framework 4.x for screen capture.
+The package includes native **OSRA 2.2.4**, its dictionaries and DLLs, the
+Python/Qt/RDKit runtime, and a precompiled screenshot selector. You do not need
+to install OSRA separately or run PowerShell scripts to use the portable app.
+MolScribe and its model weights are not bundled.
+
+The optional `.zip.sha256` file lets you check the ZIP's integrity in PowerShell:
+
+```powershell
+Get-FileHash .\MolRecognizer-0.3.0-windows-x64.zip -Algorithm SHA256
+Get-Content .\MolRecognizer-0.3.0-windows-x64.zip.sha256
+```
+
+Compare the hashes. A matching checksum is not a security guarantee or a
+digital signature. The app is unsigned, so Windows may display a security
+warning. Verify the download's origin; do not disable antivirus or bypass
+workplace policies. The matching `MolRecognizer-0.3.0-sources.zip` contains
+source, patches and build recipes and is not needed to run the app.
+
+For build and release details, see the
+[Windows packaging guide](packaging/windows/README.md),
+[0.3.0 release notes](packaging/windows/RELEASE-NOTES-0.3.0.md),
+[final validation record](packaging/windows/audits/0.3.0-final/VALIDATION.md)
+and [release audit](packaging/windows/RELEASE-AUDIT.md).
+Original dependency notices and recorded upstream permissions are included
+under **Help → Third-party licenses**.
+
+### Run from source in PowerShell — uv or Conda
+
+Skip this section if you use the portable EXE. Native Windows Python works
+without WSL, including in a permitted Conda environment on a work laptop.
+
+#### 1. Get the source
+
+Install Git if needed. For the uv option, also install
+[uv](https://docs.astral.sh/uv/getting-started/installation/#winget):
+
+```powershell
+winget install --id Git.Git -e
+winget install --id astral-sh.uv -e
+```
+
+Reopen PowerShell, then clone `main`, which contains the 0.3.0 source changes:
+
+```powershell
+git clone --branch main https://github.com/Hengyuan1/molecule-recognizer.git
+cd molecule-recognizer
+```
+
+If Git is unavailable, download the `main` branch's source ZIP from GitHub, extract
+it, and open PowerShell in the folder containing `pyproject.toml`. This is
+source installation, not the portable EXE download.
+
+#### 2. Install and launch — choose one method
+
+**Option A — uv tool (launch from any folder):**
+
+```powershell
+uv tool install --python 3.11 --editable .
+uv tool update-shell
+```
+
+Reopen PowerShell and run:
+
+```powershell
+molrecognizer
+```
+
+Keep the source folder in place: an editable installation uses that checkout.
+
+**Option B — Conda / Miniconda:**
+
+```powershell
+conda create -n molrecognizer python=3.11 -y
+conda activate molrecognizer
+python -m pip install -e .
+molrecognizer
+```
+
+For later sessions, run `conda activate molrecognizer` before
+`molrecognizer`; you can launch from any folder while that environment is active.
+
+**Development checkout with uv:** instead of installing a tool, run
+`uv sync --python 3.11` followed by `uv run molrecognizer` from the
+repository folder.
+
+#### 3. Connect a native Windows OSRA runtime
+
+Source installation does **not** install OSRA. Without a recognizer you can
+still use **Load SMILES**, edit structures, render 3D and export XYZ.
+
+Use a complete Windows OSRA distribution, or compile one using the project's
+[tested OSRA 2.2.4 build recipe](packaging/windows/OSRA-BUILD.md).
+If you already have an OSRA-inclusive portable MolRecognizer folder, its
+`tools\osra` directory is a complete runtime you can point to. Keep its DLLs,
+dictionaries and other runtime files together.
+
+Set the path to the actual executable for the current PowerShell session,
+then launch the app from that session:
+
+```powershell
+$env:OSRA_EXECUTABLE = "C:\path\to\OSRA\bin\osra.exe"
+& $env:OSRA_EXECUTABLE --version
+molrecognizer
+```
+
+For example, when reusing the portable bundle, the path ends in
+`MolRecognizer\tools\osra\bin\osra.exe`.
+
+To save this setting for future sessions:
+
+```powershell
+[Environment]::SetEnvironmentVariable(
+    "OSRA_EXECUTABLE",
+    "C:\path\to\OSRA\bin\osra.exe",
+    "User"
+)
+```
+
+Reopen PowerShell afterward. Alternatively, associate OSRA only with a Conda
+environment:
+
+```powershell
+conda activate molrecognizer
+conda env config vars set OSRA_EXECUTABLE="C:\path\to\OSRA\bin\osra.exe"
+conda deactivate
+conda activate molrecognizer
+```
+
+Use **Open Image** to verify that both the 2D drawing and SMILES appear.
+See [OSRA configuration](#osra-configuration) for dictionary layout and discovery.
+
+### Screenshots and display sizing on Windows
+
+With MolRecognizer focused, move the cursor onto the laptop screen or extended
+monitor you want to capture and press **Alt+Y** or **Ctrl+Shift+S**. Draw a
+rectangle over the structure, adjust its edges/corners or drag it to move it,
+then press **Enter** or click **Recognize**. **Esc**, right-click or **Cancel**
+discards the selection. Arrow keys move the box by one pixel; Shift changes
+this to ten pixels. The **Screenshot** button is also available.
+
+Native Windows shortcuts currently require the app to have keyboard focus;
+they are **not system-wide hotkeys**. Capture selects one monitor at a time.
+Cancel and move the cursor to another monitor to change the target.
+
+The portable EXE uses its compiled selector. A Python installation uses
+Windows PowerShell and .NET Windows Forms to compile the bundled helper with
+`Add-Type`; workplace policies may block this. No Snipaste installation is
+needed. If capture is blocked, use an approved screenshot tool and **Open Image**.
+
+When moving between monitors, automatic fitting runs after the drag finishes.
+Use the bottom-right **A− / A+** controls for readability, the percentage to
+restore the monitor's recommended scale, and **Fit** to refit the window.
+Each monitor remembers its own settings.
+
+### Optional: Windows with WSL2 / WSLg
+
+WSL is an alternative for users who want the Linux application, **not a
+requirement for the Windows EXE or Conda setup**. Only use it where permitted.
+
+Inside Ubuntu under WSL2 with WSLg, follow the
+[Linux installation steps](#linux-usage), installing **Linux OSRA and Linux
+Python/uv inside WSL**, then run `molrecognizer` in the Ubuntu terminal.
+Do not mix the Linux application with a Windows `osra.exe`.
+
+WSLg additionally provides a **system-wide Windows Alt+Y** shortcut while
+MolRecognizer is running, provided the Windows helper can start and another
+application has not registered the shortcut. It captures the Windows monitor
+under the cursor at full resolution. Windows PowerShell interoperability and
+permission to run the helper are required. WSLg-specific menus and retry review
+stay inside the main window to avoid native popup/display problems.
+
+### Windows troubleshooting
+
+- **EXE will not start or reports missing files:** extract the whole archive,
+  keep its files together and use a short local path. Do not run it inside the ZIP.
+- **`molrecognizer` is not found:** for uv tools, run `uv tool update-shell`
+  and reopen PowerShell; for Conda, activate the correct environment.
+- **OSRA is not found:** check `$env:OSRA_EXECUTABLE` or
+  `Get-Command osra.exe`. A stale environment override can take precedence
+  over the portable app's bundled OSRA.
+- **Missing dictionary or DLL:** restore the complete OSRA runtime and see
+  [OSRA configuration](#osra-configuration).
+- **Alt+Y does nothing:** focus MolRecognizer first on native Windows; on WSLg,
+  check that the Windows helper is permitted and the shortcut is not in use.
+- **Window or controls look too large/small:** use **Fit** and **A− / A+** on
+  the affected monitor.
+
+## Linux usage
+
+The Linux version runs as a **Python desktop application with local OSRA**.
+The commands below use Bash on Ubuntu/Debian; other distributions need their
+equivalent packages. A graphical desktop session is required.
+
+### 1. Install OSRA
+
+On Ubuntu/Debian releases that package OSRA:
+
+```bash
+sudo apt update
+sudo apt install git osra
+osra --version
+```
+
+Ubuntu lists OSRA in its
+[Universe archive](https://packages.ubuntu.com/source/noble/osra);
+package availability and versions vary by distribution. A system package may
+differ from the OSRA 2.2.4 bundled in the Windows build.
+
+If you already have a working OSRA installation, keep using it instead of
+installing another copy. For a custom location:
+
+```bash
+export OSRA_EXECUTABLE="/path/to/OSRA/bin/osra"
+"$OSRA_EXECUTABLE" --version
+```
+
+Replace the example with your actual executable path. Add the `export` line
+to `~/.bashrc` (or your shell's startup file) if you want it in future
+terminals. If your distribution has no suitable package, obtain the source
+from the [OSRA project](https://sourceforge.net/projects/osra/) and follow its
+build instructions. See [OSRA configuration](#osra-configuration) for runtime
+dictionaries.
+
+### 2. Install MolRecognizer — choose uv or a virtual environment
+
+Python dependencies require **Python 3.10 or newer**; the examples use 3.11.
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) if you
+choose the uv method, then clone `main`:
+
+```bash
+git clone --branch main https://github.com/Hengyuan1/molecule-recognizer.git
+cd molecule-recognizer
+```
+
+**Option A — uv tool (launch from any folder):**
+
+```bash
+uv tool install --python 3.11 --editable .
+uv tool update-shell
+```
+
+Open a new terminal so the tool's command directory is on `PATH`, then run:
+
+```bash
+molrecognizer
+```
+
+Keep the checkout in place; the editable tool uses its source files directly.
+No environment activation is needed. If you move the checkout, reinstall the
+editable tool from its new location.
+
+**Option B — pip in a virtual environment:**
+
+With Python 3.10+ and its `venv` support installed:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+molrecognizer
+```
+
+In later terminals, activate the same environment before launching:
+
+```bash
+source /path/to/molecule-recognizer/.venv/bin/activate
+molrecognizer
+```
+
+**Development checkout with uv:** use `uv sync --python 3.11` and
+`uv run molrecognizer` from the repository directory. From another directory:
+
+```bash
+uv run --project /path/to/molecule-recognizer molrecognizer
+```
+
+### 3. Recognize and capture structures on Linux
+
+Click **Open Image** and choose a tightly cropped molecule image. Recognition
+should populate the 2D canvas and the SMILES bar. Continue with the
+[shared workflow](#recognize-edit-and-export).
+
+For screen capture, keep the application focused, move the cursor onto the
+desired screen and press **Alt+Y** or **Ctrl+Shift+S**. The borderless Qt overlay
+lets you draw, move and resize a region; press **Enter** to recognize or **Esc**
+to cancel. Native Linux does not register a system-wide capture shortcut.
+
+- **X11:** Qt screen capture is tried first and normally needs no additional
+  screenshot package. `scrot` is an optional fallback.
+- **Wayland:** capture depends on what the desktop/compositor permits.
+  `grim` is an optional fallback on compatible compositors, not a universal
+  Wayland solution. The app also tries `gnome-screenshot` if installed.
+- If direct capture fails or returns a black/incorrect desktop image, use your
+  desktop's screenshot tool, save the crop and load it with **Open Image**.
+
+On Ubuntu/Debian, install only the optional backend appropriate to your desktop:
+
+```bash
+# X11 fallback
+sudo apt install scrot
+
+# Compatible Wayland compositor fallback
+sudo apt install grim
+```
+
+For Linux running inside WSLg, use the
+[WSL-specific capture instructions](#optional-windows-with-wsl2--wslg) instead.
+
+### Linux troubleshooting
+
+- **`molrecognizer` is not found:** run `uv tool update-shell` and reopen
+  the terminal, or activate the virtual environment used for installation.
+  Use `command -v molrecognizer` to check which installation will run.
+- **OSRA is not found:** check `command -v osra` and
+  `printenv OSRA_EXECUTABLE`. Launch from a terminal with the correct setting.
+- **Missing `chain.txt`:** keep the complete OSRA dictionary set in the
+  installation's `share/osra`, `share` or `bin` folder, as described below.
+- **No display / Qt platform-plugin error:** launch inside a working desktop
+  or WSLg session and check that your distribution's Qt runtime libraries are
+  available. A headless shell alone cannot display the GUI.
+- **Capture fails:** see the X11/Wayland notes above; **Open Image** is usable
+  independently of screen capture.
+
+## Shared configuration
+
+### Python dependencies and optional MolScribe
+
+Source installs automatically install RDKit, PySide6, Pillow and NumPy
+(`numpy<2`); see [pyproject.toml](pyproject.toml) for requirements.
+OSRA is a **separate native executable**, not a Python wheel, so `pip` and
+`uv sync` do not install it. The portable Windows package already includes it.
+
+MolScribe is an optional alternative backend with PyTorch/model dependencies.
+Install it into the environment you actually use, choosing the matching command:
+
+```bash
+# uv development checkout
+uv sync --extra molscribe
+
+# uv editable tool (from the checkout)
+uv tool install --python 3.11 --editable --with molscribe --with huggingface-hub .
+
+# Activated pip/Conda environment
+python -m pip install -e ".[molscribe]"
+```
+
+Use `backend="molscribe"` in the [Python API](#python-api) to select it explicitly;
+installing the extra does not change the default OSRA backend. Model weights
+may be downloaded on first use. This does not add MolScribe to a packaged EXE.
+
+### OSRA configuration
+
+An explicit `OSRA_EXECUTABLE` setting takes precedence and must point to a
+working executable. Without that override:
+
+- **Portable Windows:** search `tools/osra/bin` beside the EXE, then
+  `.tools/osra/bin`, then `PATH`.
+- **Python source installation:** search `PATH`, then the checkout's
+  `.tools/osra/bin`, then `tools/osra/bin`.
+
+The app accepts `osra` on Linux and `osra.exe` on Windows. For a project-local
+installation, use the following layout (replace `osra` with `osra.exe` on Windows):
+
+```text
+.tools/osra/
+├── bin/
+│   ├── osra
+│   └── required runtime libraries...
+└── share/
+    ├── chain.txt
+    ├── spelling.txt
+    └── superatom.txt
+```
+
+When all three dictionaries are found in `share/osra`, `share`, or `bin`
+relative to the selected installation, MolRecognizer supplies their absolute
+paths automatically. This avoids compiled-in build paths and dependence on
+the current directory. Keep the rest of the OSRA distribution intact too.
+
+Recognition runs locally; images are not sent to the NCI OSRA website.
+For an image containing multiple structures, the editor loads the first valid
+recognized structure. Crop around one molecule for easier review.
+
+### Screenshot privacy and temporary files
+
+The Windows-native capture overlay keeps the screen and selection in memory;
+neither is saved as a screenshot file. Linux command-line capture fallbacks
+may use a temporary PNG which is removed after loading. Local recognition
+also uses temporary image files, deleted after processing.
+
+The original loaded/captured image remains in application memory for
+**Retry recognition** until replaced, the workspace is cleared, or the app
+closes. Recognition and retries do not upload it to a website.
+
+## Common workflow and controls
+
+### Recognize, edit and export
+
+1. Use **Open Image** or your platform's screenshot shortcut to capture one
+   structure. **Load SMILES** works without image recognition or OSRA.
+2. Check the resulting drawing against the source image and review the SMILES.
+   Verify atom labels, ring closures, bond orders, charges and stereochemistry;
+   OSRA can make mistakes even when the valence check passes.
+3. Correct atoms/bonds manually or use **Retry recognition** to compare
+   alternatives. **Undo/Redo** preserves connectivity and stereo information.
+4. Click **Render** to generate 3D coordinates.
+5. Double-click the 3D preview for side-by-side comparison. Drag the divider
+   to resize the views; left-drag rotates 3D, right-drag pans, and the wheel
+   zooms. If you edit the 2D molecule, render again to update the 3D result.
+6. Use **Copy** or **Export** for SMILES, and **Save xyz** or **Copy xyz**
+   for coordinates. The XYZ dropdowns select Angstrom or Bohr units.
+
+**View → Fit structure** adjusts the 2D view without altering coordinates or
+bond placement. **Format** recomputes the drawing layout; **Clean** clears
+the workspace. The bottom-right **Fit** button fits the application window.
+These are different operations.
+
+### Reviewing difficult recognition
+
+For difficult ring systems, use **Retry recognition** after the initial attempt
+finishes (also available if recognition failed). Select a candidate in the list,
+compare its ring closures and stereochemistry with the source, then click
+**Use selected** only if you want to replace the current structure. Undo restores
+the previous drawing, including manual edits. Re-render 3D after accepting a new
+result before saving/copying XYZ. All candidates may still be wrong; a larger
+capture from the original PDF/vector drawing often provides more useful detail
+than enlarging an existing small PNG.
+
+Retries use the original image pixels held in memory until another image is
+recognized, the workspace is cleared, or the app closes—not the sidebar
+thumbnail. They create one temporary PNG, deleted after completion, failure, or
+cancellation, and never upload the image. Each of the three attempts is limited
+to 15 seconds of OSRA processing plus a 10-second process grace period (up to
+75 seconds total); you can cancel at any time.
+
+### Keyboard shortcuts
+
+On native Windows and Linux, screenshot shortcuts require the app to be focused.
+WSLg's global Alt+Y helper is described in the Windows section.
+
+| Action | Shortcut |
+|---|---|
+| Open image | Ctrl+O |
+| Screenshot | Ctrl+Shift+S |
+| Screenshot (quick) | Alt+Y |
+| Export SMILES | Ctrl+E |
+| Undo | Ctrl+Z |
+| Redo | Ctrl+Shift+Z |
+| Quit | Ctrl+Q |
+| Delete selection | Delete / Backspace |
+| Increase interface size | Ctrl+Alt++ |
+| Decrease interface size | Ctrl+Alt+- |
+| Reset interface size | Ctrl+Alt+0 |
+
+### Editing tools
+
+- **Select** — Click atom to substitute element; drag atom to move it; drag empty space to box-select; drag selection to move group; click bond to cycle type
+- **Bond** (with ▾ dropdown: Single/Double/Triple/Wedge/Dash) — Click atom to add a bonded atom (VSEPR-aware direction); click bond to cycle type (or set to wedge/dash when selected); drag atom to create bond
+- **Atom** — Click empty space to add an atom; click existing atom to change its element; drag atom to create bond
+- **Eraser** — Click an atom or bond to delete it; drag empty space to box-select and bulk-delete
+- **Ring** (⌬ with ▾ dropdown: Benzene/6-ring/5-ring/4-ring/3-ring) — Click atom or bond to attach ring; click empty space to place standalone ring; drag to orient
+- **Charge ⊕/⊖** — Click an atom to increase or decrease its formal charge
+- **Format** — Reformat structure with optimal 2D layout (undoable)
+- **Clean** — Clear canvas, loaded images, and 3D viewer
+- **Save xyz / Copy xyz** — After rendering the 3D structure, save it to a file or copy the complete XYZ text to the clipboard; use each button's dropdown for Angstrom or Bohr
+- **PT** — Opens a periodic table dialog to pick any element (button shows current selection)
+
+### Canvas navigation
+
+- **Scroll wheel** — Zoom in/out
+- **Middle-mouse drag** or **right-mouse drag** — Pan the canvas
 
 ## Features
 
@@ -17,7 +518,7 @@ interactive. Close the 3D panel to return to the full canvas.
 - **Linear nitrile groups** — Recognized C–C≡N groups are straightened by moving only the terminal nitrogen, preserving the rest of the drawing and all bond assignments. Format also initializes imported atoms' hybridization so triple bonds remain linear during layout cleanup.
 - **Small-image label recovery** — If OSRA leaves unrecognized atom labels in a small raster image (up to 1200 pixels on its longest side), the editor tries one 2× enlarged, padded copy. It transfers only unambiguous atom identities when the atom/bond counts, connections, known elements/charges, and specified stereochemistry agree. Original coordinates and wedge/dash markings stay unchanged. Intentional `*`/R-group placeholders are not assumed to be carbon; unresolved labels remain available for manual correction. The temporary retry image is deleted after use.
 - **Reviewable recognition retries** — Click **Retry recognition** (or **File → Retry recognition…**) after opening/capturing an image to compare three local OSRA alternatives: adaptive thresholding, 100 dpi interpretation, and grayscale threshold 0.35. The full-resolution source and candidate drawings have independent pan/zoom; SMILES, ring sizes, unknown atoms, and valence warnings help comparison. Scores are not accuracy percentages and never choose a result automatically. **Use selected** applies the chosen drawing as one undoable change; **Keep current** or Escape leaves your edits intact. **Stop retries** keeps completed candidates available. Initial recognition defaults are unchanged.
-- **Snip-style structure capture** — On WSL, press system-wide Alt+Y to select directly over the monitor under your cursor, including extended monitors. A borderless Windows overlay preserves the screen's original size: draw a rectangle, move it or adjust its edges/corners, then click **Recognize** or press **Enter**. **Esc**, right-click, or **Cancel** discards it. Arrow keys move the box by one pixel (Shift: ten). The full-resolution crop goes directly to local recognition, without a separate preview window or web upload.
+- **Snip-style structure capture** — On Windows, press Alt+Y with the app focused; on WSLg, press system-wide Alt+Y to select directly over the monitor under your cursor, including extended monitors. A borderless Windows overlay preserves the screen's original size: draw a rectangle, move it or adjust its edges/corners, then click **Recognize** or press **Enter**. **Esc**, right-click, or **Cancel** discards it. Arrow keys move the box by one pixel (Shift: ten). The full-resolution crop goes directly to local recognition, without a separate preview window or web upload.
 - **Per-monitor UI scaling** — On WSL, uses a 180% interface target on high-resolution laptops. Native Windows accounts for Windows display scaling instead of applying it twice: for example, 70% in-app on a 250%-scaled laptop is about 175% in physical pixels. Window fitting includes the title bar, taskbar and minimum space needed by the controls. Use `A−` and `A+` to remember a separate size for each monitor, or click the percentage to restore that monitor's recommended scale. `Fit` restores the recommended window size even if an unsuitable size was saved.
 - **Monitor-aware window sizing** — Uses stable Qt-controlled sizing without clipping controls and remembers settings per display; `Fit` and UI-scale controls replace unreliable custom WSLg edge-resize gestures
 - **Monitor-aware retry review** — Retry recognition stays on the main window's monitor. On WSLg it opens inside the main window, avoiding native modal frames and Windows-side repositioning that can freeze or corrupt the display. Close the panel or press Esc to return to editing. Native Windows and other desktops retain a separate, parent-centered review dialog.
@@ -56,446 +557,7 @@ interactive. Close the 3D panel to return to the full canvas.
 - **Logging** — All warnings/errors (Python and C++/RDKit/Qt) written to `~/.molrecognizer/molrecognizer.log` instead of the terminal; log refreshed on each run; C-level stderr redirected after display server init to avoid cursor issues on WSLg
 - **Python API** — Use programmatically from other Python packages
 
-## Installation
-
-### Standalone Windows build (in development)
-
-Windows portable packaging is being developed on the feature branch; the
-published **v0.2.0 does not contain a standalone EXE**. The complete local
-package is a ZIP you extract and run with `MolRecognizer.exe`, without Python,
-Conda or WSL. Native **OSRA 2.2.4 has now been compiled and tested locally**;
-complete builds bundle it under `tools/osra/` and discover it automatically.
-Builds labelled **`no-osra` are editor-only previews**. No OSRA-bundled public
-release has been published yet; redistribution review remains outstanding.
-The next public version is planned as **0.3.0**. It is being prepared locally,
-not published: the [release audit](packaging/windows/RELEASE-AUDIT.md) tracks
-the recorded [upstream CImg permission](packaging/windows/CIMG-PERMISSION.md)
-and final acceptance tests. David Tschumperlé granted the ordinary CeCILL
-alternative for the covered legacy CImg code on September 10, 2026.
-Prepared builds include original dependency notices accessible from
-**Help → Third-party licenses**, source-access instructions, and a matching
-source/patch/build-recipe archive. The latest build also includes larger ring
-and charge icons that scale with the interface. See the [draft 0.3.0 release notes](packaging/windows/RELEASE-NOTES-0.3.0.md).
-The [final 0.3.0 validation record](packaging/windows/audits/0.3.0-final/VALIDATION.md)
-documents the matching ZIP pair, exact checksums, 358 passing WSL tests / 355
-passing Windows tests, and both clean Defender scans. The owner reports a
-successful initial test of the final ZIP. Public release upload remains pending;
-this is not yet a downloadable GitHub release.
-Extract the whole ZIP into a short local folder, avoiding deeply nested paths
-on Windows systems with legacy path-length limits.
-
-See [Windows build instructions and validation checklist](packaging/windows/README.md)
-for the build script, OSRA runtime layout and GitHub Actions preview workflow.
-The [native OSRA build recipe](packaging/windows/OSRA-BUILD.md) includes pinned
-source archives, Windows compatibility patches, portable runtime collection
-and the recognition-test results (including a known failed stereo test).
-The 0.3.0rc1 OSRA-inclusive local ZIP passed relocated-executable checks;
-265 regression tests passed on each of native Windows and WSL (five optional
-tests deselected). See the [candidate validation record](packaging/windows/audits/0.3.0rc1/VALIDATION.md)
-for its checksum, local antivirus results and outstanding release checks.
-The portable build compiles the screenshot selector ahead of time, so capture
-does not require running PowerShell scripts on the end user's machine.
-The new molecular-ring/scan-frame icon is included in the EXE and application
-windows, with ten sizes for Windows display scaling. A standalone
-`MolRecognizer.ico` is also included for desktop shortcuts.
-
-The development preview includes DPI-aware dropdown arrows and native Windows
-monitor fitting. Moving between screens adjusts the interface after you finish
-dragging; normal manual resizing on the same monitor remains manual. Laptop
-windows target 80% of the work area and external 1080p monitors target 70%,
-expanding as needed to keep controls visible. Click the bottom-right **Fit**
-button to refit without restarting. Extract each updated preview into a new
-folder and run its EXE, not the previous copy.
-
-### Python application
-
-```bash
-# Clone the repository
-git clone https://github.com/Hengyuan1/molecule-recognizer.git
-cd molecule-recognizer
-
-# Install with uv (recommended)
-uv sync
-
-# Or install with pip
-pip install -e .
-
-# Optional: also install the legacy MolScribe backend
-uv sync --extra molscribe
-# or: pip install -e ".[molscribe]"
-
-# Optional: expose the editable checkout as a command from any directory
-uv tool install --python 3.10 --editable .
-```
-
-### Python Dependencies
-
-- Python >= 3.10
-- RDKit >= 2023.9.1 (molecular toolkit; Linux, macOS, and Windows wheels)
-- PySide6 (Qt GUI)
-- Pillow, NumPy
-- MolScribe and PyTorch (optional alternative recognition backend)
-
-OSRA is a separate native executable, not a Python dependency.
-
-### OSRA discovery
-
-Molecule Recognizer searches for OSRA in this order:
-
-1. The `OSRA_EXECUTABLE` environment variable.
-2. In a portable build, `tools/osra/bin/osra.exe` beside `MolRecognizer.exe`.
-3. `osra` or `osra.exe` on `PATH`.
-4. A project-local executable at `.tools/osra/bin/osra` or
-   `.tools/osra/bin/osra.exe`.
-
-When a complete dictionary set is found beside the selected OSRA installation
-(`share/osra`, `share`, or its `bin` directory), the app supplies absolute paths
-for `chain.txt`, `spelling.txt` and `superatom.txt`. This avoids compiled-in
-build paths and keeps recognition independent of the current working folder.
-
-For a custom installation:
-
-```bash
-export OSRA_EXECUTABLE=/path/to/osra
-```
-
-In PowerShell:
-
-```powershell
-$env:OSRA_EXECUTABLE = "C:\path\to\osra.exe"
-```
-
-The app runs OSRA locally; images are not sent to the NCI OSRA web page.
-OSRA may return several structures for a page or compound image. The editor
-loads the first valid structure.
-
-### Windows
-
-#### Recommended: Windows 11 with WSL2/WSLg
-
-Run the Python application and OSRA inside Ubuntu under WSL2. This is the
-configuration currently tested by the project and provides:
-
-- A system-wide Windows `Alt+Y` shortcut while Molecule Recognizer is running.
-- Capture of the full-resolution monitor under the cursor.
-- Mixed-DPI and extended-monitor support.
-- Local OSRA recognition without uploading images.
-
-Install OSRA in WSL, put its executable on the WSL `PATH`, then install the
-editable application:
-
-```bash
-uv tool install --python /usr/bin/python3.10 --editable \
-  /path/to/molecule-recognizer
-molrecognizer
-```
-
-#### Native Windows
-
-Native Windows can run the Python GUI because RDKit, PySide6, Pillow, and
-NumPy provide Windows wheels. OSRA must still be obtained or compiled
-separately.
-
-##### 1. Install Git and uv
-
-Open PowerShell and install Git and uv if they are not already available:
-
-```powershell
-winget install --id Git.Git -e
-winget install --id astral-sh.uv -e
-```
-
-Close and reopen PowerShell, then verify:
-
-```powershell
-git --version
-uv --version
-```
-
-##### 2. Obtain OSRA for Windows
-
-An OSRA-inclusive portable MolRecognizer build already contains its runtime;
-skip the separate OSRA/Python installation steps when using that bundle.
-Developers can use the [tested native build recipe](packaging/windows/OSRA-BUILD.md)
-to compile OSRA 2.2.4 and package it with the application.
-
-Download an OSRA Windows distribution from the
-[official OSRA download page](https://sourceforge.net/p/osra/wiki/Download/),
-or compile the free OSRA source using the
-[official Windows build instructions](https://sourceforge.net/p/osra/wiki/Compilation_on_Windows/).
-The official project currently distributes source and prebuilt Windows
-binaries separately.
-
-Keep the complete distribution together. OSRA needs more than `osra.exe`:
-retain its DLLs and the runtime dictionaries `chain.txt`, `spelling.txt`, and
-`superatom.txt`.
-
-Before configuring Molecule Recognizer, test OSRA itself:
-
-```powershell
-& "C:\path\to\OSRA\bin\osra.exe" --version
-& "C:\path\to\OSRA\bin\osra.exe" -f smi "C:\path\to\molecule.png"
-```
-
-The second command should print a SMILES string. If it reports a missing DLL
-or dictionary, repair the OSRA installation before continuing.
-
-##### 3. Install Molecule Recognizer
-
-Choose either the uv-tool method or the Conda method below.
-
-**Option A — uv tool:**
-
-```powershell
-git clone https://github.com/Hengyuan1/molecule-recognizer.git
-cd molecule-recognizer
-uv tool install --python 3.11 --editable .
-```
-
-If uv needs to install Python 3.11 first:
-
-```powershell
-uv python install 3.11
-uv tool install --python 3.11 --editable .
-```
-
-**Option B — existing Conda/Miniconda installation:**
-
-This option does not require WSL or a system-wide Python installation:
-
-```powershell
-git clone https://github.com/Hengyuan1/molecule-recognizer.git
-cd molecule-recognizer
-
-conda create -n molrecognizer python=3.11 -y
-conda activate molrecognizer
-python -m pip install --upgrade pip
-python -m pip install -e .
-```
-
-If Git is unavailable on a managed laptop, download the repository ZIP,
-extract it, open PowerShell in the extracted directory, and run the Conda and
-pip commands above without the `git clone` command.
-
-##### 4. Tell Molecule Recognizer where OSRA is
-
-Set the executable for the current PowerShell session:
-
-```powershell
-$env:OSRA_EXECUTABLE = "C:\path\to\OSRA\bin\osra.exe"
-```
-
-Persist it for future PowerShell sessions:
-
-```powershell
-[Environment]::SetEnvironmentVariable(
-    "OSRA_EXECUTABLE",
-    "C:\path\to\OSRA\bin\osra.exe",
-    "User"
-)
-```
-
-Close and reopen PowerShell after setting the persistent value.
-
-For a Conda environment, OSRA can instead be associated only with that
-environment:
-
-```powershell
-conda activate molrecognizer
-conda env config vars set OSRA_EXECUTABLE="C:\path\to\OSRA\bin\osra.exe"
-conda deactivate
-conda activate molrecognizer
-```
-
-Verify the environment variable:
-
-```powershell
-$env:OSRA_EXECUTABLE
-```
-
-As an alternative to `OSRA_EXECUTABLE`, place a complete OSRA distribution
-inside the cloned project using this layout:
-
-```text
-.tools/
-└── osra/
-    ├── bin/
-    │   ├── osra.exe
-    │   └── required OSRA DLLs...
-    └── share/
-        ├── chain.txt
-        ├── spelling.txt
-        └── superatom.txt
-```
-
-You may also add the OSRA `bin` directory to the Windows `PATH`.
-
-##### 5. Verify the integration
-
-From any directory in a newly opened PowerShell window:
-
-```powershell
-molrecognizer
-```
-
-With the Conda installation, activate the environment first:
-
-```powershell
-conda activate molrecognizer
-molrecognizer
-```
-
-In the application:
-
-1. Click **Open Image** and select a molecule image.
-2. Wait for OSRA recognition.
-3. Confirm that the structure appears on the canvas and SMILES appears in
-   the bottom bar.
-4. Click **Render** to generate 3D coordinates.
-5. Double-click the rendered preview for side-by-side 2D/3D comparison.
-   Rotate with left-drag, pan with right-drag, and scroll to zoom. If you edit
-   the 2D structure, click **Render** again to update the 3D view.
-6. Use **Save xyz** or **Copy xyz** as needed.
-
-You can also test the integration without opening the GUI:
-
-```powershell
-uv run --project "C:\path\to\molecule-recognizer" python -c "import molrecognizer; print(molrecognizer.recognize(r'C:\path\to\molecule.png'))"
-```
-
-##### Native Windows screenshot note
-
-On native Windows, `Alt+Y` and `Ctrl+Shift+S` currently work while Molecule
-Recognizer has focus. Move the cursor onto the desired monitor before using
-the shortcut. The system-wide `Alt+Y` shortcut that works while another
-Windows application has focus is currently provided only by the WSL2/WSLg
-configuration.
-
-##### Troubleshooting
-
-- **`OSRA executable was not found`** — check `$env:OSRA_EXECUTABLE`, or run
-  `Get-Command osra.exe`.
-- **Missing `chain.txt`** — keep `chain.txt`, `spelling.txt`, and
-  `superatom.txt` in the OSRA distribution's expected `share` directory.
-- **Missing DLL error** — restore the DLLs distributed with OSRA or add their
-  directory to `PATH`.
-- **`molrecognizer` is not found** — run `uv tool update-shell`, reopen
-  PowerShell, and retry. For Conda, activate the `molrecognizer` environment.
-- **Recognition returns an incorrect molecule** — crop tightly around one
-  chemical structure and manually review the generated structure and SMILES.
-
-### Why OSRA is not installed by `uv sync`
-
-OSRA is not published as a Python wheel. It is a C++ program requiring
-GraphicsMagick, Open Babel, Poppler, Potrace, patched GOCR, OCRAD, and TCLAP.
-The official project distributes free source code, while current prebuilt
-Windows binaries are provided separately. Automatically downloading or
-building OSRA during Python package installation would be slow, fragile, and
-would require platform-specific binary and license handling.
-
-The [Windows portable builder](packaging/windows/README.md) can include a
-supplied Windows runtime under `tools/osra/`. Obtaining/building a suitable
-OSRA runtime and reviewing its redistribution requirements are separate
-release steps, not something `pip` or `uv` performs at install time.
-
-### Screenshot backends
-
-**Portable Windows builds:** use a precompiled Windows-native selector and
-the .NET Framework 4.x runtime. No PowerShell or runtime compilation is needed.
-The interaction and full-resolution crop are the same as below.
-
-**Python installations on Windows and WSL2/WSLg:** a Windows-native selection overlay is launched through
-Windows PowerShell and .NET Windows Forms (included with Windows). No additional
-Python dependency or Snipaste installation is needed. Move the cursor onto the
-desired monitor before pressing the shortcut. The overlay freezes that monitor
-in memory while you adjust the selection, preserving physical pixels even with
-mixed display scaling. Only the confirmed crop is returned to MolRecognizer;
-the dimming, border and buttons are not included. Neither the full-screen image
-nor the crop is saved to a screenshot file. The recognizer may create its own
-temporary input file as part of local recognition.
-
-PowerShell must be allowed to compile the bundled C# helper with `Add-Type`;
-workplace application-control policies may block it. Errors restore the app
-and are reported instead of silently opening the old preview workflow.
-
-**Other desktops (or when Windows PowerShell is unavailable):** a borderless
-Qt selection overlay uses the existing capture backends:
-
-| Priority | Backend | Works on |
-|---|---|---|
-| 1 | Qt `grabWindow` (built-in) | Native Linux X11, macOS, native Windows |
-| 2 | `grim` (`sudo apt install grim`) | Native Linux Wayland |
-| 3 | `scrot` (`sudo apt install scrot`) | Native Linux X11 |
-| 4 | `gnome-screenshot` | GNOME desktops |
-
-**Native Linux:** no extra packages needed on X11. On Wayland, install
-`grim`: `sudo apt install grim`.
-
-Select one monitor per capture; to capture a different display, cancel, move
-the cursor there, and press the shortcut again.
-
-### Reviewing difficult recognition
-
-For difficult ring systems, use **Retry recognition** after the initial attempt
-finishes (also available if recognition failed). Select a candidate in the list,
-compare its ring closures and stereochemistry with the source, then click
-**Use selected** only if you want to replace the current structure. Undo restores
-the previous drawing, including manual edits. Re-render 3D after accepting a new
-result before saving/copying XYZ. All candidates may still be wrong; a larger
-capture from the original PDF/vector drawing often provides more useful detail
-than enlarging an existing small PNG.
-
-Retries use the original image pixels held in memory until another image is
-recognized, the workspace is cleared, or the app closes—not the sidebar
-thumbnail. They create one temporary PNG, deleted after completion, failure, or
-cancellation, and never upload the image. Each of the three attempts is limited
-to 15 seconds of OSRA processing plus a 10-second process grace period (up to
-75 seconds total); you can cancel at any time.
-
-## Usage
-
-### GUI Application
-
-```bash
-# With uv
-uv run molrecognizer
-
-# Or if installed globally
-molrecognizer
-```
-
-**Keyboard shortcuts:**
-| Action | Shortcut |
-|---|---|
-| Open image | Ctrl+O |
-| Screenshot | Ctrl+Shift+S |
-| Screenshot (quick) | Alt+Y |
-| Export SMILES | Ctrl+E |
-| Undo | Ctrl+Z |
-| Redo | Ctrl+Shift+Z |
-| Quit | Ctrl+Q |
-| Delete selection | Delete / Backspace |
-| Increase interface size | Ctrl+Alt++ |
-| Decrease interface size | Ctrl+Alt+- |
-| Reset interface size | Ctrl+Alt+0 |
-
-**Editing tools:**
-- **Select** — Click atom to substitute element; drag atom to move it; drag empty space to box-select; drag selection to move group; click bond to cycle type
-- **Bond** (with ▾ dropdown: Single/Double/Triple/Wedge/Dash) — Click atom to add a bonded atom (VSEPR-aware direction); click bond to cycle type (or set to wedge/dash when selected); drag atom to create bond
-- **Atom** — Click empty space to add an atom; click existing atom to change its element; drag atom to create bond
-- **Eraser** — Click an atom or bond to delete it; drag empty space to box-select and bulk-delete
-- **Ring** (⌬ with ▾ dropdown: Benzene/6-ring/5-ring/4-ring/3-ring) — Click atom or bond to attach ring; click empty space to place standalone ring; drag to orient
-- **Charge ⊕/⊖** — Click an atom to increase or decrease its formal charge
-- **Format** — Reformat structure with optimal 2D layout (undoable)
-- **Clean** — Clear canvas, loaded images, and 3D viewer
-- **Save xyz / Copy xyz** — After rendering the 3D structure, save it to a file or copy the complete XYZ text to the clipboard; use each button's dropdown for Angstrom or Bohr
-- **PT** — Opens a periodic table dialog to pick any element (button shows current selection)
-
-**Canvas navigation:**
-- **Scroll wheel** — Zoom in/out
-- **Middle-mouse drag** or **right-mouse drag** — Pan the canvas
-
-### Python API
+## Python API
 
 ```python
 import molrecognizer
@@ -534,7 +596,8 @@ print(molrecognizer.molecule_to_smiles(mol))  # "C=C"
 
 ### Using MolScribe with a GPU
 
-If you have a CUDA-capable GPU, recognition runs faster:
+With the optional MolScribe dependencies and a compatible CUDA-enabled PyTorch
+installation, request GPU recognition explicitly:
 
 ```python
 smiles = molrecognizer.recognize(
@@ -548,8 +611,8 @@ smiles = molrecognizer.recognize(
 # Run fast tests (no model download or OSRA installation required)
 uv run pytest tests/ -m "not slow"
 
-# Run all tests including MolScribe integration (downloads ~400MB model on first run)
-uv run pytest tests/ -m slow
+# Run optional MolScribe integration tests (downloads model weights on first run)
+uv run --extra molscribe pytest tests/ -m slow
 ```
 
 ## Project Structure
@@ -581,4 +644,7 @@ molecule-recognizer/
 
 ## License
 
-MIT
+MolRecognizer application code is [MIT-licensed](LICENSE). Bundled Windows
+components, including OSRA, retain their own licenses; see the
+[third-party notices](packaging/windows/THIRD-PARTY-NOTICES.md) and the package's
+**Help → Third-party licenses** menu.
