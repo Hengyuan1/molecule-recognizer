@@ -474,9 +474,64 @@ than enlarging an existing small PNG.
 Retries use the original image pixels held in memory until another image is
 recognized, the workspace is cleared, or the app closes—not the sidebar
 thumbnail. They create one temporary PNG, deleted after completion, failure, or
-cancellation, and never upload the image. Each of the three attempts is limited
+cancellation, and never upload the image. Each of the five attempts is limited
 to 15 seconds of OSRA processing plus a 10-second process grace period (up to
-75 seconds total); you can cancel at any time.
+125 seconds total); you can cancel at any time. Besides adaptive threshold,
+100 dpi interpretation and threshold 0.35, **2x enlarged** and **4x enlarged**
+try enlarged OCR-only copies with a white margin. They do not change the source
+preview or add missing detail. Enlarged attempts exceeding 8 million pixels or
+8,000 pixels on either side (before padding) are skipped.
+
+### Metal complexes and unresolved labels (unreleased)
+
+These changes are in the current source and the separate coordination-fix test
+build, **not the published 0.3.0 Windows ZIP**.
+
+- **Metal** (beside **PT**), or **Build → Select metal center…**, opens a compact
+  picker for Co, Pt, Cr, Sc, Ir, Fe, Ni, Cu, Zn, Mn, Ru, Pd, Rh, Ag, Au and Ti.
+  Choose one, then click empty canvas to place it or an existing atom to replace
+  it. Selection alone changes no atoms, bonds or formal charges. **PT** still
+  provides other elements. These symbols also work in label review and SMILES;
+  adding quick selection does not retrain OSRA or guarantee OCR accuracy.
+  The latest test build uses a light picker background and separately sized
+  symbol/name labels to remain readable on Windows dark desktops.
+- **Bond → Coordinate (donor → acceptor):** drag from donor to metal/acceptor.
+  Click an existing coordinate bond with this tool to reverse its arrow.
+  Coordinate bonds survive preview, SMILES export and undo/redo without being
+  counted as extra covalent valence on the donor. Not every metal bond should
+  be coordinate: verify metal–carbon/halide bonds, formal charges and hydrogens.
+- **Edit → Review atom labels / metal…:** confirm OCR labels against the source.
+  Enter an exact element symbol such as `Sc` or `Ir`, or `NH3` for a confirmed
+  ammonia ligand. Blank fields keep existing atoms. Preview before applying;
+  Apply is undoable and Cancel preserves the molecule. Formal charges are
+  explicit user choices, not inferred oxidation states. Optional N/O–metal
+  single-bond conversion is off by default and retains existing wedge/dash ink.
+  `CO3` is not expanded automatically: draw the confirmed atoms and binding mode.
+- Metal complexes and unresolved labels get review warnings rather than a
+  misleading green validation message. **Format** is disabled for metal/coordinate
+  structures to preserve their source layout. Automatic **Render** is disabled
+  for metal/coordinate structures and unresolved labels: the organic 3D force
+  fields cannot validate metal coordination geometry. Ordinary organic rendering
+  is unchanged; do not use unverified complex coordinates as ML ground truth.
+
+In the supplied low-resolution examples, M1 improved with **4x enlarged**, M2
+with **2x enlarged**, and the organic sulfone example with **4x enlarged**.
+These are candidates to inspect, not accuracy guarantees. Sc/NH3 abbreviations
+can still need manual confirmation. Bundled OSRA also discards small candidate
+graphs with five or fewer atoms before expanding labels; the four-coordinate
+Sc examples M5/M6 still require manual drawing or a verified structure file/SMILES.
+This update does not change that OSRA engine limit or infer metal stereochemistry
+from a 2D projection. Prefer a higher-resolution source whenever available.
+
+The metal **Render** restriction is a conservative MolRecognizer limitation,
+not a claim that metal complexes cannot be modeled in 3D. MMFF lacks parameters
+for many complexes; UFF covers some, but parameter availability and a successful
+embedding do not establish the correct coordination geometry, isomer or spin
+state. The current pipeline has no metal-specific validation. A future
+experimental mode would need explicit geometry choices and checks for available
+parameters and optimizer convergence, with clearly marked unvalidated output.
+See RDKit's [force-field parameter/status APIs](https://www.rdkit.org/docs/source/rdkit.Chem.rdForceFieldHelpers.html)
+and [partial non-tetrahedral stereo support](https://www.rdkit.org/docs/RDKit_Book.html#support-for-non-tetrahedral-atomic-stereochemistry).
 
 ### Keyboard shortcuts
 
@@ -521,7 +576,7 @@ WSLg's global Alt+Y helper is described in the Windows section.
 - **Image recognition** — Uses [OSRA](https://sourceforge.net/projects/osra/) by default and preserves its recognized 2D coordinates and explicit single/double-bond placement via SDF output, making image-to-canvas comparison and manual correction easier; MolScribe remains available as an alternative
 - **Linear nitrile groups** — Recognized C–C≡N groups are straightened by moving only the terminal nitrogen, preserving the rest of the drawing and all bond assignments. Format also initializes imported atoms' hybridization so triple bonds remain linear during layout cleanup.
 - **Small-image label recovery** — If OSRA leaves unrecognized atom labels in a small raster image (up to 1200 pixels on its longest side), the editor tries one 2× enlarged, padded copy. It transfers only unambiguous atom identities when the atom/bond counts, connections, known elements/charges, and specified stereochemistry agree. Original coordinates and wedge/dash markings stay unchanged. Intentional `*`/R-group placeholders are not assumed to be carbon; unresolved labels remain available for manual correction. The temporary retry image is deleted after use.
-- **Reviewable recognition retries** — Click **Retry recognition** (or **File → Retry recognition…**) after opening/capturing an image to compare three local OSRA alternatives: adaptive thresholding, 100 dpi interpretation, and grayscale threshold 0.35. The full-resolution source and candidate drawings have independent pan/zoom; SMILES, ring sizes, unknown atoms, and valence warnings help comparison. Scores are not accuracy percentages and never choose a result automatically. **Use selected** applies the chosen drawing as one undoable change; **Keep current** or Escape leaves your edits intact. **Stop retries** keeps completed candidates available. Initial recognition defaults are unchanged.
+- **Reviewable recognition retries** — Click **Retry recognition** (or **File → Retry recognition…**) after opening/capturing an image to compare five local OSRA alternatives: adaptive thresholding, 100 dpi interpretation, grayscale threshold 0.35, and 2×/4× enlargement. Adaptive/enlarged retries add a white margin to reduce false frame bonds at image boundaries (unreleased fixes, not yet in the 0.3.0 Windows ZIP). The full-resolution source and candidate drawings have independent pan/zoom; SMILES, ring sizes, unknown atoms, and valence warnings help comparison. Scores are not accuracy percentages and never choose a result automatically. **Use selected** applies the chosen drawing as one undoable change; **Keep current** or Escape leaves your edits intact. **Stop retries** keeps completed candidates available. Initial recognition defaults are unchanged.
 - **Snip-style structure capture** — On Windows, press Alt+Y with the app focused; on WSLg, press system-wide Alt+Y to select directly over the monitor under your cursor, including extended monitors. A borderless Windows overlay preserves the screen's original size: draw a rectangle, move it or adjust its edges/corners, then click **Recognize** or press **Enter**. **Esc**, right-click, or **Cancel** discards it. Arrow keys move the box by one pixel (Shift: ten). The full-resolution crop goes directly to local recognition, without a separate preview window or web upload.
 - **Per-monitor UI scaling** — On WSL, uses a 180% interface target on high-resolution laptops. Native Windows accounts for Windows display scaling instead of applying it twice: for example, 70% in-app on a 250%-scaled laptop is about 175% in physical pixels. Window fitting includes the title bar, taskbar and minimum space needed by the controls. Use `A−` and `A+` to remember a separate size for each monitor, or click the percentage to restore that monitor's recommended scale. `Fit` restores the recommended window size even if an unsuitable size was saved.
 - **Monitor-aware window sizing** — Uses stable Qt-controlled sizing without clipping controls and remembers settings per display; `Fit` and UI-scale controls replace unreliable custom WSLg edge-resize gestures

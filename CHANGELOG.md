@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased
+
+- Fix the common-metal picker on dark Windows desktops with an explicit light
+  background and high-contrast text. Give symbols and names separate layout-managed
+  labels instead of a clipped multiline native button caption; test dark palettes
+  and multiple UI scales on native Windows and embedded dialogs.
+- Add a compact **Metal** toolbar picker and **Build → Select metal center…**
+  for Co, Pt, Cr and other common centers, with readable element colors. Picking
+  a metal selects the atom tool without inventing charges or bonds; placement
+  and replacement remain undoable. No changes to OSRA's recognition engine.
+- Clarify that the automatic metal-3D block is a conservative application guard,
+  not a fundamental restriction on metal modeling; some UFF parameters exist,
+  but this pipeline does not validate metal geometry or optimization success.
+- Support donor→acceptor coordinate bonds in the editor, previews, SMILES and
+  exact undo/redo, with endpoint-specific valence and preserved spatial ink.
+- Add explicit atom/metal/NH3 label review with preview, manual formal charges
+  and optional N/O–metal bond conversion. Do not guess metal identity, oxidation
+  state or CO3 binding mode. Preserve existing non-tetrahedral stereo tags.
+- Add bounded 2×/4× OCR retry copies; five presets now take at most approximately
+  125 seconds of OSRA processing/grace time, with cancellation and temporary-file
+  cleanup. M1/M2/organic sulfone examples improve, but still need chemical review.
+- Warn about metal complexes and unresolved labels. Disable automatic metal
+  reformatting and unsupported metal/unknown-label 3D generation rather than
+  treating organic force-field output as verified coordination geometry.
+  OSRA's small-graph filter and difficult Sc/ligand abbreviations remain limitations.
+- Add a 24-pixel white margin only to adaptive-threshold retry inputs to reduce
+  image-boundary artifacts that Windows OSRA can misread as bonds attached to
+  the molecule. Source pixels are not resized or cropped, transparency is
+  composited onto white, and the source preview and other retry presets remain
+  unchanged. Verified against a user-provided image that previously acquired a
+  false rectangular carbon chain. This fix is not in the published 0.3.0 ZIP.
+
 ## 0.3.0 — Windows portable release
 
 - Publish the tested native Windows x64 ZIP with bundled OSRA 2.2.4, plus

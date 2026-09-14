@@ -60,6 +60,10 @@ def format_2d(mol: Molecule) -> Molecule:
     old drawing first, lay out a copy, then re-wedge for the new coordinates.
     """
     original = mol.to_rdkit()
+    from .coordination import has_coordination
+    if has_coordination(original):
+        raise ValueError("Automatic formatting of metal/coordinate structures is disabled "
+                         "to preserve the source geometry. Move atoms manually instead.")
     if mol.num_atoms == 0:
         result = Molecule()
         result._mol = Chem.RWMol(original)

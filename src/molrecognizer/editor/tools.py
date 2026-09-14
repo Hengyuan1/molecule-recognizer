@@ -153,7 +153,8 @@ class Tool(ABC):
             if target_idx is not None and target_idx != source_idx:
                 existing = self._history.molecule.get_bond_info(source_idx, target_idx)
                 if existing:
-                    if existing.bond_type != self.bond_type:
+                    if (existing.bond_type != self.bond_type
+                            or self.bond_type == BondType.DATIVE):
                         self._history.execute(
                             ChangeBondTypeCommand(source_idx, target_idx, self.bond_type)
                         )
@@ -535,7 +536,12 @@ class BondTool(Tool):
         """When wedge/dash is selected, set the bond to that type
         (or toggle back to single).  Otherwise fall through to the
         normal single → double → triple cycle."""
-        if self.bond_type in (BondType.WEDGE, BondType.DASH):
+        if self.bond_type == BondType.DATIVE:
+            a1, a2 = bond_item.a1_idx, bond_item.a2_idx
+            if bond_item.bond_type == BondType.DATIVE:
+                a1, a2 = a2, a1
+            self._history.execute(ChangeBondTypeCommand(a1, a2, BondType.DATIVE))
+        elif self.bond_type in (BondType.WEDGE, BondType.DASH):
             current = bond_item.bond_type
             new_type = (BondType.SINGLE if current == self.bond_type
                         else self.bond_type)
@@ -559,16 +565,15 @@ class BondTool(Tool):
                BondType.WEDGE: 1, BondType.DASH: 1}
 
         # Compute bond-order sum and max existing bond order
-        bos = 0.0
+        bos = mol.bond_order_sum(atom_idx)
         max_existing = 0.0
         for b in mol.get_all_bonds():
             if b.begin_atom_idx == atom_idx or b.end_atom_idx == atom_idx:
                 order = _bv.get(b.bond_type, 1)
-                bos += order
                 if order > max_existing:
                     max_existing = order
 
-        new_order = _bv.get(self.bond_type, 1)
+        new_order = 0 if self.bond_type == BondType.DATIVE else _bv.get(self.bond_type, 1)
         needed = math.ceil(bos) + new_order
 
         # Smallest standard valence that fits the current + new bonds
@@ -582,7 +587,7 @@ class BondTool(Tool):
                 max_val = max(v + info.formal_charge
                               for v in STANDARD_VALENCES[info.element])
 
-        if needed > max_val:
+        if needed > max_val and info.element in STANDARD_VALENCES:
             # Valence full — fall back to element substitution
             super()._on_atom_click(atom_idx)
             return

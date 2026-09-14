@@ -22,21 +22,13 @@ def molecule_to_smiles(mol: Molecule) -> str:
     count (e.g. N with 4 bonds), the formal charge is auto-inferred so
     that the SMILES correctly reflects the charged species.
     """
-    from .molecule import BondType
     from .valence import infer_formal_charge
 
     # Pre-compute inferred charges
-    _bv = {BondType.SINGLE: 1, BondType.DOUBLE: 2,
-           BondType.TRIPLE: 3, BondType.AROMATIC: 1.5,
-           BondType.WEDGE: 1, BondType.DASH: 1}
-    all_bonds = mol.get_all_bonds()
     inferred: dict[int, int] = {}
     for i in range(mol.num_atoms):
         info = mol.get_atom_info(i)
-        bos = 0.0
-        for b in all_bonds:
-            if b.begin_atom_idx == i or b.end_atom_idx == i:
-                bos += _bv.get(b.bond_type, 1)
+        bos = mol.bond_order_sum(i)
         inferred[i] = infer_formal_charge(info.element, bos,
                                           info.formal_charge)
 
@@ -47,6 +39,9 @@ def molecule_to_smiles(mol: Molecule) -> str:
         na = Chem.Atom(a.GetAtomicNum())
         na.SetFormalCharge(inferred.get(i, a.GetFormalCharge()))
         na.SetChiralTag(a.GetChiralTag())
+        na.SetIsotope(a.GetIsotope())
+        if a.HasProp("_chiralPermutation"):
+            na.SetIntProp("_chiralPermutation", a.GetIntProp("_chiralPermutation"))
         # Keep explicit Hs that are required for aromaticity (pyrrole N, etc.)
         if a.GetNumExplicitHs() > 0:
             na.SetNumExplicitHs(a.GetNumExplicitHs())

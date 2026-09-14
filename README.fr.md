@@ -291,11 +291,19 @@ Installer ces dépendances ne remplace pas OSRA comme moteur par défaut. Dans l
 
 ### Réessayer la reconnaissance des structures complexes
 
-Après la fin ou l’échec de la première reconnaissance, utilisez **Retry recognition**. Trois variantes OSRA locales sont comparées à partir de l’image en pleine résolution : seuillage adaptatif, interprétation à 100 dpi et seuil de gris 0.35. Les scores ne sont pas des pourcentages de précision et ne sélectionnent aucun résultat automatiquement.
+Après la fin ou l’échec de la première reconnaissance, utilisez **Retry recognition**. Le code actuel compare cinq variantes OSRA locales : seuillage adaptatif, interprétation à 100 dpi, seuil de gris 0.35 et copies agrandies 2×/4× réservées à l’OCR. Les scores ne sont pas des pourcentages de précision et ne sélectionnent aucun résultat automatiquement.
+
+La nouvelle tentative avec seuillage adaptatif ajoute une marge blanche sans redimensionner ni recadrer l’image source, afin de réduire les faux cadres dus aux bords de l’image interprétés comme des liaisons. Ce correctif est présent dans le code source, mais pas encore dans le ZIP Windows 0.3.0.
 
 Cliquez sur **Use selected** uniquement pour remplacer la structure actuelle. **Keep current / Échap** conserve vos modifications. **Stop retries** arrête les nouvelles tentatives mais garde les candidats déjà calculés. Le remplacement peut être annulé en une seule opération Undo. Après acceptation, refaites Render avant l’export XYZ.
 
-Chaque tentative est limitée à 15 secondes de traitement OSRA plus un délai de grâce de 10 secondes pour le processus, soit jusqu’à 75 secondes pour les trois ; vous pouvez annuler à tout moment. Tous les candidats peuvent être erronés. Une capture plus nette du PDF ou dessin vectoriel original apporte généralement davantage d’informations que l’agrandissement d’un petit PNG.
+Chaque tentative est limitée à 15 secondes de traitement OSRA plus un délai de grâce de 10 secondes pour le processus, soit jusqu’à 125 secondes pour les cinq ; vous pouvez annuler à tout moment. Les agrandissements dépassant 8 millions de pixels ou 8000 pixels sur un côté avant ajout des marges sont ignorés ; l’original reste inchangé. Tous les candidats peuvent être erronés. Une capture plus nette du PDF ou dessin vectoriel original apporte généralement davantage d’informations que l’agrandissement d’un petit PNG.
+
+### Complexes métalliques (non publié)
+
+Le bouton **Metal** près de **PT**, ou **Build → Select metal center…**, permet de choisir rapidement Co, Pt, Cr, Sc, Ir, Fe, Ni, Cu, Zn et d’autres métaux. Cliquez ensuite sur le canevas pour ajouter ou remplacer un atome. Aucune charge ni liaison n’est attribuée automatiquement ; le moteur OSRA reste inchangé. Le blocage de la génération 3D des métaux est une précaution de l’application, pas une impossibilité générale : UFF prend en charge certains métaux, mais la présence de paramètres ne valide pas la géométrie de coordination ni la stéréoconfiguration.
+
+Le code actuel et la compilation de test séparée prennent en charge **Bond → Coordinate (donor → acceptor)** : tracez du donneur vers l’accepteur ; cliquez sur une liaison de coordination existante pour inverser sa direction. **Edit → Review atom labels / metal…** permet de confirmer `Sc`, `Ir`, `NH3` et les charges formelles avec aperçu. Un champ vide conserve l’atome ; l’application des changements est annulable. La conversion facultative des liaisons simples N/O–métal est désactivée par défaut. Aucun état d’oxydation ni mode de liaison de `CO3` n’est deviné. Des avertissements signalent métaux et étiquettes inconnues ; **Format** automatique est désactivé pour les métaux, et **Render** pour les métaux/étiquettes inconnues, afin d’éviter des géométries non vérifiées. Les molécules organiques restent prises en charge. Le filtre OSRA éliminant les candidats de cinq atomes ou moins peut encore exclure les petits complexes de Sc : dessinez-les manuellement ou utilisez un SMILES vérifié. Ces changements ne figurent pas dans le ZIP Windows 0.3.0 publié ; voir les [limites détaillées en anglais](README.md#metal-complexes-and-unresolved-labels-unreleased).
 
 ### Outils et affichage
 

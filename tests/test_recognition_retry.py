@@ -6,12 +6,14 @@ from threading import Event
 from unittest.mock import patch
 
 import pytest
-from PIL import Image
+from PIL import Image, ImageOps
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
 from molrecognizer.core.molecule import Molecule
-from molrecognizer.core.recognition_retry import RETRY_PROFILES, recognition_alternatives
+from molrecognizer.core.recognition_retry import (
+    RETRY_PROFILES, _adaptive_retry_image, recognition_alternatives,
+)
 from molrecognizer.core.recognizer import OSRARecognizer, RecognitionCancelled
 from tests.test_history import _molecular_state
 from tests.test_shutdown import _run
@@ -46,21 +48,105 @@ def test_retry_presets_keep_full_resolution_and_sdf_geometry(tmp_path):
         assert command[5:-2] == [*RETRY_PROFILES[index].options, '-p']
         assert kwargs['timeout'] == 25
         with Image.open(path) as stored:
-            assert stored.size == image.size
-            assert stored.tobytes() == original_pixels
+            profile = RETRY_PROFILES[index]
+            expected_image = (_adaptive_retry_image(image, profile.scale)
+                              if index == 0 or profile.scale != 1 else image)
+            assert stored.mode == expected_image.mode
+            assert stored.size == expected_image.size
+            assert stored.tobytes() == expected_image.tobytes()
         return CompletedProcess([], 15, _sdf(source), b'')
 
     with patch('molrecognizer.core.recognizer.shutil.which', return_value='/osra'), \
          patch('molrecognizer.core.recognizer.subprocess.run', side_effect=run):
         candidates = list(recognition_alternatives(image, OSRARecognizer(), status.append))
     assert [c.name for c in candidates] == [p.name for p in RETRY_PROFILES]
-    assert len(status) == 3 and len(paths) == 3 and len(set(paths)) == 1
+    assert len(status) == len(paths) == len(RETRY_PROFILES) and len(set(paths)) == 1
     assert not paths[0].exists() and image.tobytes() == original_pixels
     for candidate in candidates:
         assert candidate.confidence == 4.276 and not candidate.error
         assert candidate.molecule.get_all_bonds() == expected.get_all_bonds()
         for actual, original in zip(candidate.molecule.get_2d_coords(), expected.get_2d_coords()):
             assert actual == pytest.approx(original, abs=1e-4)
+
+
+def test_oversized_enlarged_retries_are_skipped_and_temporary_file_removed():
+    image = Image.new('RGB', (2100, 1000), 'white')
+    before = image.tobytes()
+    paths = []
+
+    def read(path, **kwargs):
+        paths.append(path)
+        return _source()
+
+    with patch('molrecognizer.core.recognizer.shutil.which', return_value='/osra'), \
+         patch.object(OSRARecognizer, '_read_sdf', side_effect=read):
+        results = list(recognition_alternatives(image, OSRARecognizer()))
+    assert len(paths) == 3 and len(set(paths)) == 1
+    assert all(result.molecule is not None for result in results[:3])
+    assert all('size limit' in result.error for result in results[3:])
+    assert not paths[0].exists() and image.tobytes() == before
+
+
+@pytest.mark.parametrize('mode', ['RGB', 'L', '1', 'RGBA', 'LA', 'P'])
+@pytest.mark.parametrize('size', [(1, 1), (9, 7), (260, 187)])
+def test_adaptive_margin_preserves_every_source_pixel_including_edges(mode, size):
+    image = Image.new('RGB', size, (10, 60, 120)).convert(mode)
+    # Asymmetric content reaching the edge must not be cropped, scaled or flipped.
+    image.paste(Image.new('RGB', (1, 1), 'white').convert(mode), (0, 0))
+    before = image.tobytes()
+    padded = _adaptive_retry_image(image)
+    assert padded.mode == 'RGB'
+    assert padded.size == (size[0] + 48, size[1] + 48)
+    assert padded.crop((24, 24, size[0] + 24, size[1] + 24)).tobytes() == image.convert('RGB').tobytes()
+    for box in [(0, 0, padded.width, 24), (0, padded.height - 24, padded.width, padded.height),
+                (0, 24, 24, padded.height - 24), (padded.width - 24, 24, padded.width, padded.height - 24)]:
+        margin = padded.crop(box)
+        assert margin.tobytes() == Image.new('RGB', margin.size, 'white').tobytes()
+    assert image.mode == mode and image.size == size and image.tobytes() == before
+
+
+@pytest.mark.parametrize('mode', ['RGBA', 'LA', 'P'])
+def test_adaptive_margin_composites_transparency_on_white(mode):
+    if mode == 'RGBA':
+        image = Image.new(mode, (3, 1))
+        image.putdata([(0, 0, 0, 0), (30, 70, 110, 128), (10, 60, 120, 255)])
+        expected = [(255, 255, 255), (142, 162, 182), (10, 60, 120)]
+    elif mode == 'LA':
+        image = Image.new(mode, (3, 1))
+        image.putdata([(0, 0), (70, 128), (120, 255)])
+        expected = [(255, 255, 255), (162, 162, 162), (120, 120, 120)]
+    else:
+        image = Image.new(mode, (3, 1))
+        image.putpalette([0, 0, 0, 30, 70, 110, 10, 60, 120] + [0] * 759)
+        image.putdata([0, 1, 2])
+        image.info['transparency'] = bytes([0, 128, 255])
+        expected = [(255, 255, 255), (142, 162, 182), (10, 60, 120)]
+    before, info = image.tobytes(), image.info.copy()
+    padded = _adaptive_retry_image(image)
+    assert [padded.getpixel((24 + x, 24)) for x in range(3)] == expected
+    assert image.tobytes() == before and image.info == info
+
+
+def test_adaptive_preparation_failure_does_not_discard_other_presets():
+    image = Image.new('RGB', (23, 17), (12, 34, 56))
+    paths = []
+
+    def read(path, **kwargs):
+        paths.append(path)
+        with Image.open(path) as stored:
+            assert stored.size == image.size and stored.tobytes() == image.tobytes()
+        assert '-i' not in kwargs['options']
+        return _source()
+
+    with patch('molrecognizer.core.recognizer.shutil.which', return_value='/osra'), \
+         patch('molrecognizer.core.recognition_retry._adaptive_retry_image',
+               side_effect=OSError('Cannot prepare image')), \
+         patch.object(OSRARecognizer, '_read_sdf', side_effect=read):
+        candidates = list(recognition_alternatives(image, OSRARecognizer()))
+    assert candidates[0].error == 'Cannot prepare image'
+    assert all(c.molecule is not None and not c.error for c in candidates[1:3])
+    assert all(c.error for c in candidates[3:])  # Enlarged preparations fail too.
+    assert len(paths) == 2 and all(not path.exists() for path in paths)
 
 
 def test_failed_attempts_do_not_discard_other_candidates():
@@ -193,7 +279,7 @@ def test_retry_apply_is_explicit_and_undoable_in_main_window(tmp_path):
         dialog = window._retry_dialog
         assert dialog is not None and not window._left_panel._retry_btn.isEnabled()
         until(lambda: window._retry_worker is None)
-        assert len(dialog._candidates) == 4
+        assert len(dialog._candidates) == 6
         assert _molecular_state(window._molecule) == before
         dialog._choices.setCurrentRow(1)
         assert _molecular_state(window._molecule) == before
@@ -292,7 +378,7 @@ def test_retry_available_after_initial_failure_and_keeps_original_pixels(tmp_pat
         window._on_retry_recognition()
         dialog = window._retry_dialog
         until(lambda: window._retry_worker is None)
-        assert len(dialog._candidates) == 3
+        assert len(dialog._candidates) == 5
         assert all(c.error for c in dialog._candidates)
         assert not dialog._use.isEnabled()
         assert 'No usable alternatives' in dialog._status.text()

@@ -26,6 +26,7 @@ BOND_TYPES = [
     ("Triple", BondType.TRIPLE),
     ("Wedge", BondType.WEDGE),
     ("Dash", BondType.DASH),
+    ("Coordinate (donor → acceptor)", BondType.DATIVE),
 ]
 
 # (label, tool_data_key, n_sides, aromatic)
@@ -51,6 +52,7 @@ class EditorToolbar(QWidget):
     clear_requested = Signal()     # clear canvas + images
     charge_tool_requested = Signal(int)  # +1 or -1
     periodic_table_requested = Signal()
+    metal_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -93,6 +95,8 @@ class EditorToolbar(QWidget):
                 action = bond_menu.addAction(label)
             action.setCheckable(True)
             action.setData(bt)
+            if bt == BondType.DATIVE:
+                action.setToolTip("Drag donor → acceptor. Click an existing coordinate bond to reverse it.")
             self._bond_action_group.addAction(action)
             if bt == BondType.SINGLE:
                 action.setChecked(True)
@@ -155,6 +159,12 @@ class EditorToolbar(QWidget):
         self._pt_btn.setToolTip("Periodic Table")
         self._pt_btn.clicked.connect(self.periodic_table_requested.emit)
         row.addWidget(self._pt_btn)
+
+        self._metal_btn = QToolButton()
+        self._metal_btn.setText("Metal")
+        self._metal_btn.setToolTip("Common metal centers: Co, Pt, Cr, Sc, Ir and more")
+        self._metal_btn.clicked.connect(self.metal_requested.emit)
+        row.addWidget(self._metal_btn)
 
         row.addStretch()
 

@@ -12,6 +12,7 @@ from ..core.molecule import Molecule
 from ..core.recognition_retry import RecognitionCandidate, RETRY_PROFILES
 from ..core.smiles import molecule_to_smiles
 from ..core.valence import check_valence
+from ..core.coordination import review_warnings
 from ..editor.canvas import MoleculeScene
 from .window_placement import OwnerDialog, owner_screen
 
@@ -104,7 +105,7 @@ class RecognitionReviewDialog(OwnerDialog):
         self._choices.setMaximumHeight(self.fontMetrics().height() * 7 + 20)
         self._choices.currentRowChanged.connect(self._select)
         layout.addWidget(self._choices)
-        self._status = QLabel("Starting local OSRA retries (up to 75 seconds total)…")
+        self._status = QLabel(f"Starting local OSRA retries (up to {len(RETRY_PROFILES) * 25} seconds total)…")
         self._status.setTextFormat(Qt.TextFormat.PlainText)
         self._status.setWordWrap(True)
         layout.addWidget(self._status)
@@ -214,11 +215,14 @@ class RecognitionReviewDialog(OwnerDialog):
             sizes = sorted(len(ring) for ring in Chem.GetSymmSSSR(rd))
             unknown = sum(a.GetAtomicNum() == 0 for a in rd.GetAtoms())
             warnings = check_valence(mol)
+            review = review_warnings(mol)
             text = (f"Atoms: {mol.num_atoms} · Bonds: {mol.num_bonds} · Rings: {len(sizes)} "
                     f"(sizes: {', '.join(map(str, sizes)) or 'none'}) · "
                     f"Unknown atoms: {unknown} · Valence warnings: {len(warnings)}")
             if candidate.confidence is not None:
                 text += f"\nOSRA score: {candidate.confidence:.3f} — not an accuracy percentage."
+            if review:
+                text += "\n" + "\n".join(review)
             self._summary.setText(text)
             self._summary.setToolTip("\n".join(map(str, warnings)))
             self._smiles.setText(molecule_to_smiles(mol))

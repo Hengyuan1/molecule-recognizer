@@ -52,6 +52,7 @@ from PySide6.QtWidgets import (
 from ..core.molecule import Molecule
 from ..core.smiles import molecule_to_smiles, smiles_to_molecule
 from ..core.valence import check_valence
+from ..core.coordination import review_warnings
 from .editor_widget import EditorWidget
 from .screenshot import (
     GlobalScreenshotHotkey, ScreenshotDialog, grab_screen, is_wsl,
@@ -356,6 +357,8 @@ class BottomBar(QWidget):
 
         # Row 2: Valence status
         self._valence_label = QLabel("Valence: —")
+        self._valence_label.setWordWrap(True)
+        self._valence_label.setMinimumWidth(0)
         self._valence_label.setObjectName("valence_label")
         layout.addWidget(self._valence_label)
 
@@ -369,12 +372,14 @@ class BottomBar(QWidget):
     def set_valence_ok(self):
         self._valence_label.setText("✓  All valences OK")
         self._valence_label.setStyleSheet("color: #27ae60; font-weight: 600;")
+        self._valence_label.setToolTip("")
 
     def set_valence_warnings(self, warnings: list):
         n = len(warnings)
         details = "; ".join(str(w) for w in warnings[:3])
         suffix = f" … (+{n - 3} more)" if n > 3 else ""
         self._valence_label.setText(f"⚠  {details}{suffix}")
+        self._valence_label.setToolTip("\n".join(map(str, warnings)))
         self._valence_label.setStyleSheet("color: #e74c3c; font-weight: 500;")
 
     def clear(self):
@@ -398,6 +403,8 @@ class MainWindow(QMainWindow):
         self._worker: RecognitionWorker | None = None
         self._retry_worker: RecognitionRetryWorker | None = None
         self._retry_dialog: RecognitionReviewDialog | None = None
+        self._label_review_dialog = None
+        self._metal_picker = None
         self._recognition_image: Image.Image | None = None
         self._render_worker: Render3DWorker | None = None
         self._render_smiles = ""
@@ -484,6 +491,7 @@ class MainWindow(QMainWindow):
         edit_menu.addSeparator()
         action(edit_menu, "Copy SMILES", self._copy_smiles)
         action(edit_menu, "Copy XYZ", lambda: self._on_copy_xyz("angstrom"))
+        action(edit_menu, "Review atom labels / metal…", self._on_review_labels)
         edit_menu.addSeparator()
         action(edit_menu, "Clear workspace", self._on_clear_all, icon="clear")
 
@@ -494,6 +502,7 @@ class MainWindow(QMainWindow):
                    lambda k=key: self._editor._toolbar._activate_tool(k))
         build_menu.addSeparator()
         action(build_menu, "Periodic table…", self._editor._on_periodic_table)
+        action(build_menu, "Select metal center…", self._on_common_metal)
         action(build_menu, "Format 2D layout", self._editor._cleanup_layout,
                icon="format")
         action(build_menu, "Render 3D structure", self._on_render_3d,
@@ -649,6 +658,7 @@ class MainWindow(QMainWindow):
 
         self._palette = ElementPalette()
         self._palette.element_selected.connect(self._on_palette_element)
+        self._editor._toolbar.metal_requested.connect(self._on_common_metal)
         self._splitter.addWidget(self._palette)
 
         # Centre panel stretches; side panels don't
@@ -1091,12 +1101,40 @@ class MainWindow(QMainWindow):
     def _on_palette_element(self, element: str):
         self._editor.set_element(element)
 
+    def _on_common_metal(self):
+        if (self._closing or self._screenshot_pending or self._worker is not None
+                or self._retry_worker is not None or self._metal_picker is not None
+                or any(d.isVisible() for d in self.findChildren(OwnerDialog))):
+            return
+        from .metal_picker import MetalPickerDialog
+        dialog = MetalPickerDialog(self)
+        self._metal_picker = dialog
+
+        def finished(result):
+            self._metal_picker = None
+            if (not self._closing and result == QDialog.DialogCode.Accepted
+                    and dialog.selected_element is not None):
+                element = dialog.selected_element
+                self._editor.set_element(element)
+                self._editor._toolbar.set_pt_label(element)
+                self._editor._toolbar._activate_tool("atom")
+                for button in self._palette._buttons.values():
+                    button.setChecked(False)
+                self._status_bar.showMessage(
+                    f"{element} selected — click to place or replace an atom; verify charges separately", 6000)
+                self._editor.canvas.setFocus()
+            dialog.deleteLater()
+
+        dialog.finished.connect(finished)
+        dialog.open()  # Owned, non-blocking; no extra native popup menu.
+
     # ------------------------------------------------------------------
     # Actions
     # ------------------------------------------------------------------
 
     def _on_open_image(self):
-        if self._closing or self._retry_dialog is not None or self._retry_worker is not None:
+        if (self._closing or self._retry_dialog is not None or self._retry_worker is not None
+                or self._label_review_dialog is not None):
             return
         if self._worker is not None:
             self._status_bar.showMessage("Recognition already in progress…", 3000)
@@ -1308,14 +1346,15 @@ class MainWindow(QMainWindow):
     def _update_retry_available(self):
         enabled = (self._recognition_image is not None and not self._closing
                    and self._worker is None and self._retry_worker is None
-                   and self._retry_dialog is None and not self._screenshot_pending)
+                   and self._retry_dialog is None and self._label_review_dialog is None
+                   and not self._screenshot_pending)
         self._left_panel._retry_btn.setEnabled(enabled)
         self._menu_actions["Retry recognition…"].setEnabled(enabled)
 
     def _on_retry_recognition(self):
         if (self._closing or self._recognition_image is None or self._worker is not None
                 or self._retry_worker is not None or self._retry_dialog is not None
-                or self._screenshot_pending):
+                or self._screenshot_pending or self._label_review_dialog is not None):
             return
         # Recreate the preview from the same input used for these retries, even
         # if the sidebar was subsequently refreshed by a rejected capture.
@@ -1429,6 +1468,8 @@ class MainWindow(QMainWindow):
 
     def _on_clear_all(self):
         """Clear the canvas, loaded images, 3D viewer, and SMILES."""
+        if self._label_review_dialog is not None:
+            self._label_review_dialog.reject()
         if self._retry_dialog is not None:
             self._retry_dialog.reject()
         self._cancel_retry()
@@ -1459,11 +1500,46 @@ class MainWindow(QMainWindow):
         except Exception:
             self._bottom_bar.set_smiles("[Error generating SMILES]")
         # Valence
-        warnings = check_valence(self._molecule)
+        warnings = review_warnings(self._molecule) + check_valence(self._molecule)
         if warnings:
             self._bottom_bar.set_valence_warnings(warnings)
         else:
             self._bottom_bar.set_valence_ok()
+
+    def _on_review_labels(self):
+        if (self._closing or self._molecule is None or not self._molecule.num_atoms
+                or self._worker is not None or self._retry_worker is not None
+                or self._retry_dialog is not None or self._label_review_dialog is not None):
+            self._status_bar.showMessage("Load a structure and finish recognition before reviewing labels", 5000)
+            return
+        from .label_review import LabelReviewDialog
+        dialog = LabelReviewDialog(self._molecule, self)
+        self._label_review_dialog = dialog
+        self._update_retry_available()
+        original = self._molecule
+
+        def finished(result):
+            self._label_review_dialog = None
+            if (not self._closing and self._molecule is original
+                    and result == QDialog.DialogCode.Accepted and dialog.replacement is not None):
+                from ..editor.history import ReplaceMoleculeCommand
+                if self._editor._current_tool is not None:
+                    self._editor._current_tool.deactivate()
+                self._editor._history.execute(ReplaceMoleculeCommand(dialog.replacement))
+                self._editor._rebuild_tools()
+                if self._render_worker is not None:
+                    self._render_worker.cancel()
+                self._mol_3d = None
+                self._rendered_smiles = None
+                self._left_panel._viewer_3d.clear()
+                self._comparison_panel._viewer.clear()
+                self._hide_3d_comparison()
+                self._fit_structure()
+            dialog.deleteLater()
+            self._update_retry_available()
+            QTimer.singleShot(0, self._refresh_display)
+        dialog.finished.connect(finished)
+        dialog.open()
 
     # ------------------------------------------------------------------
     # 3D rendering / XYZ export
@@ -1598,6 +1674,8 @@ class MainWindow(QMainWindow):
                          self._worker is not None, self._render_worker is not None,
                          self._native_capture is not None)
             self._closing = True
+            if self._label_review_dialog is not None:
+                self._label_review_dialog.reject()
             self._capture_timer.stop()
             self._native_fit_timer.stop()
             self._menu_refresh_timer.stop()

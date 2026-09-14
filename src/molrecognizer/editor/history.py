@@ -144,54 +144,26 @@ class RemoveBondCommand(_SnapshotCommand):
         return f"Remove bond {self.a1}-{self.a2}"
 
 
-class ChangeBondTypeCommand(Command):
+class ChangeBondTypeCommand(_SnapshotCommand):
     def __init__(self, a1: int, a2: int, new_type: BondType):
+        super().__init__()
         self.a1 = a1
         self.a2 = a2
         self.new_type = new_type
-        self._old_type: BondType = BondType.SINGLE
-
-    def execute(self, mol: Molecule) -> None:
-        info = mol.get_bond_info(self.a1, self.a2)
-        if info:
-            self._old_type = info.bond_type
+    def _apply(self, mol: Molecule) -> None:
         mol.set_bond_type(self.a1, self.a2, self.new_type)
-
-    def undo(self, mol: Molecule) -> None:
-        mol.set_bond_type(self.a1, self.a2, self._old_type)
 
     def description(self) -> str:
         return f"Change bond {self.a1}-{self.a2} to {self.new_type.name.lower()}"
 
 
-class ChangeElementCommand(Command):
+class ChangeElementCommand(_SnapshotCommand):
     def __init__(self, idx: int, new_element: str):
+        super().__init__()
         self.idx = idx
         self.new_element = new_element
-        self._old_element: str = "C"
-        self._old_bonds: list[tuple[int, int, BondType]] = []
-
-    def execute(self, mol: Molecule) -> None:
-        info = mol.get_atom_info(self.idx)
-        self._old_element = info.element
-        # Save bond types before the element change (set_atom_element may
-        # downgrade them to fit the new element's valence).
-        self._old_bonds = []
-        for bond in mol.get_all_bonds():
-            if bond.begin_atom_idx == self.idx or bond.end_atom_idx == self.idx:
-                self._old_bonds.append(
-                    (bond.begin_atom_idx, bond.end_atom_idx, bond.bond_type)
-                )
+    def _apply(self, mol: Molecule) -> None:
         mol.set_atom_element(self.idx, self.new_element)
-
-    def undo(self, mol: Molecule) -> None:
-        mol.set_atom_element(self.idx, self._old_element)
-        # Restore original bond types that may have been downgraded
-        for a1, a2, bt in self._old_bonds:
-            try:
-                mol.set_bond_type(a1, a2, bt)
-            except Exception:
-                pass
 
     def description(self) -> str:
         return f"Change atom {self.idx} to {self.new_element}"

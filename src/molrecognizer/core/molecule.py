@@ -15,6 +15,7 @@ class BondType(Enum):
     DOUBLE = Chem.rdchem.BondType.DOUBLE
     TRIPLE = Chem.rdchem.BondType.TRIPLE
     AROMATIC = Chem.rdchem.BondType.AROMATIC
+    DATIVE = Chem.rdchem.BondType.DATIVE  # donor (begin) -> acceptor (end)
     WEDGE = "wedge"    # stereo: filled triangle (single + BondDir.BEGINWEDGE)
     DASH = "dash"      # stereo: dashed wedge  (single + BondDir.BEGINDASH)
 
@@ -37,6 +38,8 @@ class BondInfo:
     begin_atom_idx: int
     end_atom_idx: int
     bond_type: BondType
+    drawing_type: BondType | None = None
+    drawing_reversed: bool = False
 
 
 def _bond_type_to_rdkit(bt: BondType) -> tuple:
@@ -57,6 +60,18 @@ def _rdkit_to_bond_type(bond) -> BondType:
         if d == rdchem.BondDir.BEGINDASH:
             return BondType.DASH
     return BondType(bond.GetBondType())
+
+
+def _bond_info(bond) -> BondInfo:
+    kind = _rdkit_to_bond_type(bond)
+    drawing = None
+    reverse = False
+    if kind == BondType.DATIVE:
+        drawing = {rdchem.BondDir.BEGINWEDGE: BondType.WEDGE,
+                   rdchem.BondDir.BEGINDASH: BondType.DASH}.get(bond.GetBondDir())
+        reverse = (bond.HasProp("_CoordinationDrawingReversed")
+                   and bond.GetBoolProp("_CoordinationDrawingReversed"))
+    return BondInfo(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx(), kind, drawing, bool(reverse))
 
 
 class Molecule:
@@ -106,13 +121,16 @@ class Molecule:
 
         atom = self._mol.GetAtomWithIdx(idx)
         atom.SetAtomicNum(Chem.GetPeriodicTable().GetAtomicNumber(element))
+        if atom.HasProp("molFileAlias"):
+            atom.SetProp("_OriginalOCRLabel", atom.GetProp("molFileAlias"))
+            atom.ClearProp("molFileAlias")
 
         # Use the smallest standard valence that fits the number of
         # neighbors.  E.g. S with 2 bonds → use valence 2 (not 6).
         if element not in STANDARD_VALENCES:
             return
         charge = atom.GetFormalCharge()
-        n_neighbors = len(list(atom.GetBonds()))
+        n_neighbors = sum(b.GetValenceContrib(atom) > 0 for b in atom.GetBonds())
         effective_max = max(STANDARD_VALENCES[element]) + charge
         for v in sorted(STANDARD_VALENCES[element]):
             if v + charge >= n_neighbors:
@@ -136,7 +154,7 @@ class Molecule:
         for bond in atom.GetBonds():
             bt = bond.GetBondType()
             bonds.append(bond)
-            bos += _order.get(bt, 1)
+            bos += bond.GetValenceContrib(atom)
 
         # Downgrade bonds until the valence fits
         bonds.sort(key=lambda b: _order.get(b.GetBondType(), 1), reverse=True)
@@ -204,21 +222,32 @@ class Molecule:
         if bond is None:
             raise ValueError(f"No bond between atoms {a1} and {a2}")
         rdkit_bt, bond_dir = _bond_type_to_rdkit(bond_type)
+        if bond_type == BondType.DATIVE and bond.GetBeginAtomIdx() != a1:
+            # Direction is chemical information. A manual conversion/reversal
+            # drops obsolete bond stereo; snapshot commands restore it on undo.
+            self._mol.RemoveBond(a1, a2)
+            self._mol.AddBond(a1, a2, rdkit_bt)
+            bond = self._mol.GetBondBetweenAtoms(a1, a2)
         bond.SetBondType(rdkit_bt)
         bond.SetBondDir(bond_dir)
+        if bond.HasProp("_CoordinationDrawingReversed"):
+            bond.ClearProp("_CoordinationDrawingReversed")
+
+    def bond_order_sum(self, idx: int) -> float:
+        """Valence contribution at this endpoint (zero for a dative donor)."""
+        atom = self._mol.GetAtomWithIdx(idx)
+        return sum(bond.GetValenceContrib(atom) for bond in atom.GetBonds())
 
     def get_bond_info(self, a1: int, a2: int) -> Optional[BondInfo]:
         bond = self._mol.GetBondBetweenAtoms(a1, a2)
         if bond is None:
             return None
-        bt = _rdkit_to_bond_type(bond)
-        return BondInfo(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx(), bt)
+        return _bond_info(bond)
 
     def get_all_bonds(self) -> list[BondInfo]:
         bonds = []
         for bond in self._mol.GetBonds():
-            bt = _rdkit_to_bond_type(bond)
-            bonds.append(BondInfo(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx(), bt))
+            bonds.append(_bond_info(bond))
         return bonds
 
     @property

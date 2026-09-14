@@ -17,6 +17,16 @@ def generate_3d(smiles: str) -> Chem.Mol:
     rdmol = Chem.MolFromSmiles(smiles)
     if rdmol is None:
         raise ValueError(f"Cannot parse SMILES: {smiles!r}")
+    from .coordination import has_coordination
+    if any(a.GetAtomicNum() == 0 for a in rdmol.GetAtoms()):
+        raise ValueError("Resolve unknown atom/ligand labels before generating 3D coordinates.")
+    if has_coordination(rdmol):
+        raise ValueError("Automatic 3D generation for metal/coordinate structures is disabled "
+                         "in this version of MolRecognizer. Metal-specific parameter and "
+                         "coordination-geometry checks are not implemented. Some complexes "
+                         "can be modeled with suitable methods, but a successful generic "
+                         "embedding is not a validated metal geometry. Use independently "
+                         "verified metal-complex coordinates.")
     rdmol = Chem.AddHs(rdmol)
     params = AllChem.ETKDGv3()
     params.randomSeed = 42

@@ -42,6 +42,10 @@ ELEMENT_COLORS: dict[str, str] = {
     "B": "#DD8899",
     "Se": "#DD8800",
     "Si": "#CC9966",
+    "Co": "#315BA6", "Pt": "#596775", "Cr": "#367A50", "Sc": "#596A80",
+    "Ir": "#5268A0", "Fe": "#AD5138", "Ni": "#387C57", "Cu": "#A76632",
+    "Zn": "#506C87", "Mn": "#8556A3", "Ru": "#4D7085", "Pd": "#5D6F84",
+    "Rh": "#5A7A80", "Ag": "#627381", "Au": "#96700D", "Ti": "#64758C",
 }
 
 BOND_COLOR = "#222222"
@@ -70,13 +74,14 @@ class AtomItem(QGraphicsEllipseItem):
     """
 
     def __init__(self, atom_idx: int, element: str, x: float, y: float,
-                 n_hs: int = 0, formal_charge: int = 0):
+                 n_hs: int = 0, formal_charge: int = 0, alias: str = ""):
         r = HIT_RADIUS
         super().__init__(-r, -r, 2 * r, 2 * r)
         self.atom_idx = atom_idx
         self.element = element
         self.n_hs = n_hs
         self.formal_charge = formal_charge
+        self.alias = alias
         self.setPos(molecule_to_scene(x, y))
         self.setZValue(10)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
@@ -134,7 +139,7 @@ class AtomItem(QGraphicsEllipseItem):
         parts: list[tuple[str, QFont, float]] = []  # (text, font, y_offset)
 
         # Element symbol (normal)
-        parts.append((self.element, main_font, 0.0))
+        parts.append((self.alias or self.element, main_font, 0.0))
 
         # "H" in normal size (if any Hs)
         if self.n_hs >= 1:
@@ -204,7 +209,8 @@ class BondItem(QGraphicsLineItem):
     def __init__(self, a1_idx: int, a2_idx: int, bond_type: BondType,
                  p1: QPointF, p2: QPointF,
                  a1_label: bool = False, a2_label: bool = False,
-                 a1_lw: float = 0.0, a2_lw: float = 0.0):
+                 a1_lw: float = 0.0, a2_lw: float = 0.0,
+                 drawing_type: BondType | None = None, drawing_reversed: bool = False):
         super().__init__()
         self.a1_idx = a1_idx
         self.a2_idx = a2_idx
@@ -215,6 +221,12 @@ class BondItem(QGraphicsLineItem):
         self._a2_hetero = a2_label
         self._a1_lw = a1_lw
         self._a2_lw = a2_lw
+        self._drawing_type = drawing_type or bond_type
+        self._drawing_reversed = bool(drawing_type and drawing_reversed)
+        if drawing_type and drawing_reversed:
+            self._p1, self._p2 = self._p2, self._p1
+            self._a1_hetero, self._a2_hetero = self._a2_hetero, self._a1_hetero
+            self._a1_lw, self._a2_lw = self._a2_lw, self._a1_lw
         self._extra_lines: list[QGraphicsLineItem] = []
         self._extra_polys: list[QGraphicsPolygonItem] = []
         self.setZValue(1)
@@ -241,10 +253,22 @@ class BondItem(QGraphicsLineItem):
         start = QPointF(self._p1.x() + ux * shrink1, self._p1.y() + uy * shrink1)
         end = QPointF(self._p2.x() - ux * shrink2, self._p2.y() - uy * shrink2)
 
-        if self.bond_type == BondType.SINGLE:
+        if self._drawing_type == BondType.SINGLE:
             self.setLine(QLineF(start, end))
 
-        elif self.bond_type == BondType.DOUBLE:
+        elif self._drawing_type == BondType.DATIVE:
+            self.setLine(QLineF(start, end))
+            # Open arrowhead at the acceptor; never confuse it with a wedge.
+            arrow = min(7.0, max(0.0, length - shrink1 - shrink2) * .3)
+            for sign in (-1, 1):
+                tip = QPointF(end.x() - ux * arrow - sign * uy * arrow * .5,
+                              end.y() - uy * arrow + sign * ux * arrow * .5)
+                line = QGraphicsLineItem(QLineF(tip, end), self)
+                line.setPen(pen)
+                self._extra_lines.append(line)
+            self.setToolTip("Coordinate bond: donor → acceptor. Select Coordinate and click to reverse.")
+
+        elif self._drawing_type == BondType.DOUBLE:
             nx, ny = -uy * DOUBLE_BOND_OFFSET, ux * DOUBLE_BOND_OFFSET
             self.setLine(QLineF(
                 start.x() + nx, start.y() + ny,
@@ -258,7 +282,7 @@ class BondItem(QGraphicsLineItem):
             line2.setPen(pen)
             self._extra_lines.append(line2)
 
-        elif self.bond_type == BondType.TRIPLE:
+        elif self._drawing_type == BondType.TRIPLE:
             off = DOUBLE_BOND_OFFSET * 1.4
             nx, ny = -uy * off, ux * off
             self.setLine(QLineF(start, end))
@@ -271,7 +295,7 @@ class BondItem(QGraphicsLineItem):
                 ln.setPen(pen)
                 self._extra_lines.append(ln)
 
-        elif self.bond_type == BondType.WEDGE:
+        elif self._drawing_type == BondType.WEDGE:
             # Filled black triangle: narrow at start, wide at end
             self.setLine(QLineF(start, end))  # invisible backbone for hit-test
             self.setPen(QPen(Qt.PenStyle.NoPen))
@@ -287,7 +311,7 @@ class BondItem(QGraphicsLineItem):
             poly.setPen(QPen(Qt.PenStyle.NoPen))
             self._extra_polys.append(poly)
 
-        elif self.bond_type == BondType.DASH:
+        elif self._drawing_type == BondType.DASH:
             # Dashed wedge: series of short lines perpendicular to the bond,
             # getting wider from start to end
             self.setLine(QLineF(start, end))
@@ -309,7 +333,7 @@ class BondItem(QGraphicsLineItem):
                 ln.setPen(dash_pen)
                 self._extra_lines.append(ln)
 
-        elif self.bond_type == BondType.AROMATIC:
+        elif self._drawing_type == BondType.AROMATIC:
             # Solid line + dashed line (standard representation)
             nx, ny = -uy * DOUBLE_BOND_OFFSET, ux * DOUBLE_BOND_OFFSET
             self.setLine(QLineF(
@@ -327,7 +351,7 @@ class BondItem(QGraphicsLineItem):
             self._extra_lines.append(line2)
 
     def set_highlighted(self, highlighted: bool):
-        if self.bond_type in (BondType.WEDGE, BondType.DASH):
+        if self._drawing_type in (BondType.WEDGE, BondType.DASH):
             # Wedge/dash: highlight the child shapes, keep parent NoPen
             if highlighted:
                 hl_pen = QPen(QColor("#00AAFF"), BOND_WIDTH + 1)
@@ -347,10 +371,12 @@ class BondItem(QGraphicsLineItem):
             color = QColor("#00AAFF") if highlighted else QColor(BOND_COLOR)
             w = BOND_WIDTH + (1 if highlighted else 0)
             self.setPen(QPen(color, w))
+            if self.bond_type == BondType.DATIVE:
+                for line in self._extra_lines:
+                    line.setPen(QPen(color, w))
 
     def update_positions(self, p1: QPointF, p2: QPointF):
-        self._p1 = p1
-        self._p2 = p2
+        self._p1, self._p2 = (p2, p1) if self._drawing_reversed else (p1, p2)
         for line in self._extra_lines:
             scene = line.scene()
             if scene:
@@ -398,6 +424,7 @@ class MoleculeScene(QGraphicsScene):
             display_hs[parent_idx] = display_hs.get(parent_idx, 0) + 1
 
         # Add atoms with H-count and (possibly inferred) charge
+        raw = mol.to_rdkit()
         for i in range(mol.num_atoms):
             if i in self._collapsed_hydrogens:
                 continue
@@ -405,7 +432,12 @@ class MoleculeScene(QGraphicsScene):
             x, y = coords[i]
             n_hs = display_hs.get(i, 0)
             charge = display_charges.get(i, 0)
-            item = AtomItem(i, info.element, x, y, n_hs, charge)
+            atom = raw.GetAtomWithIdx(i)
+            alias = (atom.GetProp("molFileAlias") if info.element == "*"
+                     and atom.HasProp("molFileAlias") else "")
+            item = AtomItem(i, info.element, x, y, n_hs, charge, alias)
+            item.setToolTip(f"Atom {i + 1}: {alias or info.element}"
+                            + (" — unresolved OCR label; use Edit → Review atom labels / metal" if alias else ""))
             self.addItem(item)
             self._atom_items[i] = item
 
@@ -418,7 +450,8 @@ class MoleculeScene(QGraphicsScene):
             item = BondItem(a1, a2, bond.bond_type,
                             ai1.pos(), ai2.pos(),
                             ai1.show_label, ai2.show_label,
-                            ai1.label_width, ai2.label_width)
+                            ai1.label_width, ai2.label_width,
+                            bond.drawing_type, bond.drawing_reversed)
             self.addItem(item)
             key = (min(a1, a2), max(a1, a2))
             self._bond_items[key] = item
@@ -468,17 +501,10 @@ class MoleculeScene(QGraphicsScene):
         """
         from ..core.valence import infer_formal_charge
 
-        _bv = {BondType.SINGLE: 1, BondType.DOUBLE: 2,
-               BondType.TRIPLE: 3, BondType.AROMATIC: 1.5,
-               BondType.WEDGE: 1, BondType.DASH: 1}
-        all_bonds = mol.get_all_bonds()
         result: dict[int, int] = {}
         for i in range(mol.num_atoms):
             info = mol.get_atom_info(i)
-            bos = 0.0
-            for b in all_bonds:
-                if b.begin_atom_idx == i or b.end_atom_idx == i:
-                    bos += _bv.get(b.bond_type, 1)
+            bos = mol.bond_order_sum(i)
             result[i] = infer_formal_charge(info.element, bos,
                                             info.formal_charge)
         return result
@@ -550,7 +576,7 @@ class MoleculeScene(QGraphicsScene):
             except Exception:
                 # RDKit couldn't compute Hs (sanitization failed for this
                 # atom or the whole mol) — fall back to valence table.
-                bos = sum(b.GetBondTypeAsDouble() for b in a.GetBonds())
+                bos = sum(b.GetValenceContrib(a) for b in a.GetBonds())
                 n_hs = _valence_hs(elem, bos, charge)
 
             # Skeletal convention: neutral C with bonds hides Hs
