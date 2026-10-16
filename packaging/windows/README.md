@@ -2,11 +2,20 @@
 
 Target: native Windows 10/11 x64. Users extract a ZIP and run
 `MolRecognizer.exe`; they do not install Python, Conda, uv or WSL.
-The OSRA-inclusive [v0.3.0 release](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0)
-provides the Windows ZIP, matching source archive and checksums. For end-user
-installation, see [Windows usage](../../README.md#windows-usage).
-The [final validation record](audits/0.3.0-final/VALIDATION.md) identifies the
-unchanged tested build; its original preparation documents are historical.
+Current download: **[MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip)**
+(about 161 MiB), with bundled OSRA. This main-branch patch preserves zoom/pan
+during edits and undo/redo, without the experimental metal-coordination work.
+The [patch release](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0-main-canvas-fix.1)
+is marked pre-release on GitHub; use the specific link above, not the older
+v0.3.0 or metal-work preview. See [Windows usage](../../README.md#windows-usage)
+and the [current patch notes/validation](RELEASE-NOTES-main-canvas-fix.md).
+
+`MolRecognizer-0.3.0-main-canvas-fix-sources.zip` on that release contains the
+exact current application source and build recipe; each ZIP has a checksum.
+The unchanged dependency sources remain in `MolRecognizer-0.3.0-sources.zip`
+on the [original v0.3.0 release](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0).
+The [v0.3.0 validation record](audits/0.3.0-final/VALIDATION.md) and preparation
+records below are historical, not records of the current patched EXE.
 
 ## Earlier development checks — 2026-09-07
 
@@ -186,16 +195,15 @@ Technical references:
 [PyInstaller packaging](https://pyinstaller.org/en/stable/operating-mode.html),
 [windowed streams and external-process DLL search](https://pyinstaller.org/en/stable/common-issues-and-pitfalls.html).
 
-## Release-candidate preparation
+## Historical release-candidate preparation
 
-The earlier tested source version was `0.3.0rc1`. The current source prepares
-stable `v0.3.0`, not a public RC. No RC or v0.3.0 tag has been published.
-This does not replace the existing v0.2.0 tag. No public binary release
-is created by changing the version. The legacy-CImg permission gap is addressed
-by the [upstream grant](CIMG-PERMISSION.md), verified September 10, 2026.
-Final package verification and public-upload approval remain separate steps.
-See that audit and [draft release notes](RELEASE-NOTES-0.3.0.md) for the
-remaining gates.
+The earlier tested source version was `0.3.0rc1`, followed by preparation of
+stable `v0.3.0`. That stable release was subsequently published; the statements
+in its original preparation records describe the status at that earlier time.
+Changing the version alone does not publish a binary. The legacy-CImg permission
+gap was addressed by the [upstream grant](CIMG-PERMISSION.md), verified September
+10, 2026. Final package verification and public-upload approval were separate
+steps; see that audit and the [v0.3.0 release notes](RELEASE-NOTES-0.3.0.md).
 The local candidate was built from `cd5bf78` and passed 265 regression tests
 on each platform. Its [validation record](audits/0.3.0rc1/VALIDATION.md) identifies
 the exact ZIP and distinguishes completed checks from outstanding review.

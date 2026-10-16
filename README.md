@@ -4,13 +4,13 @@ English | [简体中文](README.zh-CN.md) | [한국어](README.ko.md) | [Рус�
 
 Recognize molecular structures from images (screenshots, papers, web pages), convert them to SMILES strings, interactively edit the recognized structure, and save the 3D structure in xyz format. Built for computational chemistry workflows.
 
-**Version [0.3.0](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0)** — Standalone Windows application with bundled OSRA, alongside the Linux/Python application. [Download for Windows](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-windows-x64.zip) or follow the [Linux instructions](#linux-usage). See the [changelog](CHANGELOG.md).
+**Current Windows download — [0.3.0 + main-branch canvas fix](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0-main-canvas-fix.1):** [Download for Windows](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip) (about 161 MiB), with bundled OSRA. For Linux, follow the [Linux instructions](#linux-usage).
 
-**Main-branch canvas patch:** [Download the Windows ZIP](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip)
-to keep zoom and position unchanged during editing and undo/redo.
-This build uses `main` and **does not include the experimental metal-coordination
-changes** from the earlier canvas-fix preview. Extract the entire ZIP and run
-`MolRecognizer.exe`; see the [patch notes](packaging/windows/RELEASE-NOTES-main-canvas-fix.md).
+This build keeps zoom and position unchanged during editing and undo/redo.
+It uses `main` and **does not include the experimental metal-coordination
+changes**. GitHub labels this patch a **pre-release**; the direct download links
+on this page select it rather than the older v0.3.0 or metal-work preview.
+See the [patch notes](packaging/windows/RELEASE-NOTES-main-canvas-fix.md) and [changelog](CHANGELOG.md).
 
 ![Molecule Recognizer showing the source image, editable 2D structure, and interactive 3D comparison panel](docs/media/UI-demo.png)
 
@@ -29,11 +29,11 @@ interactive. Close the 3D panel to return to the full canvas.
 
 ### Portable EXE — no Python, Conda or WSL required
 
-**Available now:** the OSRA-inclusive **0.3.0** Windows ZIP is on
-[GitHub Releases](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0).
+**Available now:** the OSRA-inclusive **main-branch canvas-fix** Windows ZIP is on
+[GitHub Releases](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0-main-canvas-fix.1).
 Choose the Windows application ZIP, not GitHub's automatic “Source code” ZIP.
 
-1. Download [MolRecognizer-0.3.0-windows-x64.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-windows-x64.zip) (159 MiB).
+1. Download [MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip) (161 MiB).
 2. Extract the **entire ZIP** into a short, permanent, user-writable folder,
    such as `C:\Users\YourName\Apps`. Avoid deeply nested folders.
 3. Open `MolRecognizer.exe` inside the extracted `MolRecognizer` folder.
@@ -49,31 +49,40 @@ Python/Qt/RDKit runtime, and a precompiled screenshot selector. You do not need
 to install OSRA separately or run PowerShell scripts to use the portable app.
 MolScribe and its model weights are not bundled.
 
-The optional `.zip.sha256` file lets you check the ZIP's integrity in PowerShell:
+Download the optional [matching SHA-256 file](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip.sha256)
+beside the ZIP to check its integrity in PowerShell:
 
 ```powershell
-Get-FileHash .\MolRecognizer-0.3.0-windows-x64.zip -Algorithm SHA256
-Get-Content .\MolRecognizer-0.3.0-windows-x64.zip.sha256
+Get-FileHash .\MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip -Algorithm SHA256
+Get-Content .\MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip.sha256
 ```
 
 Compare the hashes. A matching checksum is not a security guarantee or a
 digital signature. The app is unsigned, so Windows may display a security
 warning. Verify the download's origin; do not disable antivirus or bypass
-workplace policies. The matching `MolRecognizer-0.3.0-sources.zip` contains
-source, patches and build recipes and is not needed to run the app.
+workplace policies.
+
+For developers only (neither source archive is needed to run the app):
+
+- [MolRecognizer-0.3.0-main-canvas-fix-sources.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-sources.zip)
+  contains this patch's exact **application source** and build recipe.
+- [MolRecognizer-0.3.0-sources.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-sources.zip)
+  supplies the **unchanged dependency sources**, patches and build recipes from
+  the base release. Its older application snapshot does not contain the canvas fix.
 
 For build and release details, see the
 [Windows packaging guide](packaging/windows/README.md),
-[0.3.0 release notes](packaging/windows/RELEASE-NOTES-0.3.0.md),
-[final validation record](packaging/windows/audits/0.3.0-final/VALIDATION.md)
-and [release audit](packaging/windows/RELEASE-AUDIT.md).
+[current patch notes and validation](packaging/windows/RELEASE-NOTES-main-canvas-fix.md).
+The [original v0.3.0 validation record](packaging/windows/audits/0.3.0-final/VALIDATION.md)
+and [release audit](packaging/windows/RELEASE-AUDIT.md) describe the base release.
 Original dependency notices and recorded upstream permissions are included
 under **Help → Third-party licenses**.
 
-The download is the unchanged, tested build. Some documents inside its archives
-retain their build-time "not published" status; the release page records the
-subsequent publication. The `v0.3.0` tag identifies the exact built source;
-`main` also includes newer documentation updates.
+The download is the tested main-only patch built from commit `343a81b`.
+`v0.3.0-main-canvas-fix.1` also includes subsequent download documentation.
+Some bundled documents retain their historical build-time publication status
+or describe the base release; `MAIN-CANVAS-FIX.txt` and the current release page
+describe this patch. The original v0.3.0 archive has not been overwritten.
 
 ### Run from source in PowerShell — uv or Conda
 
@@ -90,7 +99,8 @@ winget install --id Git.Git -e
 winget install --id astral-sh.uv -e
 ```
 
-Reopen PowerShell, then clone `main`, which contains the 0.3.0 source changes:
+Reopen PowerShell, then clone `main`, which includes the canvas fix without
+the experimental metal-coordination changes:
 
 ```powershell
 git clone --branch main https://github.com/Hengyuan1/molecule-recognizer.git

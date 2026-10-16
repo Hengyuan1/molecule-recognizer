@@ -4,7 +4,9 @@
 
 스크린샷, 논문, 웹페이지의 이미지에서 분자 구조를 인식하고 SMILES로 변환합니다. 인식한 구조를 직접 편집하고 3차원 좌표를 생성하여 XYZ 파일로 저장하거나 복사할 수 있는 계산화학용 데스크톱 프로그램입니다.
 
-**버전 [0.3.0](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0)** — OSRA가 포함된 Windows 포터블 앱과 Linux/Python 앱을 제공합니다. [Windows 버전 다운로드](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-windows-x64.zip).
+**현재 Windows 다운로드: [0.3.0 + main 브랜치 캔버스 수정](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0-main-canvas-fix.1)** — OSRA가 포함되어 있습니다. [Windows 버전 다운로드](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip)(약 161 MiB).
+
+편집 및 실행 취소/다시 실행 시 캔버스의 확대 배율과 위치를 유지하며, **실험적인 금속 배위 변경은 포함하지 않습니다**. GitHub에서는 이 패치를 pre-release로 표시합니다. 이전 v0.3.0 또는 금속 기능 미리보기 대신 이 페이지의 직접 다운로드 링크를 사용하세요. [패치 안내](packaging/windows/RELEASE-NOTES-main-canvas-fix.md)(영문)를 참고하세요.
 
 ![원본 이미지, 편집 가능한 2D 분자 구조, 나란히 표시된 3D 구조를 보여 주는 MolRecognizer](docs/media/UI-demo.png)
 
@@ -24,7 +26,7 @@
 
 ### 포터블 EXE: Python, Conda, WSL 설치 불필요
 
-1. [MolRecognizer-0.3.0-windows-x64.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-windows-x64.zip) 파일을 다운로드합니다(159 MiB).
+1. [MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip) 파일을 다운로드합니다(161 MiB).
 2. `C:\Users\YourName\Apps`처럼 경로가 짧고 쓰기 가능한 고정 폴더에 **ZIP 전체를 압축 해제**합니다. 지나치게 깊은 폴더 경로는 피하세요.
 3. 압축 해제된 `MolRecognizer` 폴더에서 `MolRecognizer.exe`를 실행합니다.
 4. `_internal`, `tools`, 작업 프로세스용 EXE와 모든 부속 파일을 함께 보관합니다. **메인 EXE만 복사하거나 ZIP 안에서 바로 실행하지 마세요.** 이 EXE를 가리키는 바탕 화면 바로가기를 만들 수 있습니다.
@@ -35,21 +37,22 @@
 
 ### 다운로드 파일의 차이와 보안 안내
 
-- `MolRecognizer-0.3.0-windows-x64.zip`: 바로 실행할 수 있는 Windows 앱입니다. 일반 사용자는 이 파일만 받으면 됩니다.
-- `MolRecognizer-0.3.0-sources.zip`: **같은 버전**의 앱·의존성 소스 코드, 패치, 빌드 안내입니다. 소스를 살펴보거나 다시 빌드하는 개발자를 위한 파일로, 이전 버전이 아니며 앱 실행에 필요하지 않습니다.
-- `.zip.sha256`: 해당 ZIP이 손상되거나 변경되었는지 확인하기 위한 체크섬 파일입니다.
+- `MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip`: 바로 실행할 수 있는 Windows 앱입니다. 일반 사용자는 이 파일만 받으면 됩니다.
+- [MolRecognizer-0.3.0-main-canvas-fix-sources.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-sources.zip): 이 패치의 정확한 앱 소스와 빌드 스크립트입니다. 개발자용이며 실행 가능한 앱이 아닙니다.
+- [MolRecognizer-0.3.0-sources.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-sources.zip): 기본 릴리스에서 변경되지 않은 의존성 소스·패치·빌드 안내입니다. 이 안의 이전 앱 소스에는 캔버스 수정이 없습니다. 앱 실행에는 어느 소스 ZIP도 필요하지 않습니다.
+- [Windows ZIP의 `.sha256` 파일](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip.sha256): 다운로드가 손상되거나 변경되었는지 확인하는 체크섬입니다.
 - GitHub가 자동 생성하는 “Source code” 다운로드는 실행 가능한 앱이 아니며, 의존성 소스까지 담긴 `sources.zip`을 대신하지도 않습니다.
 
 ZIP과 체크섬 파일이 있는 폴더에서 PowerShell을 열고 실행하세요.
 
 ```powershell
-Get-FileHash .\MolRecognizer-0.3.0-windows-x64.zip -Algorithm SHA256
-Get-Content .\MolRecognizer-0.3.0-windows-x64.zip.sha256
+Get-FileHash .\MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip -Algorithm SHA256
+Get-Content .\MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip.sha256
 ```
 
 두 SHA-256 값을 비교하세요. 체크섬 일치는 디지털 서명이나 보안 보증이 아닙니다. 앱은 코드 서명되지 않아 Windows 보안 경고가 나타날 수 있습니다. 다운로드 출처를 확인하고 **백신을 끄거나 회사의 보안 정책을 우회하지 마세요**.
 
-배포 파일은 테스트한 ZIP과 동일합니다. 내부 문서 일부의 “not published”는 빌드 당시 상태를 기록한 것이며, 이후 공개된 사실은 [릴리스 페이지](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0)에 표시됩니다. `v0.3.0` 태그는 실제 빌드 소스를, `main`은 이후 문서 업데이트도 포함한 내용을 가리킵니다.
+현재 다운로드는 `main` 커밋 `343a81b`에서 빌드하고 테스트한 캔버스 패치입니다. `v0.3.0-main-canvas-fix.1` 태그에는 이후 추가된 다운로드 문서도 포함됩니다. 일부 내장 문서는 기본 릴리스나 빌드 당시의 공개 상태를 설명하므로, 이 패치에 대해서는 `MAIN-CANVAS-FIX.txt`와 [현재 릴리스 페이지](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0-main-canvas-fix.1)를 참고하세요. 원래 v0.3.0 ZIP은 덮어쓰지 않았습니다.
 
 ### PowerShell에서 소스로 실행하기
 
@@ -382,7 +385,7 @@ uv run pytest tests/ -m "not slow"
 uv run --extra molscribe pytest tests/ -m slow
 ```
 
-[상세 기능](README.md#features) · [프로젝트 구조](README.md#project-structure) · [변경 이력](CHANGELOG.md) · [Windows 빌드 안내](packaging/windows/README.md) · [릴리스 검증](packaging/windows/audits/0.3.0-final/VALIDATION.md)(영문). 자동 테스트와 소유자의 초기 테스트는 완전한 새 시스템 검증이나 인식 정확도 보증이 아닙니다.
+[상세 기능](README.md#features) · [프로젝트 구조](README.md#project-structure) · [변경 이력](CHANGELOG.md) · [Windows 빌드 안내](packaging/windows/README.md) · [현재 패치와 검증 기록](packaging/windows/RELEASE-NOTES-main-canvas-fix.md)(영문). 자동 테스트와 소유자의 초기 테스트는 완전한 새 시스템 검증이나 인식 정확도 보증이 아닙니다.
 
 ## 라이선스
 

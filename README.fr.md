@@ -4,7 +4,9 @@
 
 Reconnaissez des structures moléculaires dans des captures d’écran, des articles et des pages web, convertissez-les en SMILES, corrigez-les dans un éditeur interactif et générez des coordonnées 3D à enregistrer ou à copier au format XYZ. L’application est conçue pour les travaux de chimie computationnelle.
 
-**Version [0.3.0](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0)** — Application Windows portable avec OSRA intégrée, et application Linux/Python. [Télécharger pour Windows](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-windows-x64.zip).
+**Téléchargement Windows actuel : [0.3.0 + correctif du canevas de main](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0-main-canvas-fix.1)** — OSRA est intégrée. [Télécharger pour Windows](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip) (environ 161 Mio).
+
+Cette version conserve le zoom et la position de la zone de dessin lors des modifications, annulations et rétablissements. **Les changements expérimentaux de coordination métallique ne sont pas inclus**. GitHub marque ce correctif comme préversion (pre-release) ; utilisez les liens directs de cette page plutôt que l’ancienne v0.3.0 ou la préversion expérimentale pour les métaux. Consultez les [notes du correctif](packaging/windows/RELEASE-NOTES-main-canvas-fix.md) en anglais.
 
 ![MolRecognizer avec l’image source, la structure 2D modifiable et le modèle 3D affiché côte à côte](docs/media/UI-demo.png)
 
@@ -24,7 +26,7 @@ Ce guide couvre l’installation et l’utilisation courante. Les détails des f
 
 ### EXE portable : sans installer Python, Conda ou WSL
 
-1. Téléchargez [MolRecognizer-0.3.0-windows-x64.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-windows-x64.zip) (159 Mio).
+1. Téléchargez [MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip) (161 Mio).
 2. Extrayez **l’intégralité du ZIP** dans un dossier permanent, accessible en écriture et avec un chemin court, par exemple `C:\Users\YourName\Apps`. Évitez les dossiers trop profondément imbriqués.
 3. Ouvrez `MolRecognizer.exe` dans le dossier `MolRecognizer` extrait.
 4. Conservez `_internal`, `tools`, l’EXE du processus de travail et tous les fichiers associés ensemble. **Ne déplacez pas uniquement l’EXE principal et ne l’exécutez pas depuis le ZIP.** Vous pouvez créer un raccourci vers cet EXE sur le Bureau.
@@ -35,21 +37,22 @@ Pour une mise à jour, fermez l’application, extrayez la nouvelle version dans
 
 ### Différence entre les téléchargements et sécurité
 
-- `MolRecognizer-0.3.0-windows-x64.zip` : l’application Windows prête à l’emploi. C’est le fichier à télécharger pour une utilisation normale.
-- `MolRecognizer-0.3.0-sources.zip` : le code source de **la même version**, de ses dépendances, ainsi que les correctifs et instructions de compilation. Il s’adresse aux développeurs ; ce n’est pas une ancienne version et il n’est pas nécessaire pour exécuter l’application.
-- `.zip.sha256` : l’empreinte du ZIP correspondant, pour vérifier qu’il n’a pas été endommagé ou modifié.
+- `MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip` : l’application Windows prête à l’emploi. C’est le fichier à télécharger pour une utilisation normale.
+- [MolRecognizer-0.3.0-main-canvas-fix-sources.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-sources.zip) : les sources exactes de l’application pour ce correctif et le script de compilation. Il s’adresse aux développeurs, pas aux utilisateurs souhaitant lancer l’application.
+- [MolRecognizer-0.3.0-sources.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-sources.zip) : les sources inchangées des dépendances, leurs correctifs et les instructions de compilation de la version de base. L’ancienne copie de l’application qu’il contient n’inclut pas le correctif du canevas. Aucune archive de sources n’est nécessaire pour exécuter l’application.
+- [Fichier `.sha256` du ZIP Windows](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip.sha256) : l’empreinte permettant de vérifier que le téléchargement n’a pas été endommagé ou modifié.
 - Les archives « Source code » générées automatiquement par GitHub ne sont pas l’application Windows et ne remplacent pas le `sources.zip` contenant les sources des dépendances.
 
 Ouvrez PowerShell dans le dossier contenant le ZIP et son fichier d’empreinte :
 
 ```powershell
-Get-FileHash .\MolRecognizer-0.3.0-windows-x64.zip -Algorithm SHA256
-Get-Content .\MolRecognizer-0.3.0-windows-x64.zip.sha256
+Get-FileHash .\MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip -Algorithm SHA256
+Get-Content .\MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip.sha256
 ```
 
 Comparez les valeurs SHA-256. Une correspondance n’est ni une signature numérique ni une garantie de sécurité. L’application n’est pas signée ; Windows peut donc afficher un avertissement. Vérifiez la provenance du téléchargement et **ne désactivez pas l’antivirus ni ne contournez les règles de sécurité de votre organisation**.
 
-Les ZIP publiés sont identiques aux fichiers testés. Certains documents internes conservent la mention « not published » datant de la compilation ; la publication ultérieure est indiquée sur la [page de la version](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0). Le tag `v0.3.0` identifie les sources exactes de la compilation, tandis que `main` contient aussi des mises à jour ultérieures de la documentation.
+Le téléchargement actuel est le correctif testé, compilé à partir du commit `343a81b` de `main`. Le tag `v0.3.0-main-canvas-fix.1` contient aussi la documentation de téléchargement ajoutée ensuite. Certains documents inclus décrivent la version de base ou l’état de publication au moment de la compilation ; consultez `MAIN-CANVAS-FIX.txt` et la [page actuelle de la version](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0-main-canvas-fix.1) pour ce correctif. L’archive v0.3.0 d’origine n’a pas été remplacée.
 
 ### Exécuter les sources dans PowerShell
 
@@ -382,7 +385,7 @@ uv run pytest tests/ -m "not slow"
 uv run --extra molscribe pytest tests/ -m slow
 ```
 
-[Fonctionnalités détaillées](README.md#features) · [Structure du projet](README.md#project-structure) · [Historique](CHANGELOG.md) · [Compilation Windows](packaging/windows/README.md) · [Validation de la version](packaging/windows/audits/0.3.0-final/VALIDATION.md) — documents en anglais. Les tests automatiques et les premiers essais du propriétaire ne constituent pas une validation complète sur une machine vierge ni une garantie de précision.
+[Fonctionnalités détaillées](README.md#features) · [Structure du projet](README.md#project-structure) · [Historique](CHANGELOG.md) · [Compilation Windows](packaging/windows/README.md) · [Correctif actuel et validation](packaging/windows/RELEASE-NOTES-main-canvas-fix.md) — documents en anglais. Les tests automatiques et les premiers essais du propriétaire ne constituent pas une validation complète sur une machine vierge ni une garantie de précision.
 
 ## Licence
 

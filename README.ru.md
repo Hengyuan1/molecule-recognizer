@@ -4,7 +4,9 @@
 
 Распознавайте молекулярные структуры на скриншотах, в статьях и на веб-страницах, преобразуйте их в SMILES, исправляйте результат в интерактивном редакторе и создавайте трёхмерные координаты для сохранения или копирования в формате XYZ. Приложение предназначено для задач вычислительной химии.
 
-**Версия [0.3.0](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0)** — Портативное приложение для Windows со встроенной OSRA и приложение на Python для Linux. [Скачать для Windows](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-windows-x64.zip).
+**Текущая сборка Windows: [0.3.0 + исправление холста из main](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0-main-canvas-fix.1)** — OSRA включена. [Скачать для Windows](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip) (около 161 МиБ).
+
+Эта сборка сохраняет масштаб и положение холста при редактировании, отмене и повторе действий. **Экспериментальные изменения координации металлов не включены**. На GitHub патч отмечен как предварительный выпуск (pre-release); используйте прямые ссылки на этой странице, а не старую v0.3.0 или экспериментальную сборку для металлов. См. [описание патча](packaging/windows/RELEASE-NOTES-main-canvas-fix.md) на английском.
 
 ![MolRecognizer: исходное изображение, редактируемая 2D-структура и расположенная рядом 3D-модель](docs/media/UI-demo.png)
 
@@ -24,7 +26,7 @@
 
 ### Портативный EXE: без установки Python, Conda и WSL
 
-1. Скачайте [MolRecognizer-0.3.0-windows-x64.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-windows-x64.zip) (159 МиБ).
+1. Скачайте [MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip) (161 МиБ).
 2. Распакуйте **весь ZIP** в постоянную папку с коротким путём и правом записи, например `C:\Users\YourName\Apps`. Избегайте глубоко вложенных каталогов.
 3. Запустите `MolRecognizer.exe` из распакованной папки `MolRecognizer`.
 4. Сохраняйте вместе `_internal`, `tools`, EXE рабочего процесса и все сопутствующие файлы. **Нельзя переносить только основной EXE или запускать его прямо из ZIP.** При желании создайте ярлык на этот EXE.
@@ -35,21 +37,22 @@
 
 ### Какой архив скачивать и как проверить его
 
-- `MolRecognizer-0.3.0-windows-x64.zip` — готовое приложение для Windows. Обычному пользователю нужен именно этот файл.
-- `MolRecognizer-0.3.0-sources.zip` — исходный код **той же версии** приложения и зависимостей, патчи и инструкции сборки для разработчиков. Это не старая версия, и для запуска приложения архив не требуется.
-- `.zip.sha256` — контрольная сумма соответствующего ZIP для проверки повреждений или изменений при скачивании.
+- `MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip` — готовое приложение для Windows. Обычному пользователю нужен именно этот файл.
+- [MolRecognizer-0.3.0-main-canvas-fix-sources.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-sources.zip) — точные исходники приложения для этого патча и сценарий сборки. Архив предназначен для разработчиков, а не для запуска приложения.
+- [MolRecognizer-0.3.0-sources.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-sources.zip) — неизменённые исходники зависимостей, патчи и инструкции сборки из базового релиза. Старая копия приложения внутри него не содержит исправления холста. Для запуска не нужен ни один из архивов исходников.
+- [Файл `.sha256` для Windows ZIP](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip.sha256) — контрольная сумма для проверки повреждений или изменений при скачивании.
 - Автоматические архивы GitHub “Source code” не являются приложением и не заменяют `sources.zip`, содержащий исходники зависимостей.
 
 Откройте PowerShell в папке с ZIP и файлом контрольной суммы:
 
 ```powershell
-Get-FileHash .\MolRecognizer-0.3.0-windows-x64.zip -Algorithm SHA256
-Get-Content .\MolRecognizer-0.3.0-windows-x64.zip.sha256
+Get-FileHash .\MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip -Algorithm SHA256
+Get-Content .\MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip.sha256
 ```
 
 Сравните значения SHA-256. Совпадение не является цифровой подписью и не гарантирует безопасность. Приложение не подписано, поэтому Windows может показать предупреждение. Проверяйте источник загрузки; **не отключайте антивирус и не обходите правила безопасности вашей организации**.
 
-Опубликованные ZIP совпадают с протестированными файлами. Некоторые документы внутри сохраняют статус “not published”, зафиксированный при сборке. Последующая публикация отражена на [странице релиза](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0). Тег `v0.3.0` указывает на исходники конкретной сборки; `main` также содержит более новые изменения документации.
+Текущий архив — протестированный патч, собранный из коммита `343a81b` ветки `main`. Тег `v0.3.0-main-canvas-fix.1` также содержит добавленную позже документацию по загрузке. Некоторые документы внутри описывают базовый релиз или статус публикации на момент сборки; сведения об этом патче приведены в `MAIN-CANVAS-FIX.txt` и на [текущей странице релиза](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0-main-canvas-fix.1). Исходный архив v0.3.0 не перезаписывался.
 
 ### Запуск из исходников в PowerShell
 
@@ -382,7 +385,7 @@ uv run pytest tests/ -m "not slow"
 uv run --extra molscribe pytest tests/ -m slow
 ```
 
-[Подробные функции](README.md#features) · [Структура проекта](README.md#project-structure) · [История изменений](CHANGELOG.md) · [Сборка Windows](packaging/windows/README.md) · [Проверка релиза](packaging/windows/audits/0.3.0-final/VALIDATION.md) — на английском. Автоматические тесты и первоначальная проверка владельцем не равнозначны полной проверке на чистой системе и не гарантируют точность распознавания.
+[Подробные функции](README.md#features) · [Структура проекта](README.md#project-structure) · [История изменений](CHANGELOG.md) · [Сборка Windows](packaging/windows/README.md) · [Текущий патч и результаты проверки](packaging/windows/RELEASE-NOTES-main-canvas-fix.md) — на английском. Автоматические тесты и первоначальная проверка владельцем не равнозначны полной проверке на чистой системе и не гарантируют точность распознавания.
 
 ## Лицензия
 

@@ -4,7 +4,9 @@
 
 从截图、论文和网页图片中识别分子结构，转换为 SMILES，交互式修改识别结果，并生成、保存或复制 XYZ 三维坐标，适用于计算化学工作流程。
 
-**版本 [0.3.0](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0)** — 提供内置 OSRA 的 Windows 便携版，以及 Linux/Python 应用。[下载 Windows 版](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-windows-x64.zip)。
+**当前 Windows 下载：[0.3.0 + main 分支画布修复](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0-main-canvas-fix.1)** — 内置 OSRA。[下载 Windows 版](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip)（约 161 MiB）。
+
+此版本在编辑及撤销/重做时保持画布缩放和位置不变，**不包含实验性的金属配位修改**。GitHub 将此补丁标记为预发布（pre-release）；请使用本页的直接下载链接，不要选择较早的 v0.3.0 或金属功能预览版。详见[补丁说明](packaging/windows/RELEASE-NOTES-main-canvas-fix.md)（英文）。
 
 ![MolRecognizer：原始图片、可编辑的二维分子结构和并排显示的三维结构](docs/media/UI-demo.png)
 
@@ -24,7 +26,7 @@
 
 ### 便携版 EXE：无需 Python、Conda 或 WSL
 
-1. 下载 [MolRecognizer-0.3.0-windows-x64.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-windows-x64.zip)（159 MiB）。
+1. 下载 [MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip)（161 MiB）。
 2. 将**整个 ZIP** 解压到路径较短、可写入的固定目录，例如 `C:\Users\YourName\Apps`。避免层级过深的目录。
 3. 打开解压后 `MolRecognizer` 文件夹中的 `MolRecognizer.exe`。
 4. 保留 `_internal`、`tools`、工作进程 EXE 及所有配套文件。**不能只复制主 EXE，也不要直接在 ZIP 中运行。**可为该 EXE 创建桌面快捷方式。
@@ -35,21 +37,22 @@
 
 ### 下载文件的区别与安全提示
 
-- `MolRecognizer-0.3.0-windows-x64.zip`：可直接运行的 Windows 应用，普通用户下载这个即可。
-- `MolRecognizer-0.3.0-sources.zip`：同一版本的应用及依赖源代码、补丁和构建说明，供开发者检查或重新构建。它不是旧版本，也不是运行程序所必需的文件。
-- `.zip.sha256`：对应 ZIP 的校验值文件，用于检查下载是否损坏或发生变化。
+- `MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip`：可直接运行的 Windows 应用，普通用户下载这个即可。
+- [MolRecognizer-0.3.0-main-canvas-fix-sources.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-sources.zip)：此补丁的准确应用源码及构建脚本，供开发者使用，不是可执行程序。
+- [MolRecognizer-0.3.0-sources.zip](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-sources.zip)：基础版本中未改变的依赖源码、补丁及构建说明。其中较早的应用源码不包含此次画布修复。运行程序不需要下载任何源码包。
+- [Windows ZIP 的 `.sha256` 校验文件](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-main-canvas-fix.1/MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip.sha256)：用于检查下载是否损坏或发生变化。
 - GitHub 自动生成的 “Source code” 下载不是 Windows 应用，也不能代替包含依赖源代码的 `sources.zip`。
 
 在存放 ZIP 和校验文件的目录中打开 PowerShell：
 
 ```powershell
-Get-FileHash .\MolRecognizer-0.3.0-windows-x64.zip -Algorithm SHA256
-Get-Content .\MolRecognizer-0.3.0-windows-x64.zip.sha256
+Get-FileHash .\MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip -Algorithm SHA256
+Get-Content .\MolRecognizer-0.3.0-main-canvas-fix-windows-x64.zip.sha256
 ```
 
 比较两者的 SHA-256。校验一致不等于数字签名，也不能保证软件安全。应用尚未进行代码签名，Windows 可能显示安全警告。请确认下载来源，**不要关闭杀毒软件或绕过单位的安全策略**。
 
-发布包与经过测试的 ZIP 完全相同。包内部分文档保留了构建时的 “not published” 状态；[发布页面](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0)记录了之后的正式发布。`v0.3.0` 标签对应实际构建所用的源码，`main` 还包含后续文档更新。
+当前下载是由 `main` 提交 `343a81b` 构建并测试的画布补丁。`v0.3.0-main-canvas-fix.1` 标签还包含之后补充的下载文档。包内部分文档仍描述基础版本或保留构建时的发布状态；请以 `MAIN-CANVAS-FIX.txt` 和[当前发布页面](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0-main-canvas-fix.1)为准。原始 v0.3.0 下载包没有被覆盖。
 
 ### 在 PowerShell 中从源码运行
 
@@ -382,7 +385,7 @@ uv run pytest tests/ -m "not slow"
 uv run --extra molscribe pytest tests/ -m slow
 ```
 
-[完整功能列表](README.md#features) · [项目结构](README.md#project-structure) · [更新记录](CHANGELOG.md) · [Windows 构建指南](packaging/windows/README.md) · [发布验证](packaging/windows/audits/0.3.0-final/VALIDATION.md)（这些详细文档为英文）。自动测试和用户初步测试不等于完整的全新系统测试，也不保证识别准确率。
+[完整功能列表](README.md#features) · [项目结构](README.md#project-structure) · [更新记录](CHANGELOG.md) · [Windows 构建指南](packaging/windows/README.md) · [当前补丁与验证记录](packaging/windows/RELEASE-NOTES-main-canvas-fix.md)（这些详细文档为英文）。自动测试和用户初步测试不等于完整的全新系统测试，也不保证识别准确率。
 
 ## 许可证
 
