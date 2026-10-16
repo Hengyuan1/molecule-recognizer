@@ -6,6 +6,13 @@ Recognize molecular structures from images (screenshots, papers, web pages), con
 
 **Version [0.3.0](https://github.com/Hengyuan1/molecule-recognizer/releases/tag/v0.3.0)** — Standalone Windows application with bundled OSRA, alongside the Linux/Python application. [Download for Windows](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0/MolRecognizer-0.3.0-windows-x64.zip) or follow the [Linux instructions](#linux-usage). See the [changelog](CHANGELOG.md).
 
+**Development preview (this branch):** [Download the canvas-fix Windows ZIP](https://github.com/Hengyuan1/molecule-recognizer/releases/download/v0.3.0-canvas-fix.1/MolRecognizer-0.3.0-canvas-fix-windows-x64.zip).
+It includes the earlier metal-picker/recognition fixes and preserves zoom and
+pan during editing and undo/redo. This is an experimental branch build, not a
+replacement for stable 0.3.0; metal 3D generation remains unsupported.
+See the [preview release notes and checksums](packaging/windows/RELEASE-NOTES-canvas-fix.md).
+Extract the entire ZIP and run `MolRecognizer.exe`; keep its companion files together.
+
 ![Molecule Recognizer showing the source image, editable 2D structure, and interactive 3D comparison panel](docs/media/UI-demo.png)
 
 Double-click the rendered XYZ preview to compare it beside the 2D canvas.

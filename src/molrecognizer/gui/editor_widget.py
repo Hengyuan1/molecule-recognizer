@@ -304,14 +304,13 @@ class EditorWidget(QWidget):
             # Restoring another graph may remove selected atom indices or
             # scene items retained by a drag/preview tool.
             self._current_tool.deactivate()
-        if self._history.undo():
-            self._refresh_canvas()
+        # History's change callback redraws once, preserving the view.
+        self._history.undo()
 
     def _redo(self):
         if self._history.can_redo and self._current_tool is not None:
             self._current_tool.deactivate()
-        if self._history.redo():
-            self._refresh_canvas()
+        self._history.redo()
 
     # ------------------------------------------------------------------
     # Internal
@@ -323,4 +322,4 @@ class EditorWidget(QWidget):
         self.molecule_changed.emit()
 
     def _refresh_canvas(self):
-        self._canvas.load_molecule(self._molecule)
+        self._canvas.refresh_molecule(self._molecule)

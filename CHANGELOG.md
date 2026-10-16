@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Preserve canvas zoom and pan during atom/bond edits, label changes and
+  undo/redo. Grow the scrollable workspace without recentering the drawing;
+  loading a new structure and the explicit Fit structure action still work.
 - Fix the common-metal picker on dark Windows desktops with an explicit light
   background and high-contrast text. Give symbols and names separate layout-managed
   labels instead of a clipped multiline native button caption; test dark palettes

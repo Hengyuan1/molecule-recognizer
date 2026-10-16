@@ -632,8 +632,9 @@ class MoleculeCanvas(QGraphicsView):
         self.setBackgroundBrush(QBrush(QColor("#FAFAFA")))
         self.setMinimumSize(400, 300)
         self.setMouseTracking(True)  # receive hover moves without button press
-        # Allow the view to scroll beyond the content
-        self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+        # Scrollbars can appear as edits grow the workspace. Their viewport
+        # resize must not recenter the drawing under the mouse afterwards.
+        self.setResizeAnchor(QGraphicsView.ViewportAnchor.NoAnchor)
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
 
         self._panning = False
@@ -644,6 +645,7 @@ class MoleculeCanvas(QGraphicsView):
         return self._scene
 
     def load_molecule(self, mol: Molecule):
+        """Load a new structure with the default zoom and centered view."""
         self._scene.load_molecule(mol)
         # Expand scene rect so there is room to pan/scroll around
         br = self._scene.itemsBoundingRect().adjusted(-500, -500, 500, 500)
@@ -655,6 +657,30 @@ class MoleculeCanvas(QGraphicsView):
         items_br = self._scene.itemsBoundingRect()
         if not items_br.isEmpty():
             self.centerOn(items_br.center())
+
+    def refresh_molecule(self, mol: Molecule):
+        """Redraw an edit without changing the scene-to-viewport mapping.
+
+        Keep the existing workspace when atoms are removed, and grow it when
+        drawing beyond its edges. Include the visible area so that Qt cannot
+        clamp the scroll position or center a small scene after a deletion.
+        """
+        origin = self.mapToScene(0, 0)
+        visible = self.mapToScene(self.viewport().rect()).boundingRect()
+        workspace = self._scene.sceneRect().united(
+            visible.adjusted(-500, -500, 500, 500))
+        self._scene.load_molecule(mol)
+        workspace = workspace.united(
+            self._scene.itemsBoundingRect().adjusted(-500, -500, 500, 500))
+        self._scene.setSceneRect(workspace)
+        # Expanding the scroll range can alter Qt's alignment/anchor offsets,
+        # even without a transform change. Restore the old viewport origin in
+        # pixel space to avoid centerOn() rounding drift over repeated edits.
+        offset = self.mapFromScene(origin)
+        horizontal = self.horizontalScrollBar()
+        vertical = self.verticalScrollBar()
+        horizontal.setValue(horizontal.value() + offset.x())
+        vertical.setValue(vertical.value() + offset.y())
 
     # -- zoom --------------------------------------------------------------
 

@@ -1533,8 +1533,7 @@ class MainWindow(QMainWindow):
                 self._rendered_smiles = None
                 self._left_panel._viewer_3d.clear()
                 self._comparison_panel._viewer.clear()
-                self._hide_3d_comparison()
-                self._fit_structure()
+                self._hide_3d_comparison(refit=False)
             dialog.deleteLater()
             self._update_retry_available()
             QTimer.singleShot(0, self._refresh_display)
@@ -1561,13 +1560,14 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(0, self._fit_structure)
         self._comparison_panel._viewer.setFocus()
 
-    def _hide_3d_comparison(self):
+    def _hide_3d_comparison(self, *, refit=True):
         if not self._comparison_panel.isHidden():
             self._comparison_sizes = self._comparison_splitter.sizes()
             self._comparison_panel.hide()
             if not self._closing:
                 self._editor.canvas.setFocus()
-                QTimer.singleShot(0, self._fit_structure)
+                if refit:
+                    QTimer.singleShot(0, self._fit_structure)
 
     def _update_comparison_status(self):
         if self._comparison_panel.isHidden():
