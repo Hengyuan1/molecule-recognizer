@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — main-branch canvas fix
+
+- Preserve canvas zoom and pan during atom/bond edits and undo/redo. Grow the
+  scrollable workspace without recentering the drawing; loading a new structure
+  and explicit Fit structure still work.
+- Port only the canvas fix to `main`. Experimental metal-coordination changes
+  remain on `agent/metal-coordination-wip` and are not included in this patch.
+
 ## 0.3.0 — Windows portable release
 
 - Publish the tested native Windows x64 ZIP with bundled OSRA 2.2.4, plus

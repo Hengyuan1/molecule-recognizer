@@ -15,7 +15,7 @@ def smoke_test(report_path: Path, *, require_osra: bool = False) -> int:
     app = None
     os.environ["QT_QPA_PLATFORM"] = "offscreen"
     try:
-        from PySide6.QtCore import QEventLoop, QSettings, QTimer, Qt
+        from PySide6.QtCore import QEventLoop, QPointF, QSettings, QTimer, Qt
         from PySide6.QtGui import QAction, QFont, QIcon
         from PySide6.QtWidgets import QApplication
         from rdkit import Chem
@@ -101,6 +101,30 @@ def smoke_test(report_path: Path, *, require_osra: bool = False) -> int:
                 raise RuntimeError("3D comparison did not open")
             window._hide_3d_comparison()
             report["checks"].append("packaged 3D worker, XYZ export and comparison panel")
+
+            from .core.molecule import BondType
+            from .editor.history import (
+                AddAtomCommand, AddBondCommand, RemoveAtomCommand, RemoveBondCommand,
+            )
+            app.processEvents()  # Let the explicit comparison-close fit finish.
+            canvas = window._editor.canvas
+            canvas.scale(1.7, 1.7)
+            canvas.centerOn(QPointF(65, -40))
+            transform = canvas.transform()
+            origin = canvas.viewportTransform().map(QPointF(0, 0))
+            for command in (AddAtomCommand("C", 5, 3),
+                            AddBondCommand(2, 3, BondType.SINGLE),
+                            RemoveBondCommand(2, 3), RemoveAtomCommand(3)):
+                window._editor._history.execute(command)
+                for operation in (None, window._editor._undo, window._editor._redo):
+                    if operation is not None:
+                        operation()
+                    app.processEvents()
+                    offset = canvas.viewportTransform().map(QPointF(0, 0)) - origin
+                    if (canvas.transform() != transform
+                            or abs(offset.x()) >= 1 or abs(offset.y()) >= 1):
+                        raise RuntimeError("Atom/bond edits or undo/redo changed the canvas view")
+            report["checks"].append("canvas zoom and pan preserved through edits and undo/redo")
 
             helper = capture_helper()
             if helper is None:
